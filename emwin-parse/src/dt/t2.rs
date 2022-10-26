@@ -244,5 +244,3 @@ pub enum AviationInformationXMLT2 {
     AIRMET,
     AviationTropicalCycloneWarningSIGMET,
 }
-
-

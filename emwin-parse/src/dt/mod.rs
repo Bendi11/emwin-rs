@@ -1,36 +1,138 @@
 use std::str::FromStr;
-use self::{t2::{
-    AnalysisT2, ClimaticDataT2, GRIDT2, SatelliteImageryT2,
-    ForecastT2, BUFRT2, AviationInformationXMLT2, NoticeT2,
-    OceanographicT2, PictoralInformationT2, SurfaceT2, SatelliteT2,
-    UpperT2, WarningT2
-}, code::CodeForm};
+pub use self::t2::*;
+use self::{code::CodeForm, area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator}};
 
 pub mod t2;
 pub mod code;
+pub mod area;
+#[cfg(test)]
+mod test;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AnalysisDataDesignator {
+    pub subtype: AnalysisT2,
+    pub area: AreaCode,
+}
+
+
+/// The type of message an [AddressedMessage] is
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AddressedMessageType {
+    Administrative,
+    Service,
+    GTSRequest,
+    RequestToDB,
+    GTSOrDBResponse,
+}
+
+/// format @ WMO-No. 386 p.103 attachment II-6
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AddressedMessage {
+    /// T2
+    pub binary: bool,
+    /// A1A2
+    pub kind: AddressedMessageType,
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GridPointInformation {
+    /// T2
+    pub subtype: GRIDT2,
+    /// A1
+    pub area: GeographicalAreaDesignator,
+    /// A2
+    pub time: ReferenceTimeDesignator,
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PictoralInformation {
+    /// T2
+    pub subtype: PictoralInformationT2,
+    /// A1
+    pub area: GeographicalAreaDesignator,
+    /// A2
+    pub time: ReferenceTimeDesignator,
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RegionalPictoralInformation {
+    /// T2
+    pub subtype: PictoralInformationT2,
+    /// A1
+    pub area: GeographicalAreaDesignator,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SatelliteData {
+    /// T2
+    pub subtype: SatelliteT2,
+    /// A1
+    pub area: GeographicalAreaDesignator,
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ObservationalDataBinary {
+    /// T2
+    pub subtype: BUFRT2,
+    /// A2
+    pub area: GeographicalAreaDesignator,
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ForecastDataBinary {
+    /// T2
+    pub subtype: BUFRT2,
+    /// A2
+    pub time: ReferenceTimeDesignator,
+}
 
 /// A data type designator consisting of two alphanumeric characters
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataTypeDesignator {
-    Analysis(AnalysisT2),
-    AddressedMessage,
+    /// A
+    Analysis(AnalysisDataDesignator),
+    /// B
+    AddressedMessage(AddressedMessage),
+    /// C
     ClimaticData(ClimaticDataT2),
-    GridPointInformation(GRIDT2),
+    /// D, G, H, O
+    GridPointInformation(GridPointInformation),
+    /// E
     SatelliteImagery(SatelliteImageryT2),
+    /// F
     Forecast(ForecastT2),
-    ObservationalDataBinaryBUFR(BUFRT2),
-    ForecastBinaryBUFR(BUFRT2),
+    /// I
+    ObservationalDataBinaryBUFR(ObservationalDataBinary),
+    /// J
+    ForecastBinaryBUFR(ForecastDataBinary),
+    /// K
     CREX,
+    /// L
     AviationInformationXML(AviationInformationXMLT2),
+    /// N
     Notice(NoticeT2),
+    /// O
     OceanographicInformation(OceanographicT2),
-    PictoralInformationBinary(PictoralInformationT2),
-    PictoralInformationRegionalBinary(PictoralInformationT2),
+    /// P
+    PictoralInformationBinary(PictoralInformation),
+    /// Q
+    PictoralInformationRegionalBinary(RegionalPictoralInformation),
+    /// S
     SurfaceData(SurfaceT2),
+    /// T
     SatelliteData(SatelliteT2),
+    /// U
     UpperAirData(UpperT2),
+    /// V
     NationalData,
+    /// W
     Warning(WarningT2),
+    /// X
     CommonAlertProtocolMessage
 }
 
@@ -38,7 +140,7 @@ impl FromStr for DataTypeDesignator {
     type Err = DataTypeDesignatorParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() < 2 {
+        if s.len() < 4 {
             return Err(DataTypeDesignatorParseError::Length)
         }
         
@@ -46,21 +148,42 @@ impl FromStr for DataTypeDesignator {
         
         let first = iter.next().unwrap();
         let second = iter.next().unwrap();
+
+        let a1 = iter.next().unwrap();
+        let a2 = iter.next().unwrap();
         drop(iter);
 
         Ok(match first {
-            'A' => Self::Analysis(match second {
-                'C' => AnalysisT2::Cyclone,
-                'G' => AnalysisT2::Hydrological,
-                'H' => AnalysisT2::Thickness,
-                'I' => AnalysisT2::Ice,
-                'O' => AnalysisT2::Ozone,
-                'R' => AnalysisT2::Radar,
-                'S' => AnalysisT2::Surface,
-                'U' => AnalysisT2::UpperAir,
-                'W' => AnalysisT2::WeatherSummary,
-                'X' => AnalysisT2::Misc,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('A', other)),
+            'A' => Self::Analysis(AnalysisDataDesignator {
+                subtype: match second {
+                    'C' => AnalysisT2::Cyclone,
+                    'G' => AnalysisT2::Hydrological,
+                    'H' => AnalysisT2::Thickness,
+                    'I' => AnalysisT2::Ice,
+                    'O' => AnalysisT2::Ozone,
+                    'R' => AnalysisT2::Radar,
+                    'S' => AnalysisT2::Surface,
+                    'U' => AnalysisT2::UpperAir,
+                    'W' => AnalysisT2::WeatherSummary,
+                    'X' => AnalysisT2::Misc,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('A', other)),
+                },
+                area: AreaCode::try_from((a1, a2))?,
+            }),
+            'B' => Self::AddressedMessage(AddressedMessage {
+                binary: match second {
+                    'M' => false,
+                    'I' => true,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('B', other)),
+                },
+                kind: match (a1, a2) {
+                    ('A', 'A') => AddressedMessageType::Administrative,
+                    ('B', 'B') => AddressedMessageType::Service,
+                    ('R', 'R') => AddressedMessageType::GTSRequest,
+                    ('R', 'Q') => AddressedMessageType::RequestToDB,
+                    ('D', 'A') => AddressedMessageType::GTSOrDBResponse,
+                    _ => return Err(DataTypeDesignatorParseError::UnrecognizedA2(first, second, a1, a2)),
+                }
             }),
             'C' => Self::ClimaticData(match second {
                 'A' => ClimaticDataT2::Anomaly,
@@ -283,7 +406,6 @@ impl FromStr for DataTypeDesignator {
                 'Y' => AviationInformationXMLT2::AviationTropicalCycloneWarningSIGMET,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
             }),
-
             other => return Err(DataTypeDesignatorParseError::UnrecognizedT1(other)),
         })
     }
@@ -297,15 +419,15 @@ pub enum DataTypeDesignatorParseError {
     UnrecognizedT1(char),
     #[error("Unrecognized data type designator term 2 {0}{1}")]
     UnrecognizedT2(char, char),
+    #[error("Unrecognized data type designator term 3 {0}{1}{2}")]
+    UnrecognizedA1(char, char, char),
+    #[error("Unrecognized data type designator term 4 {0}{1}{2}{3}")]
+    UnrecognizedA2(char, char, char, char),
+    #[error("Invalid area code: {0}")]
+    InvalidAreaCode(#[from] AreaCodeParseError),
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
 
-    #[test]
-    fn test_parse() {
-        let weather_roundup: DataTypeDesignator = "AS".parse().unwrap();
-        assert_eq!(weather_roundup, DataTypeDesignator::Analysis(AnalysisT2::Surface));
-    }
+impl DataTypeDesignator {
+
 }

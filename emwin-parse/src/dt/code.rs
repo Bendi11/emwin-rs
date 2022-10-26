@@ -54,4 +54,3 @@ pub enum CodeForm {
     SEISMIC,
     ICAO,
 }
-
