@@ -2,6 +2,7 @@ use async_trait::async_trait;
 
 pub mod head;
 pub mod designator;
+pub mod code;
 
 /// Any type implementing `ProductParser` contains all state needed to fallibly parse a `Product` from a
 /// type implementing `AsyncRead`
