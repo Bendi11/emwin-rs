@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tokio = { version = "1.21", default-features = false, features = ["rt-multi-thread", "io-std", "io-util"] }
+async-trait = "0.1"
+log = "0.4"
+thiserror = "1.0"
