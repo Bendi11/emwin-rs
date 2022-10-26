@@ -52,5 +52,6 @@ pub enum CodeForm {
     RECCO,
     Text,
     SEISMIC,
+    ICAO,
 }
 
