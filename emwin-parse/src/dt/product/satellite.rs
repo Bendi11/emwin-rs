@@ -27,16 +27,18 @@ impl TryFrom<UnparsedProductIdentifier> for SatelliteData {
     type Error = DataTypeDesignatorParseError;
     fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(Self {
-            subtype: match second {
-                'B' => SatelliteT2::SatelliteOrbitParameters,
-                'C' => SatelliteT2::SatelliteCloudInterpretations,
-                'H' => SatelliteT2::SatelliteRemoteUpperAirSoundings,
-                'R' => SatelliteT2::ClearRadianceObservations,
-                'T' => SatelliteT2::SeaSurfaceTemperatures,
-                'W' => SatelliteT2::WindsAndCloudsTemperatures,
-                'X' => SatelliteT2::Misc,
+            subtype: match value.t2 {
+                'B' => SatelliteDataSubType::SatelliteOrbitParameters,
+                'C' => SatelliteDataSubType::SatelliteCloudInterpretations,
+                'H' => SatelliteDataSubType::SatelliteRemoteUpperAirSoundings,
+                'R' => SatelliteDataSubType::ClearRadianceObservations,
+                'T' => SatelliteDataSubType::SeaSurfaceTemperatures,
+                'W' => SatelliteDataSubType::WindsAndCloudsTemperatures,
+                'X' => SatelliteDataSubType::Misc,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('T', other)),
             },
+            area: GeographicalAreaDesignator::try_from(value.a1)?,
+            time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
         })
     }
 }

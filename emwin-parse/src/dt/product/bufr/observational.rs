@@ -1,6 +1,6 @@
-use crate::dt::area::GeographicalAreaDesignator;
+use crate::dt::{area::GeographicalAreaDesignator, UnparsedProductIdentifier, DataTypeDesignatorParseError};
 
-
+/// I
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ObservationalDataBinary {
     /// T2
@@ -10,7 +10,7 @@ pub struct ObservationalDataBinary {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRSatelliteData {
+pub enum ObservationalBUFRSatellite {
     AMSUA,
     AMSUB,
     CrIS,
@@ -26,7 +26,7 @@ pub enum BUFRSatelliteData {
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFROceanicData {
+pub enum ObservationalBUFROceanic {
     BuoyObservations,
     SeaIce,
     SubsurfaceProfilingFloats,
@@ -40,7 +40,7 @@ pub enum BUFROceanicData {
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRPictoralData {
+pub enum ObservationalBUFRPictoral {
     RadarCompositeImagery,
     SatelliteImagery,
     RadarImagery,
@@ -55,7 +55,7 @@ pub enum LandStation {
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRSurfaceSeaLevelData {
+pub enum ObservationalBUFRSurfaceSeaLevel {
     RoutinelyScheduledLandStation,
     NMinuteObservationLandStation,
     RadarReportAB,
@@ -81,7 +81,7 @@ pub enum BUFRSurfaceSeaLevelData {
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRTextData {
+pub enum ObservationalBUFRText {
     AdministrativeMessage,
     ServiceMessage,
     RequestData,
@@ -90,7 +90,7 @@ pub enum BUFRTextData {
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRUpperAirData {
+pub enum ObservationalBUFRUpperAir {
     SingleLevelAircraftReportAuto,
     SingleLevelAircraftReportManual,
     SingleLevelBalloonReport,
@@ -123,17 +123,42 @@ pub enum BUFRUpperAirData {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalDataBinaryBUFRSubType {
     /// N
-    SatelliteData(BUFRSatelliteData),
+    SatelliteData(ObservationalBUFRSatellite),
     /// O
-    OceanographicLimnographic(BUFROceanicData),
+    OceanographicLimnographic(ObservationalBUFROceanic),
     /// P
-    Pictorial(BUFRPictoralData),
+    Pictorial(ObservationalBUFRPictoral),
     /// S
-    SurfaceSeaLevel(BUFRSurfaceSeaLevelData),
+    SurfaceSeaLevel(ObservationalBUFRSurfaceSeaLevel),
     /// T
-    Text(BUFRTextData),
+    Text(ObservationalBUFRText),
     /// U
-    UpperAir(BUFRUpperAirData),
+    UpperAir(ObservationalBUFRUpperAir),
     /// X
     Other,
+}
+
+impl TryFrom<UnparsedProductIdentifier> for ObservationalDataBinary {
+    type Error = DataTypeDesignatorParseError;
+    fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
+        Ok(Self {
+            subtype: match value.t2 {
+                'N' => ObservationalDataBinaryBUFRSubType::SatelliteData(match value.a1 {
+                    'A' => ObservationalBUFRSatellite::AMSUA,
+                    'B' => ObservationalBUFRSatellite::AMSUB,
+                    'C' => ObservationalBUFRSatellite::CrIS,
+                    'H' => ObservationalBUFRSatellite::HIRS,
+                    'I' => ObservationalBUFRSatellite::IRAS,
+                    'J' => ObservationalBUFRSatellite::HIRAS,
+                    'K' => ObservationalBUFRSatellite::MWHS,
+                    'M' => ObservationalBUFRSatellite::MHS,
+                    'Q' => ObservationalBUFRSatellite::IASI,
+                    'S' => ObservationalBUFRSatellite::ATMS,
+                    'T' => ObservationalBUFRSatellite::MWTS,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                }),
+            },
+            area: GeographicalAreaDesignator::try_from(value.t2)?,
+        })
+    }
 }

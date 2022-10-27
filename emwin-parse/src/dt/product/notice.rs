@@ -1,6 +1,6 @@
 use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
 
-
+/// N
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Notice {
     pub subtype: NoticeSubType,
@@ -24,13 +24,13 @@ impl TryFrom<UnparsedProductIdentifier> for Notice {
     fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(Self {
             subtype: match value.t2 {
-                'G' => NoticeT2::Hydrological,
-                'H' => NoticeT2::Marine,
-                'N' => NoticeT2::NuclearEmergencyResponse,
-                'O' => NoticeT2::METNOWIFMA,
-                'P' => NoticeT2::ProductGenerationDelay,
-                'T' => NoticeT2::TESTMSG,
-                'W' => NoticeT2::WarningRelatedOrCancellation,
+                'G' => NoticeSubType::Hydrological,
+                'H' => NoticeSubType::Marine,
+                'N' => NoticeSubType::NuclearEmergencyResponse,
+                'O' => NoticeSubType::METNOWIFMA,
+                'P' => NoticeSubType::ProductGenerationDelay,
+                'T' => NoticeSubType::TESTMSG,
+                'W' => NoticeSubType::WarningRelatedOrCancellation,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('N', other)),
             },
             area: AreaCode::try_from((value.a1, value.a2))?,

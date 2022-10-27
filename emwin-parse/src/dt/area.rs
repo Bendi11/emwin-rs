@@ -69,17 +69,33 @@ impl ReferenceTimeDesignator {
             'T' => Self::from_days(10),
             'U' => Self::from_days(15),
             'V' => Self::from_days(30),
-            'W'..'Z' => Self::from_hours(0),
+            'W' | 'X' | 'Y' | 'Z' => Self::from_hours(0),
             other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
         })
     }
     
     /// Parse the reference time designator term A2 for proucts Q, X, and Y
     pub const fn parse_for_qxy(val: char) -> Result<Self, ReferenceTimeDesignatorParseError> {
-        Ok(match val {
-            'A' => Self::from_hours(0),
-            
-        })
+        Ok(Self::from_hours(match val {
+            'A' => 0,
+            'B' => 3,
+            'C' => 6,
+            'D' => 9,
+            'E' => 12,
+            'F' => 15,
+            'G' => 18,
+            'H' => 21,
+            'I' => 24,
+            'J' => 27,
+            'K' => 30,
+            'L' => 33,
+            'M' => 36,
+            'N' => 39,
+            'O' => 42,
+            'P' => 45,
+            'Q' => 48,
+            other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
+        }))
     }
 }
 

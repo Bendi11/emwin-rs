@@ -21,12 +21,12 @@ impl TryFrom<UnparsedProductIdentifier> for ClimaticData {
     type Error = DataTypeDesignatorParseError;
     fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(Self {
-            subtype: match second {
-                'A' => ClimaticDataT2::Anomaly,
-                'E' => ClimaticDataT2::UpperAirMonthlyMean,
-                'H' => ClimaticDataT2::SurfaceMonthlyMean(CodeForm::CLIMATSHIP),
-                'O' => ClimaticDataT2::OceanMonthlyMean,
-                'S' => ClimaticDataT2::SurfaceMonthlyMean(CodeForm::CLIMAT),
+            subtype: match value.t2 {
+                'A' => ClimaticDataSubType::Anomaly,
+                'E' => ClimaticDataSubType::UpperAirMonthlyMean,
+                'H' => ClimaticDataSubType::SurfaceMonthlyMean(CodeForm::CLIMATSHIP),
+                'O' => ClimaticDataSubType::OceanMonthlyMean,
+                'S' => ClimaticDataSubType::SurfaceMonthlyMean(CodeForm::CLIMAT),
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('C', other)),
             },
             area: AreaCode::try_from((value.a1, value.a2))?,

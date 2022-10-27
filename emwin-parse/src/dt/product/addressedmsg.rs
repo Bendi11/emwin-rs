@@ -29,13 +29,13 @@ impl TryFrom<UnparsedProductIdentifier> for AddressedMessage {
                 'I' => true,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('B', other)),
             },
-            kind: match (a1, a2) {
+            kind: match (value.a1, value.a2) {
                 ('A', 'A') => AddressedMessageType::Administrative,
                 ('B', 'B') => AddressedMessageType::Service,
                 ('R', 'R') => AddressedMessageType::GTSRequest,
                 ('R', 'Q') => AddressedMessageType::RequestToDB,
                 ('D', 'A') => AddressedMessageType::GTSOrDBResponse,
-                _ => return Err(DataTypeDesignatorParseError::UnrecognizedA2(first, second, a1, a2)),
+                _ => return Err(DataTypeDesignatorParseError::UnrecognizedA2(value.t1, value.t2, value.a1, value.a2)),
             }
         })
     }

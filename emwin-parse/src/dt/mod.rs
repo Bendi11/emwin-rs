@@ -2,7 +2,7 @@ use std::str::FromStr;
 pub use self::product::*;
 use self::{
     code::CodeForm,
-    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError},
+    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError},
     product::{
         analysis::Analysis,
         addressedmsg::AddressedMessage,
@@ -91,70 +91,16 @@ impl FromStr for DataTypeDesignator {
         drop(iter);
 
         Ok(match first {
-            'A' => Self::Analysis(AnalysisDataDesignator {
-                subtype: 
-                },
-                area: AreaCode::try_from((a1, a2))?,
-            }),
-            'B' => Self::AddressedMessage(AddressedMessage {
-                binary: ,
-                kind:             }),
+            'A' => Self::Analysis(),
+            'B' => Self::AddressedMessage(),
             'C' => Self::ClimaticData(),
             'F' => Self::Forecast(),
             'N' => Self::Notice(),
             'S' => Self::SurfaceData(),
             'T' => Self::SatelliteData(),
-            'U' => Self::UpperAirData(match second {
-                'A' => UpperT2::AircraftReport(CodeForm::ICAO),
-                'D' => UpperT2::AircraftReport(CodeForm::AMDAR),
-                'E' => UpperT2::UpperLevelPressureTemperatureHumidityWindD,
-                'F' => UpperT2::UpperLevelPressureTemperatureHumidityWindCD,
-                'G' => UpperT2::UpperWindB,
-                'H' => UpperT2::UpperWindC,
-                'I' => UpperT2::UpperWindAB,
-                'K' => UpperT2::UpperLevelPressureTemperatureHumidityWindB,
-                'L' => UpperT2::UpperLevelPressureTemperatureHumidityWindC,
-                'M' => UpperT2::UpperLevelPressureTemperatureHumidityWindAB,
-                'N' => UpperT2::RocketsondeReport,
-                'P' => UpperT2::UpperWindA,
-                'Q' => UpperT2::UpperWindD,
-                'R' => UpperT2::AircraftReport(CodeForm::RECCO),
-                'S' => UpperT2::UpperLevelPressureTemperatureHumidityWindA,
-                'T' => UpperT2::AircraftReport(CodeForm::CODAR),
-                'X' => UpperT2::Misc,
-                'Y' => UpperT2::UpperWindCD,
-                'Z' => UpperT2::UpperLevelPressureTemperatureHumidityWindABCD,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('U', other)),
-            }),
-            'W' => Self::Warning(match second {
-                'A' => WarningT2::AIRMET,
-                'C' => WarningT2::TropicalCycloneSIGMET,
-                'E' => WarningT2::Tsunami,
-                'F' => WarningT2::Tornado,
-                'G' => WarningT2::HydrologicalRiverFlood,
-                'H' => WarningT2::MarineCoastalFlood,
-                'O' => WarningT2::Other,
-                'R' => WarningT2::HumanitarianActivities,
-                'S' => WarningT2::SIGMET,
-                'T' => WarningT2::TropicalCycloneTyphoonHurricane,
-                'U' => WarningT2::SevereThunderstorm,
-                'V' => WarningT2::VolcanicAshCloudsSIGMET,
-                'W' => WarningT2::WarningsWeatherSummary,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('W', other)),
-            }),
-            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(match second {
-                'A' => GRIDT2::RadarData,
-                'B' => GRIDT2::Cloud,
-                'C' => GRIDT2::Vorticity,
-                'D' => GRIDT2::Thickness,
-                'E' => GRIDT2::Precipitation,
-                'G' => GRIDT2::Divergence,
-                'H' => GRIDT2::Height,
-                'J' => GRIDT2::WaveHeight,
-                'K' => GRIDT2::SwellHeight,
-                'M' => GRIDT2::NationalUse,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-            }),
+            'U' => Self::UpperAirData(),
+            'W' => Self::Warning(),
+            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(),
             'I' | 'J' => {
                 let second = match second {
                     'N' => ObservationalDataBinaryBUFRSubType::SatelliteData,
@@ -265,6 +211,8 @@ pub enum DataTypeDesignatorParseError {
     InvalidAreaCode(#[from] AreaCodeParseError),
     #[error("error parsing geo area designator: {0}")]
     InvalidGeographicalAreaDesignator(#[from] GeographicalAreaDesignatorParseError),
+    #[error("error parsing reference time designator: {0}")]
+    InvalidReferenceTimeDesignator(#[from] ReferenceTimeDesignatorParseError),
 }
 
 
