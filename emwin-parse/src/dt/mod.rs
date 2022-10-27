@@ -1,10 +1,11 @@
 use std::str::FromStr;
 pub use self::t2::*;
-use self::{code::CodeForm, area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator}};
+use self::{code::CodeForm, area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator}, bufr::BUFRDataType};
 
 pub mod t2;
 pub mod code;
 pub mod area;
+pub mod bufr;
 #[cfg(test)]
 mod test;
 
@@ -13,7 +14,6 @@ pub struct AnalysisDataDesignator {
     pub subtype: AnalysisT2,
     pub area: AreaCode,
 }
-
 
 /// The type of message an [AddressedMessage] is
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -77,17 +77,21 @@ pub struct SatelliteData {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ObservationalDataBinary {
     /// T2
-    pub subtype: BUFRT2,
+    pub subtype: BUFRDataType,
     /// A2
     pub area: GeographicalAreaDesignator,
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ForecastDataBinary {
     /// T2
-    pub subtype: BUFRT2,
+    pub subtype: BUFRDataType,
     /// A2
+    pub time: ReferenceTimeDesignator,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommonAlertProtocolMessage {
     pub time: ReferenceTimeDesignator,
 }
 
@@ -133,7 +137,7 @@ pub enum DataTypeDesignator {
     /// W
     Warning(WarningT2),
     /// X
-    CommonAlertProtocolMessage
+    CommonAlertProtocolMessage(CommonAlertProtocolMessage),
 }
 
 impl FromStr for DataTypeDesignator {
@@ -319,13 +323,13 @@ impl FromStr for DataTypeDesignator {
             }),
             'I' | 'J' => {
                 let second = match second {
-                    'N' => BUFRT2::SatelliteData,
-                    'O' => BUFRT2::OceanographicLimnographic,
-                    'P' => BUFRT2::Pictorial,
-                    'S' => BUFRT2::SurfaceSeaLevel,
-                    'T' => BUFRT2::Text,
-                    'U' => BUFRT2::UpperAir,
-                    'X' => BUFRT2::Other,
+                    'N' => BUFRDataType::SatelliteData,
+                    'O' => BUFRDataType::OceanographicLimnographic,
+                    'P' => BUFRDataType::Pictorial,
+                    'S' => BUFRDataType::SurfaceSeaLevel,
+                    'T' => BUFRDataType::Text,
+                    'U' => BUFRDataType::UpperAir,
+                    'X' => BUFRDataType::Other,
                     other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
                 };
                 match first {

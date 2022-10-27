@@ -160,18 +160,6 @@ pub enum GRIDT2 {
     NationalUse,
 }
 
-/// Term T2 definitions when T1=ObservationalDataBinaryBUFR or ForecastBinaryBUFR
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BUFRT2 {
-    SatelliteData,
-    OceanographicLimnographic,
-    Pictorial,
-    SurfaceSeaLevel,
-    Text,
-    UpperAir,
-    Other,
-}
-
 /// Term T2 definitions when T1=OceanographicInformation
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OceanographicT2 {
