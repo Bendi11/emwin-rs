@@ -1,115 +1,48 @@
 use std::str::FromStr;
-pub use self::t2::*;
-use self::{code::CodeForm, area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator}, bufr::BUFRDataType};
+pub use self::product::*;
+use self::{
+    code::CodeForm,
+    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError},
+    product::{
+        analysis::Analysis,
+        addressedmsg::AddressedMessage,
+        gridpoint::GridPointInformation,
+        climatic::ClimaticData
+    }, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::Surface, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage
+};
 
-pub mod t2;
+pub mod product;
+
 pub mod code;
 pub mod area;
-pub mod bufr;
 #[cfg(test)]
 mod test;
 
+/// A product identifier containing only raw characters used for parsing product identifiers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AnalysisDataDesignator {
-    pub subtype: AnalysisT2,
-    pub area: AreaCode,
-}
-
-/// The type of message an [AddressedMessage] is
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AddressedMessageType {
-    Administrative,
-    Service,
-    GTSRequest,
-    RequestToDB,
-    GTSOrDBResponse,
-}
-
-/// format @ WMO-No. 386 p.103 attachment II-6
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AddressedMessage {
-    /// T2
-    pub binary: bool,
-    /// A1A2
-    pub kind: AddressedMessageType,
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GridPointInformation {
-    /// T2
-    pub subtype: GRIDT2,
-    /// A1
-    pub area: GeographicalAreaDesignator,
-    /// A2
-    pub time: ReferenceTimeDesignator,
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PictoralInformation {
-    /// T2
-    pub subtype: PictoralInformationT2,
-    /// A1
-    pub area: GeographicalAreaDesignator,
-    /// A2
-    pub time: ReferenceTimeDesignator,
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct RegionalPictoralInformation {
-    /// T2
-    pub subtype: PictoralInformationT2,
-    /// A1
-    pub area: GeographicalAreaDesignator,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SatelliteData {
-    /// T2
-    pub subtype: SatelliteT2,
-    /// A1
-    pub area: GeographicalAreaDesignator,
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ObservationalDataBinary {
-    /// T2
-    pub subtype: BUFRDataType,
-    /// A2
-    pub area: GeographicalAreaDesignator,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ForecastDataBinary {
-    /// T2
-    pub subtype: BUFRDataType,
-    /// A2
-    pub time: ReferenceTimeDesignator,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CommonAlertProtocolMessage {
-    pub time: ReferenceTimeDesignator,
+pub struct UnparsedProductIdentifier {
+    pub t1: char,
+    pub t2: char,
+    pub a1: char,
+    pub a2: char,
+    pub ii: (char, char)
 }
 
 /// A data type designator consisting of two alphanumeric characters
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataTypeDesignator {
     /// A
-    Analysis(AnalysisDataDesignator),
+    Analysis(Analysis),
     /// B
     AddressedMessage(AddressedMessage),
     /// C
-    ClimaticData(ClimaticDataT2),
+    ClimaticData(ClimaticData),
     /// D, G, H, O
     GridPointInformation(GridPointInformation),
     /// E
-    SatelliteImagery(SatelliteImageryT2),
+    SatelliteImagery(SatelliteImagery),
     /// F
-    Forecast(ForecastT2),
+    Forecast(Forecast),
     /// I
     ObservationalDataBinaryBUFR(ObservationalDataBinary),
     /// J
@@ -117,25 +50,25 @@ pub enum DataTypeDesignator {
     /// K
     CREX,
     /// L
-    AviationInformationXML(AviationInformationXMLT2),
+    AviationInformationXML(AviationInformationXML),
     /// N
-    Notice(NoticeT2),
+    Notice(Notice),
     /// O
-    OceanographicInformation(OceanographicT2),
+    OceanographicInformation(OceanographicInformation),
     /// P
     PictoralInformationBinary(PictoralInformation),
     /// Q
     PictoralInformationRegionalBinary(RegionalPictoralInformation),
     /// S
-    SurfaceData(SurfaceT2),
+    SurfaceData(Surface),
     /// T
-    SatelliteData(SatelliteT2),
+    SatelliteData(SatelliteData),
     /// U
-    UpperAirData(UpperT2),
+    UpperAirData(UpperAirData),
     /// V
     NationalData,
     /// W
-    Warning(WarningT2),
+    Warning(Warning),
     /// X
     CommonAlertProtocolMessage(CommonAlertProtocolMessage),
 }
@@ -159,117 +92,18 @@ impl FromStr for DataTypeDesignator {
 
         Ok(match first {
             'A' => Self::Analysis(AnalysisDataDesignator {
-                subtype: match second {
-                    'C' => AnalysisT2::Cyclone,
-                    'G' => AnalysisT2::Hydrological,
-                    'H' => AnalysisT2::Thickness,
-                    'I' => AnalysisT2::Ice,
-                    'O' => AnalysisT2::Ozone,
-                    'R' => AnalysisT2::Radar,
-                    'S' => AnalysisT2::Surface,
-                    'U' => AnalysisT2::UpperAir,
-                    'W' => AnalysisT2::WeatherSummary,
-                    'X' => AnalysisT2::Misc,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('A', other)),
+                subtype: 
                 },
                 area: AreaCode::try_from((a1, a2))?,
             }),
             'B' => Self::AddressedMessage(AddressedMessage {
-                binary: match second {
-                    'M' => false,
-                    'I' => true,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('B', other)),
-                },
-                kind: match (a1, a2) {
-                    ('A', 'A') => AddressedMessageType::Administrative,
-                    ('B', 'B') => AddressedMessageType::Service,
-                    ('R', 'R') => AddressedMessageType::GTSRequest,
-                    ('R', 'Q') => AddressedMessageType::RequestToDB,
-                    ('D', 'A') => AddressedMessageType::GTSOrDBResponse,
-                    _ => return Err(DataTypeDesignatorParseError::UnrecognizedA2(first, second, a1, a2)),
-                }
-            }),
-            'C' => Self::ClimaticData(match second {
-                'A' => ClimaticDataT2::Anomaly,
-                'E' => ClimaticDataT2::UpperAirMonthlyMean,
-                'H' => ClimaticDataT2::SurfaceMonthlyMean(CodeForm::CLIMATSHIP),
-                'O' => ClimaticDataT2::OceanMonthlyMean,
-                'S' => ClimaticDataT2::SurfaceMonthlyMean(CodeForm::CLIMAT),
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('C', other)),
-            }),
-            'F' => Self::Forecast(match second {
-                'A' => ForecastT2::AviationGAMETAdvisories,
-                'B' => ForecastT2::UpperWindsTemps,
-                'C' => ForecastT2::AerodomeVTLT12,
-                'D' => ForecastT2::RadiologicalTrajectoryDose,
-                'E' => ForecastT2::Extended,
-                'F' => ForecastT2::Shipping,
-                'G' => ForecastT2::Hydrological,
-                'H' => ForecastT2::UpperAirThickness,
-                'I' => ForecastT2::Iceberg,
-                'J' => ForecastT2::RadioWarningService,
-                'K' => ForecastT2::TropicalCycloneAdvisory,
-                'L' => ForecastT2::Local,
-                'M' => ForecastT2::TemperatureExtreme,
-                'N' => ForecastT2::SpaceWeatherAdvisory,
-                'O' => ForecastT2::Guidance,
-                'P' => ForecastT2::Public,
-                'Q' => ForecastT2::OtherShipping,
-                'R' => ForecastT2::AviationRoute,
-                'S' => ForecastT2::Surface,
-                'T' => ForecastT2::AerodomeVTGE12,
-                'U' => ForecastT2::UpperAir,
-                'V' => ForecastT2::VolcanicAshAdvisory,
-                'W' => ForecastT2::WinterSports,
-                'X' => ForecastT2::Misc,
-                'Z' => ForecastT2::ShippingArea,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('F', other)),
-            }),
-            'N' => Self::Notice(match second {
-                'G' => NoticeT2::Hydrological,
-                'H' => NoticeT2::Marine,
-                'N' => NoticeT2::NuclearEmergencyResponse,
-                'O' => NoticeT2::METNOWIFMA,
-                'P' => NoticeT2::ProductGenerationDelay,
-                'T' => NoticeT2::TESTMSG,
-                'W' => NoticeT2::WarningRelatedOrCancellation,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('N', other)),
-            }),
-            'S' => Self::SurfaceData(match second {
-                'A' => SurfaceT2::AviationRoutineReport,
-                'B' => SurfaceT2::RadarReportA,
-                'C' => SurfaceT2::RadarReportB,
-                'D' => SurfaceT2::RadarReportAB,
-                'E' => SurfaceT2::Seismic,
-                'F' => SurfaceT2::AtmosphericReport,
-                'G' => SurfaceT2::RadiologicalDataReport,
-                'H' => SurfaceT2::DCPStationReport,
-                'I' => SurfaceT2::IntermediateSynopticHour,
-                'M' => SurfaceT2::MainSynopticHour,
-                'N' => SurfaceT2::NonstandardSynopticHour,
-                'O' => SurfaceT2::OceanographicData,
-                'P' => SurfaceT2::SpecialAviationWeatherReport,
-                'R' => SurfaceT2::HydrologicalRiverReport,
-                'S' => SurfaceT2::DriftingBuoyReport,
-                'T' => SurfaceT2::SeaIce,
-                'U' => SurfaceT2::SnowDepth,
-                'V' => SurfaceT2::LakeIce,
-                'W' => SurfaceT2::WaveInformation,
-                'X' => SurfaceT2::Misc,
-                'Y' => SurfaceT2::SeismicWaveformData,
-                'Z' => SurfaceT2::SeaLevelDeepOceanTsunamiData,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('S', other)),
-            }),
-            'T' => Self::SatelliteData(match second {
-                'B' => SatelliteT2::SatelliteOrbitParameters,
-                'C' => SatelliteT2::SatelliteCloudInterpretations,
-                'H' => SatelliteT2::SatelliteRemoteUpperAirSoundings,
-                'R' => SatelliteT2::ClearRadianceObservations,
-                'T' => SatelliteT2::SeaSurfaceTemperatures,
-                'W' => SatelliteT2::WindsAndCloudsTemperatures,
-                'X' => SatelliteT2::Misc,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('T', other)),
-            }),
+                binary: ,
+                kind:             }),
+            'C' => Self::ClimaticData(),
+            'F' => Self::Forecast(),
+            'N' => Self::Notice(),
+            'S' => Self::SurfaceData(),
+            'T' => Self::SatelliteData(),
             'U' => Self::UpperAirData(match second {
                 'A' => UpperT2::AircraftReport(CodeForm::ICAO),
                 'D' => UpperT2::AircraftReport(CodeForm::AMDAR),
@@ -323,13 +157,13 @@ impl FromStr for DataTypeDesignator {
             }),
             'I' | 'J' => {
                 let second = match second {
-                    'N' => BUFRDataType::SatelliteData,
-                    'O' => BUFRDataType::OceanographicLimnographic,
-                    'P' => BUFRDataType::Pictorial,
-                    'S' => BUFRDataType::SurfaceSeaLevel,
-                    'T' => BUFRDataType::Text,
-                    'U' => BUFRDataType::UpperAir,
-                    'X' => BUFRDataType::Other,
+                    'N' => ObservationalDataBinaryBUFRSubType::SatelliteData,
+                    'O' => ObservationalDataBinaryBUFRSubType::OceanographicLimnographic,
+                    'P' => ObservationalDataBinaryBUFRSubType::Pictorial,
+                    'S' => ObservationalDataBinaryBUFRSubType::SurfaceSeaLevel,
+                    'T' => ObservationalDataBinaryBUFRSubType::Text,
+                    'U' => ObservationalDataBinaryBUFRSubType::UpperAir,
+                    'X' => ObservationalDataBinaryBUFRSubType::Other,
                     other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
                 };
                 match first {
@@ -429,6 +263,8 @@ pub enum DataTypeDesignatorParseError {
     UnrecognizedA2(char, char, char, char),
     #[error("Invalid area code: {0}")]
     InvalidAreaCode(#[from] AreaCodeParseError),
+    #[error("error parsing geo area designator: {0}")]
+    InvalidGeographicalAreaDesignator(#[from] GeographicalAreaDesignatorParseError),
 }
 
 
