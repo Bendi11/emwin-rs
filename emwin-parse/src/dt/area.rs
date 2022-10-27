@@ -43,6 +43,44 @@ impl ReferenceTimeDesignator {
     pub const fn from_days(days: u16) -> Self {
         Self(days * 24)
     }
+    
+    /// Parse a time designator for the A2 term of a D, G, H, J, O, or P product
+    pub const fn parse_for_dghjopt(val: char) -> Result<Self, ReferenceTimeDesignatorParseError> {
+        Ok(match val {
+            'A' => Self::from_hours(0),
+            'B' => Self::from_hours(6),
+            'C' => Self::from_hours(12),
+            'D' => Self::from_hours(18),
+            'E' => Self::from_hours(24),
+            'F' => Self::from_hours(30),
+            'G' => Self::from_hours(36),
+            'H' => Self::from_hours(42),
+            'I' => Self::from_hours(48),
+            'J' => Self::from_hours(60),
+            'K' => Self::from_hours(72),
+            'L' => Self::from_hours(84),
+            'M' => Self::from_hours(96),
+            'N' => Self::from_hours(108),
+            'O' => Self::from_days(5),
+            'P' => Self::from_hours(132),
+            'Q' => Self::from_hours(144),
+            'R' => Self::from_days(7),
+            'S' => Self::from_hours(168),
+            'T' => Self::from_days(10),
+            'U' => Self::from_days(15),
+            'V' => Self::from_days(30),
+            'W'..'Z' => Self::from_hours(0),
+            other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
+        })
+    }
+    
+    /// Parse the reference time designator term A2 for proucts Q, X, and Y
+    pub const fn parse_for_qxy(val: char) -> Result<Self, ReferenceTimeDesignatorParseError> {
+        Ok(match val {
+            'A' => Self::from_hours(0),
+            
+        })
+    }
 }
 
 impl TryFrom<(char, char)> for AreaCode {
@@ -77,6 +115,7 @@ impl TryFrom<char> for GeographicalAreaDesignator {
         })
     }
 }
+
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum GeographicalAreaDesignatorParseError {
