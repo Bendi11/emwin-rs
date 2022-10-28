@@ -10,3 +10,5 @@ pub struct RegionalPictoralInformation {
     /// A1
     pub area: GeographicalAreaDesignator,
 }
+
+

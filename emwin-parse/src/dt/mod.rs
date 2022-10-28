@@ -1,14 +1,8 @@
-use std::str::FromStr;
+use std::{str::FromStr, num::ParseIntError};
 pub use self::product::*;
 use self::{
     code::CodeForm,
-    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError},
-    product::{
-        analysis::Analysis,
-        addressedmsg::AddressedMessage,
-        gridpoint::GridPointInformation,
-        climatic::ClimaticData
-    }, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::Surface, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage
+    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::Surface, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage,
 };
 
 pub mod product;
@@ -25,7 +19,7 @@ pub struct UnparsedProductIdentifier {
     pub t2: char,
     pub a1: char,
     pub a2: char,
-    pub ii: (char, char)
+    pub ii: u8,
 }
 
 /// A data type designator consisting of two alphanumeric characters
@@ -77,70 +71,35 @@ impl FromStr for DataTypeDesignator {
     type Err = DataTypeDesignatorParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() < 4 {
+        if s.len() < 6 {
             return Err(DataTypeDesignatorParseError::Length)
         }
         
         let mut iter = s.chars();
-        
-        let first = iter.next().unwrap();
-        let second = iter.next().unwrap();
 
-        let a1 = iter.next().unwrap();
-        let a2 = iter.next().unwrap();
-        drop(iter);
+        let ident = UnparsedProductIdentifier {
+            t1: iter.next().unwrap(),
+            t2: iter.next().unwrap(),
+            a1: iter.next().unwrap(),
+            a2: iter.next().unwrap(),
+            ii: s[4..6].parse()?,
+        };
 
         Ok(match first {
-            'A' => Self::Analysis(),
-            'B' => Self::AddressedMessage(),
-            'C' => Self::ClimaticData(),
-            'F' => Self::Forecast(),
-            'N' => Self::Notice(),
-            'S' => Self::SurfaceData(),
+            'A' => Self::Analysis(Analysis::try_from(ident)),
+            'B' => Self::AddressedMessage(AddressedMessage::try_from(ident)),
+            'C' => Self::ClimaticData(ClimaticData::try_from(ident)),
+            'F' => Self::Forecast(Forecast::try_from(ident)),
+            'N' => Self::Notice(Notice::try_from(ident)),
+            'S' => Self::SurfaceData(SurfaceData::try_from(ident)),
             'T' => Self::SatelliteData(),
             'U' => Self::UpperAirData(),
             'W' => Self::Warning(),
             'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(),
-            'I' | 'J' => {
-                let second = match second {
-                    'N' => ObservationalDataBinaryBUFRSubType::SatelliteData,
-                    'O' => ObservationalDataBinaryBUFRSubType::OceanographicLimnographic,
-                    'P' => ObservationalDataBinaryBUFRSubType::Pictorial,
-                    'S' => ObservationalDataBinaryBUFRSubType::SurfaceSeaLevel,
-                    'T' => ObservationalDataBinaryBUFRSubType::Text,
-                    'U' => ObservationalDataBinaryBUFRSubType::UpperAir,
-                    'X' => ObservationalDataBinaryBUFRSubType::Other,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-                };
-                match first {
-                    'I' => Self::ObservationalDataBinaryBUFR(second),
-                    'J' => Self::ForecastBinaryBUFR(second),
-                    _ => unreachable!(),
-                }
-            },
-            'O' => Self::OceanographicInformation(match second {
-                'D' => OceanographicT2::Depth,
-                'E' => OceanographicT2::IceConcentration,
-                'F' => OceanographicT2::IceThickness,
-                'G' => OceanographicT2::IceDrift,
-                'H' => OceanographicT2::IceGrowth,
-                'I' => OceanographicT2::IceConvergenceDivergence,
-                'Q' => OceanographicT2::TemperatureAnomaly,
-                'R' => OceanographicT2::DepthAnomaly,
-                'S' => OceanographicT2::Salinity,
-                'T' => OceanographicT2::Temperature,
-                'U' | 'V' => OceanographicT2::CurrentComponent,
-                'W' => OceanographicT2::TemperatureWarming,
-                'X' => OceanographicT2::Mixed,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-            }),
-            'E' => Self::SatelliteImagery(match second {
-                'C' => SatelliteImageryT2::CloudTopTemperature,
-                'F' => SatelliteImageryT2::Fog,
-                'I' => SatelliteImageryT2::Infared,
-                'S' => SatelliteImageryT2::SurfaceTemperature,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-            }),
+            'I' => Self::ObservationalDataBinaryBUFR(),
+            'J' => Self::ForecastBinaryBUFR(),
+            'O' => Self::OceanographicInformation(),
+            'E' => Self::SatelliteImagery(),
             'P' | 'Q' => {
                 let second = match second {
                     'A' => PictoralInformationT2::RadarData,
@@ -199,6 +158,8 @@ impl FromStr for DataTypeDesignator {
 pub enum DataTypeDesignatorParseError {
     #[error("Data type designator does not contain two characters")]
     Length,
+    #[error("Invalid numeral ii: {0}")]
+    InvalidNumeral(#[from] ParseIntError),
     #[error("Unrecognized data type designator term 1 {0}")]
     UnrecognizedT1(char),
     #[error("Unrecognized data type designator term 2 {0}{1}")]

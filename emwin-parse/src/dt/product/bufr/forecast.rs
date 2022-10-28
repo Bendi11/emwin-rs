@@ -1,4 +1,4 @@
-use crate::dt::area::ReferenceTimeDesignator;
+use crate::dt::{area::ReferenceTimeDesignator, UnparsedProductIdentifier, DataTypeDesignatorParseError};
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,4 +106,61 @@ pub struct ForecastDataBinary {
     pub subtype: ForecastDataBinaryBUFRSubType,
     /// A2
     pub time: ReferenceTimeDesignator,
+}
+
+impl TryFrom<UnparsedProductIdentifier> for ForecastDataBinary {
+    type Error = DataTypeDesignatorParseError;
+    fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
+        Ok(Self {
+            subtype: match value.t2 {
+                'N' => ForecastDataBinaryBUFRSubType::SatelliteData,
+                'O' => ForecastDataBinaryBUFRSubType::OceanographicLimnographic(match value.a1 {
+                    'I' => ForecastBUFROceanographicData::SeaIce,
+                    'S' => ForecastBUFROceanographicData::SeaSurfaceAndBelow,
+                    'T' => ForecastBUFROceanographicData::SeaSurfaceTemperature,
+                    'W' => ForecastBUFROceanographicData::SeaSurfaceWaves,
+                    'X' => ForecastBUFROceanographicData::OtherSeaEnvironmentalData,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                }),
+                'P' => ForecastDataBinaryBUFRSubType::Pictorial,
+                'S' => ForecastDataBinaryBUFRSubType::SurfaceSeaLevel(match value.a1 {
+                    'A' => ForecastBUFRSurfaceData::SurfaceArea,
+                    'D' => ForecastBUFRSurfaceData::Radiological,
+                    'M' => ForecastBUFRSurfaceData::Surface,
+                    'O' => ForecastBUFRSurfaceData::Maritime,
+                    'P' => ForecastBUFRSurfaceData::Amendment,
+                    'R' => ForecastBUFRSurfaceData::Hydrologic,
+                    'S' => ForecastBUFRSurfaceData::AmendmentTAF,
+                    'T' => ForecastBUFRSurfaceData::AerodomeTAF,
+                    'X' => ForecastBUFRSurfaceData::OtherSurface,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                }),
+                'T' => ForecastDataBinaryBUFRSubType::Text(match value.a1 {
+                    'E' => ForecastBUFRTextData::Tsunami,
+                    'H' => ForecastBUFRTextData::HurricaneTyphoonStormWarning,
+                    'S' => ForecastBUFRTextData::SevereWeatherSIGMET,
+                    'T' => ForecastBUFRTextData::TornadoWarning,
+                    'X' => ForecastBUFRTextData::OtherWarning,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                }),
+                'U' => ForecastDataBinaryBUFRSubType::UpperAir(match value.a1 {
+                    'A' => ForecastBUFRUpperAirData::SingleLevel,
+                    'B' => ForecastBUFRUpperAirData::SIGWXEmbeddedCumulonimbus,
+                    'C' => ForecastBUFRUpperAirData::SIGWXClearAirTurbulence,
+                    'F' => ForecastBUFRUpperAirData::SIGWXFront,
+                    'N' => ForecastBUFRUpperAirData::SIGWXOtherParameters,
+                    'O' => ForecastBUFRUpperAirData::SIGWXTurbulence,
+                    'S' => ForecastBUFRUpperAirData::Soundings,
+                    'T' => ForecastBUFRUpperAirData::SIGWXIcingTropopause,
+                    'V' => ForecastBUFRUpperAirData::SIGWXTropicalStormSandstormVolcano,
+                    'W' => ForecastBUFRUpperAirData::SIGWXHighLevelWinds,
+                    'X' => ForecastBUFRUpperAirData::OtherUpperAir,
+                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                }),
+                'X' => ForecastDataBinaryBUFRSubType::Other,
+                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
+            },
+            time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
+        })
+    }
 }
