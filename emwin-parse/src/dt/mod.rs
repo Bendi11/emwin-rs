@@ -105,6 +105,7 @@ impl FromStr for DataTypeDesignator {
             'L' => Self::AviationInformationXML(AviationInformationXML::try_from(ident)?),
             'V' => Self::National(National::try_from(ident)?),
             'K' => Self::CREX(CREX::try_from(ident)?),
+            'X' => Self::CommonAlertProtocolMessage(CommonAlertProtocolMessage::try_from(ident)?),
             other => return Err(DataTypeDesignatorParseError::UnrecognizedT1(other)),
         })
     }
