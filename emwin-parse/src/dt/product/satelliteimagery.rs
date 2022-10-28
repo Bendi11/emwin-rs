@@ -28,9 +28,9 @@ impl TryFrom<UnparsedProductIdentifier> for SatelliteImagery {
                 'F' => SatelliteImagerySubType::Fog,
                 'I' => SatelliteImagerySubType::Infared,
                 'S' => SatelliteImagerySubType::SurfaceTemperature,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
+                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
             },
-            area: AreaCode::try_from((value.a1, value.a2)),
+            area: AreaCode::try_from((value.a1, value.a2))?,
         }) 
     }
 }

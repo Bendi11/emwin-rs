@@ -1,8 +1,7 @@
 use std::{str::FromStr, num::ParseIntError};
 pub use self::product::*;
 use self::{
-    code::CodeForm,
-    area::{AreaCode, AreaCodeParseError, GeographicalAreaDesignator, ReferenceTimeDesignator, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::Surface, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage,
+    area::{AreaCodeParseError, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::SurfaceData, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage,
 };
 
 pub mod product;
@@ -54,7 +53,7 @@ pub enum DataTypeDesignator {
     /// Q
     PictoralInformationRegionalBinary(RegionalPictoralInformation),
     /// S
-    SurfaceData(Surface),
+    SurfaceData(SurfaceData),
     /// T
     SatelliteData(SatelliteData),
     /// U
@@ -85,70 +84,24 @@ impl FromStr for DataTypeDesignator {
             ii: s[4..6].parse()?,
         };
 
-        Ok(match first {
-            'A' => Self::Analysis(Analysis::try_from(ident)),
-            'B' => Self::AddressedMessage(AddressedMessage::try_from(ident)),
-            'C' => Self::ClimaticData(ClimaticData::try_from(ident)),
-            'F' => Self::Forecast(Forecast::try_from(ident)),
-            'N' => Self::Notice(Notice::try_from(ident)),
-            'S' => Self::SurfaceData(SurfaceData::try_from(ident)),
-            'T' => Self::SatelliteData(),
-            'U' => Self::UpperAirData(),
-            'W' => Self::Warning(),
-            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(),
-            'I' => Self::ObservationalDataBinaryBUFR(),
-            'J' => Self::ForecastBinaryBUFR(),
-            'O' => Self::OceanographicInformation(),
-            'E' => Self::SatelliteImagery(),
-            'P' | 'Q' => {
-                let second = match second {
-                    'A' => PictoralInformationT2::RadarData,
-                    'B' => PictoralInformationT2::Cloud,
-                    'C' => PictoralInformationT2::ClearAirTurbulence,
-                    'D' => PictoralInformationT2::Thickness,
-                    'E' => PictoralInformationT2::Precipitation,
-                    'F' => PictoralInformationT2::AerologicalDiagrams,
-                    'G' => PictoralInformationT2::SignificantWeather,
-                    'H' => PictoralInformationT2::Height,
-                    'I' => PictoralInformationT2::IceFlow,
-                    'J' => PictoralInformationT2::WaveHeight,
-                    'K' => PictoralInformationT2::SwellHeight,
-                    'L' => PictoralInformationT2::PlainLanguage,
-                    'M' => PictoralInformationT2::NationalUse,
-                    'N' => PictoralInformationT2::Radiation,
-                    'O' => PictoralInformationT2::VerticalVelocity,
-                    'P' => PictoralInformationT2::Pressure,
-                    'Q' => PictoralInformationT2::WetBulbPotentialTemperature,
-                    'R' => PictoralInformationT2::RelativeHumidity,
-                    'S' => PictoralInformationT2::SnowCover,
-                    'T' => PictoralInformationT2::Temperature,
-                    'U' => PictoralInformationT2::EastwardWindComponent,
-                    'V' => PictoralInformationT2::NorthwardWindComponent,
-                    'W' => PictoralInformationT2::Wind,
-                    'X' => PictoralInformationT2::LiftedIndex,
-                    'Y' => PictoralInformationT2::ObservationalPlottedChart,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-                };
-                match first {
-                    'P' => Self::PictoralInformationBinary(second),
-                    'Q' => Self::PictoralInformationRegionalBinary(second),
-                    _ => unreachable!(),
-                }
-            },
-            'L' => Self::AviationInformationXML(match second {
-                'A' => AviationInformationXMLT2::AviationRoutineReportMETAR,
-                'C' => AviationInformationXMLT2::AerodomeForecastTAFVTLT12,
-                'K' => AviationInformationXMLT2::TropicalCycloneAdvisory,
-                'N' => AviationInformationXMLT2::SpaceWeatherAdvisory,
-                'P' => AviationInformationXMLT2::SpecialAviationWeatherReportSPECI,
-                'S' => AviationInformationXMLT2::AviationGeneralWarningSIGMET,
-                'T' => AviationInformationXMLT2::AerodomeForecastTAFVTGE12,
-                'U' => AviationInformationXMLT2::VolcanicAshAdvisory,
-                'V' => AviationInformationXMLT2::AviationVolcanicAshWarningSIGMET,
-                'W' => AviationInformationXMLT2::AIRMET,
-                'Y' => AviationInformationXMLT2::AviationTropicalCycloneWarningSIGMET,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(first, other)),
-            }),
+        Ok(match ident.t1 {
+            'A' => Self::Analysis(Analysis::try_from(ident)?),
+            'B' => Self::AddressedMessage(AddressedMessage::try_from(ident)?),
+            'C' => Self::ClimaticData(ClimaticData::try_from(ident)?),
+            'F' => Self::Forecast(Forecast::try_from(ident)?),
+            'N' => Self::Notice(Notice::try_from(ident)?),
+            'S' => Self::SurfaceData(SurfaceData::try_from(ident)?),
+            'T' => Self::SatelliteData(SatelliteData::try_from(ident)?),
+            'U' => Self::UpperAirData(UpperAirData::try_from(ident)?),
+            'W' => Self::Warning(Warning::try_from(ident)?),
+            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(GridPointInformation::try_from(ident)?),
+            'I' => Self::ObservationalDataBinaryBUFR(ObservationalDataBinary::try_from(ident)?),
+            'J' => Self::ForecastBinaryBUFR(ForecastDataBinary::try_from(ident)?),
+            'O' => Self::OceanographicInformation(OceanographicInformation::try_from(ident)?),
+            'E' => Self::SatelliteImagery(SatelliteImagery::try_from(ident)?),
+            'P' => Self::PictoralInformationBinary(PictoralInformation::try_from(ident)?),
+            'Q' => Self::PictoralInformationRegionalBinary(RegionalPictoralInformation::try_from(ident)?),
+            'L' => Self::AviationInformationXML(AviationInformationXML::try_from(ident)?),
             other => return Err(DataTypeDesignatorParseError::UnrecognizedT1(other)),
         })
     }

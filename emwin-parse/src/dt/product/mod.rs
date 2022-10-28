@@ -17,3 +17,25 @@ pub mod satelliteimagery;
 pub mod surface;
 pub mod upperair;
 pub mod warning;
+
+pub use self::{
+    bufr::{forecast::*, observational::*},
+    aviationxml::*,
+    analysis::*,
+    addressedmsg::*,
+    climatic::*,
+    cap::*,
+    crex::*,
+    forecast::*,
+    gridpoint::*,
+    national::*,
+    notice::*,
+    oceanographic::*,
+    pictoral::*,
+    pictoral_regional::*,
+    satellite::*,
+    satelliteimagery::*,
+    surface::*,
+    upperair::*,
+    warning::*,
+};

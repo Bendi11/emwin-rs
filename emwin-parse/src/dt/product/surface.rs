@@ -1,9 +1,9 @@
 use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
 
 
-
+/// S
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Surface {
+pub struct SurfaceData {
     pub subtype: SurfaceSubType,
     pub area: AreaCode,
 }
@@ -35,7 +35,7 @@ pub enum SurfaceSubType {
     SeaLevelDeepOceanTsunamiData,
 }
 
-impl TryFrom<UnparsedProductIdentifier> for Surface {
+impl TryFrom<UnparsedProductIdentifier> for SurfaceData {
     type Error = DataTypeDesignatorParseError;
     fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(Self {
