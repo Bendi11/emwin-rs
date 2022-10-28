@@ -1,4 +1,4 @@
-use crate::dt::{area::ReferenceTimeDesignator, UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{area::ReferenceTimeDesignator, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::AirLevelDesignator};
 
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,6 +106,8 @@ pub struct ForecastDataBinary {
     pub subtype: ForecastDataBinaryBUFRSubType,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub level: AirLevelDesignator,
 }
 
 impl TryFrom<UnparsedProductIdentifier> for ForecastDataBinary {
@@ -143,6 +145,7 @@ impl TryFrom<UnparsedProductIdentifier> for ForecastDataBinary {
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
             },
             time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
+            level: AirLevelDesignator::try_from(value.ii)?,
         })
     }
 }

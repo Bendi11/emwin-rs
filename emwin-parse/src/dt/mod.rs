@@ -1,13 +1,14 @@
 use std::{str::FromStr, num::ParseIntError};
 pub use self::product::*;
 use self::{
-    area::{AreaCodeParseError, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::SurfaceData, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage,
+    area::{AreaCodeParseError, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::SurfaceData, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage, level::{InvalidAirLevelDesignator, InvalidSeaLevelDesignator},
 };
 
 pub mod product;
 
 pub mod code;
 pub mod area;
+pub mod level;
 #[cfg(test)]
 mod test;
 
@@ -41,7 +42,7 @@ pub enum DataTypeDesignator {
     /// J
     ForecastBinaryBUFR(ForecastDataBinary),
     /// K
-    CREX,
+    CREX(CREX),
     /// L
     AviationInformationXML(AviationInformationXML),
     /// N
@@ -59,7 +60,7 @@ pub enum DataTypeDesignator {
     /// U
     UpperAirData(UpperAirData),
     /// V
-    NationalData,
+    National(National),
     /// W
     Warning(Warning),
     /// X
@@ -102,6 +103,8 @@ impl FromStr for DataTypeDesignator {
             'P' => Self::PictoralInformationBinary(PictoralInformation::try_from(ident)?),
             'Q' => Self::PictoralInformationRegionalBinary(RegionalPictoralInformation::try_from(ident)?),
             'L' => Self::AviationInformationXML(AviationInformationXML::try_from(ident)?),
+            'V' => Self::National(National::try_from(ident)?),
+            'K' => Self::CREX(CREX::try_from(ident)?),
             other => return Err(DataTypeDesignatorParseError::UnrecognizedT1(other)),
         })
     }
@@ -127,6 +130,10 @@ pub enum DataTypeDesignatorParseError {
     InvalidGeographicalAreaDesignator(#[from] GeographicalAreaDesignatorParseError),
     #[error("error parsing reference time designator: {0}")]
     InvalidReferenceTimeDesignator(#[from] ReferenceTimeDesignatorParseError),
+    #[error("error parsing air level designator: {0}")]
+    InvalidAirLevel(#[from] InvalidAirLevelDesignator),
+    #[error("error parsing sea level designator: {0}")]
+    InvalidSeaLevel(#[from] InvalidSeaLevelDesignator),
 }
 
 

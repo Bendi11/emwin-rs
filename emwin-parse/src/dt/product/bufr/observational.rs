@@ -7,6 +7,8 @@ pub struct ObservationalDataBinary {
     pub subtype: ObservationalDataBinaryBUFRSubType,
     /// A2
     pub area: GeographicalAreaDesignator,
+    /// ii
+    pub enumerator: u8,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -177,6 +179,7 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalDataBinary {
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
             },
             area: GeographicalAreaDesignator::try_from(value.t2)?,
+            enumerator: value.ii,
         })
     }
 }

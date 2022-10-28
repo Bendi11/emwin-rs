@@ -9,6 +9,8 @@ pub struct SatelliteData {
     pub area: GeographicalAreaDesignator,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definition when T1=satellite
@@ -39,6 +41,7 @@ impl TryFrom<UnparsedProductIdentifier> for SatelliteData {
             },
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
+            enumerator: value.ii,
         })
     }
 }

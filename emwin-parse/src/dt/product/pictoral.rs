@@ -1,4 +1,4 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, DataTypeDesignatorParseError, UnparsedProductIdentifier};
+use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, DataTypeDesignatorParseError, UnparsedProductIdentifier, level::AirLevelDesignator};
 
 /// P
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -9,6 +9,8 @@ pub struct PictoralInformation {
     pub area: GeographicalAreaDesignator,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub level: AirLevelDesignator,
 }
 
 /// Term T2 definitions when T1=PictoralInformationBinary or PictoralInformationRegionalBinary
@@ -81,6 +83,7 @@ impl TryFrom<UnparsedProductIdentifier> for PictoralInformation {
             subtype: PictoralInformationSubType::parse_t2(value.t1, value.t2)?,
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
+            level: AirLevelDesignator::try_from(value.ii)?,
         })
     }
 }

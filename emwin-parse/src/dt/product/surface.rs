@@ -4,8 +4,12 @@ use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::A
 /// S
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SurfaceData {
+    /// T2
     pub subtype: SurfaceSubType,
+    /// A1A2
     pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definition when T1=Surface
@@ -65,6 +69,7 @@ impl TryFrom<UnparsedProductIdentifier> for SurfaceData {
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('S', other)),
             },
             area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         })
     }
 }

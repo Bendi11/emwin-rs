@@ -1,4 +1,4 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::AirLevelDesignator};
 
 use super::pictoral::PictoralInformationSubType;
 
@@ -11,6 +11,8 @@ pub struct RegionalPictoralInformation {
     pub area: GeographicalAreaDesignator,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub level: AirLevelDesignator,
 }
 
 impl TryFrom<UnparsedProductIdentifier> for RegionalPictoralInformation {
@@ -20,6 +22,7 @@ impl TryFrom<UnparsedProductIdentifier> for RegionalPictoralInformation {
             subtype: PictoralInformationSubType::parse_t2(value.t1, value.t2)?,
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: ReferenceTimeDesignator::parse_for_qxy(value.a2)?,
+            level: AirLevelDesignator::try_from(value.ii)?,
         })
     }
 }

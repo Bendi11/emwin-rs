@@ -1,10 +1,15 @@
-use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
 
 
 /// W
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Warning {
+    /// T2
     pub subtype: WarningSubType,
+    /// A1A2
+    pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definitions when T1=Warning
@@ -45,6 +50,8 @@ impl TryFrom<UnparsedProductIdentifier> for Warning {
                 'W' => WarningSubType::WarningsWeatherSummary,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('W', other)),
             },
+            area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         })
     }
 }

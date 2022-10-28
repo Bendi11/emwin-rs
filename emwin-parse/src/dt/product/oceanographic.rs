@@ -1,4 +1,4 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::SeaLevelDesignator};
 
 
 /// O
@@ -10,6 +10,8 @@ pub struct OceanographicInformation {
     pub area: GeographicalAreaDesignator,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub level: SeaLevelDesignator,
 }
 
 /// Term T2 definitions when T1=OceanographicInformation
@@ -52,6 +54,7 @@ impl TryFrom<UnparsedProductIdentifier> for OceanographicInformation {
             },
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,
+            level: SeaLevelDesignator::try_from(value.ii)?,
         })
     }
 }

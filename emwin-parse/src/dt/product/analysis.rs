@@ -1,10 +1,14 @@
 use crate::dt::{area::AreaCode, UnparsedProductIdentifier, DataTypeDesignatorParseError};
 
-
+/// A
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Analysis {
+    /// T2
     pub subtype: AnalysisSubType,
+    /// A1A2
     pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definition when T1=Analysis
@@ -39,7 +43,8 @@ impl TryFrom<UnparsedProductIdentifier> for Analysis {
                 'X' => AnalysisSubType::Misc,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('A', other)),
             },
-            area: AreaCode::try_from((value.a1, value.a2))?
+            area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         })
     }
 }

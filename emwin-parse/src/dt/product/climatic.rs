@@ -4,8 +4,12 @@ use crate::dt::{code::CodeForm, area::AreaCode, UnparsedProductIdentifier, DataT
 /// C
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ClimaticData {
+    /// T2
     pub subtype: ClimaticDataSubType,
+    /// A1A2
     pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definition when T1=ClimaticData
@@ -30,6 +34,7 @@ impl TryFrom<UnparsedProductIdentifier> for ClimaticData {
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('C', other)),
             },
             area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         })
     }
 }

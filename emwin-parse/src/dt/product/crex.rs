@@ -1,13 +1,17 @@
-use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::GeographicalAreaDesignator};
 
-use super::{ObservationalBUFROceanic, ForecastBUFRSurfaceData, ObservationalBUFRSurfaceSeaLevel, ObservationalBUFRPictoral, ForecastBUFRTextData, ObservationalBUFRUpperAir};
+use super::{ObservationalBUFROceanic, ForecastBUFRSurfaceData, ObservationalBUFRSurfaceSeaLevel, ForecastBUFRTextData, ObservationalBUFRUpperAir};
 
 
 /// K
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CREX {
-    /// T2
+    /// T2A1
     pub subtype: CREXSubType,
+    /// A2
+    pub area: GeographicalAreaDesignator,
+    /// ii
+    pub enumerator: u8,
 }
 
 
@@ -63,7 +67,9 @@ impl TryFrom<UnparsedProductIdentifier> for CREX {
                 'V' => CREXSubType::SIGW(ForecastBUFRSurfaceData::try_from(value)?),
                 'X' => CREXSubType::Other,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
-            }
+            },
+            area: GeographicalAreaDesignator::try_from(value.a2)?,
+            enumerator: value.ii,
         })
     }
 }

@@ -4,8 +4,12 @@ use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::A
 /// F
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Forecast {
+    /// T2
     pub subtype: ForecastSubType,
+    /// A1A2
     pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 
@@ -71,7 +75,8 @@ impl TryFrom<UnparsedProductIdentifier> for Forecast {
                 'Z' => ForecastSubType::ShippingArea,
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2('F', other)),
             },
-            area: AreaCode::try_from((value.a1, value.a2))?, 
+            area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         })
     }
 }

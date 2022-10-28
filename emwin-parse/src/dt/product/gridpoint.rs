@@ -1,4 +1,4 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::AirLevelDesignator};
 
 /// D, G, H, Y
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -9,6 +9,8 @@ pub struct GridPointInformation {
     pub area: GeographicalAreaDesignator,
     /// A2
     pub time: ReferenceTimeDesignator,
+    /// ii
+    pub level: AirLevelDesignator,
 }
 
 /// Term T2 definitions when T1=GridPointInformation
@@ -48,6 +50,7 @@ impl TryFrom<UnparsedProductIdentifier> for GridPointInformation {
                 'Y' => ReferenceTimeDesignator::parse_for_qxy(value.a2),
                 _ => ReferenceTimeDesignator::parse_for_dghjopt(value.a2),
             }?,
+            level: AirLevelDesignator::try_from(value.ii)?,
         })
     }
 }

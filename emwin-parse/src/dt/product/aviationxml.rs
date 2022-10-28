@@ -8,6 +8,8 @@ pub struct AviationInformationXML {
     pub subtype: AviationInformationXMLSubType,
     /// A1A2
     pub area: AreaCode,
+    /// ii
+    pub enumerator: u8,
 }
 
 /// Term T2 definitions when T1=AviationInformationXML
@@ -45,6 +47,7 @@ impl TryFrom<UnparsedProductIdentifier> for AviationInformationXML {
                 other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
             },
             area: AreaCode::try_from((value.a1, value.a2))?,
+            enumerator: value.ii,
         }) 
     }
 }

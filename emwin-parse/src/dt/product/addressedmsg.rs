@@ -2,6 +2,8 @@ use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError};
 
 
 /// format @ WMO-No. 386 p.103 attachment II-6
+///
+/// B
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AddressedMessage {
     /// T2
