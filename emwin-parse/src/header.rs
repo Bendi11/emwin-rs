@@ -1,6 +1,6 @@
 use std::{str::FromStr, num::ParseIntError};
 
-use chrono::{DateTime, Date, Utc, FixedOffset};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, NaiveTime};
 
 use crate::dt::{DataTypeDesignator, DataTypeDesignatorParseError};
 
@@ -27,8 +27,8 @@ pub struct CCCC {
 pub struct GoesFileName {
     pub wmo_product_id: DataTypeDesignator,
     pub country: CCCC,
-    pub last_modify: DateTime<FixedOffset>,
-    pub creation_timestamp: DateTime<FixedOffset>,
+    pub last_modify: NaiveTime,
+    pub creation_timestamp: NaiveDateTime,
     pub sequence: u32,
     pub priority: u8,
 }
@@ -84,14 +84,14 @@ impl FromStr for GoesFileName {
         for _ in 0..6 {
             chars.next().require()?;
         }
-
-        let last_modify = DateTime::parse_from_str(&s[12..][..6], "%y%m%d")?;
+        
+        let last_modify = NaiveTime::parse_from_str(&s[12..][..6], "%d%H%M")?;
         
         //skip [BBB]
         match chars.next().require()?.1 {
             '_' => (),
             _ => {
-                for _ in 0..2 {
+                for _ in 0..3 {
                     chars.next().require()?;
                 }
             }
@@ -104,7 +104,7 @@ impl FromStr for GoesFileName {
             chars.next().require()?;
         }
 
-        let creation_timestamp = DateTime::parse_from_str(&s[ts_idx..][..14], "%Y%m%d%H%M%S")?;
+        let creation_timestamp = NaiveDateTime::parse_from_str(&s[ts_idx..][..14], "%Y%m%d%H%M%S")?;
         let seq_idx = ts_idx + 15;
 
         expect(&mut chars, '_')?;
@@ -143,4 +143,17 @@ pub enum GoesFileNameParseError {
     Unexpected(char, char),
     #[error("Goes filename is not the correct length")]
     Length,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_filename() {
+        let filename: GoesFileName = "A_FXUS65KABQ121804AAB_C_KWIN_20160112180901_008996-2-AFDABQNM.TXT".parse().unwrap();
+        assert!(filename.priority == 2);
+        assert!(filename.sequence == 8996);
+        assert!(matches!(filename.wmo_product_id, DataTypeDesignator::Forecast(_)));
+    }
 }
