@@ -1,6 +1,6 @@
 use std::{str::FromStr, num::ParseIntError};
 
-use chrono::{DateTime, FixedOffset, NaiveDateTime, NaiveTime};
+use chrono::{NaiveDateTime, NaiveTime};
 
 use crate::dt::{DataTypeDesignator, DataTypeDesignatorParseError};
 
@@ -67,7 +67,11 @@ impl FromStr for GoesFileName {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.char_indices().peekable();
         
-        expect(&mut chars, 'A')?;
+        match chars.next().require()?.1 {
+            'A' | 'Z' => (),
+            other => return Err(GoesFileNameParseError::Unexpected(other, 'A')),
+        }
+
         expect(&mut chars, '_')?;
 
         for _ in 0..6 {
