@@ -1,4 +1,8 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::AirLevelDesignator};
+use crate::dt::{
+    area::{GeographicalAreaDesignator, ReferenceTimeDesignator},
+    level::AirLevelDesignator,
+    DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 use super::pictoral::PictoralInformationSubType;
 

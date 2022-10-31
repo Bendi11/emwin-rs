@@ -1,5 +1,6 @@
-use crate::dt::{code::CodeForm, area::AreaCode, UnparsedProductIdentifier, DataTypeDesignatorParseError};
-
+use crate::dt::{
+    area::AreaCode, code::CodeForm, DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// C
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

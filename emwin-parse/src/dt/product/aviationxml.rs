@@ -1,5 +1,4 @@
-use crate::dt::{area::AreaCode, UnparsedProductIdentifier, DataTypeDesignatorParseError};
-
+use crate::dt::{area::AreaCode, DataTypeDesignatorParseError, UnparsedProductIdentifier};
 
 /// L
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,7 +29,7 @@ pub enum AviationInformationXMLSubType {
 
 impl TryFrom<UnparsedProductIdentifier> for AviationInformationXML {
     type Error = DataTypeDesignatorParseError;
-    fn try_from( value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
+    fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(Self {
             subtype: match value.t2 {
                 'A' => AviationInformationXMLSubType::AviationRoutineReportMETAR,
@@ -44,10 +43,14 @@ impl TryFrom<UnparsedProductIdentifier> for AviationInformationXML {
                 'V' => AviationInformationXMLSubType::AviationVolcanicAshWarningSIGMET,
                 'W' => AviationInformationXMLSubType::AIRMET,
                 'Y' => AviationInformationXMLSubType::AviationTropicalCycloneWarningSIGMET,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
+                other => {
+                    return Err(DataTypeDesignatorParseError::UnrecognizedT2(
+                        value.t1, other,
+                    ))
+                }
             },
             area: AreaCode::try_from((value.a1, value.a2))?,
             enumerator: value.ii,
-        }) 
+        })
     }
 }

@@ -1,4 +1,6 @@
-use crate::dt::{area::GeographicalAreaDesignator, UnparsedProductIdentifier, DataTypeDesignatorParseError};
+use crate::dt::{
+    area::GeographicalAreaDesignator, DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// I
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -26,7 +28,6 @@ pub enum ObservationalBUFRSatellite {
     MWTS,
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalBUFROceanic {
     BuoyObservations,
@@ -39,7 +40,6 @@ pub enum ObservationalBUFROceanic {
     OtherSeaEnvironmental,
     DeepOceanTsunameter,
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalBUFRPictoral {
@@ -54,7 +54,6 @@ pub enum LandStation {
     Fixed,
     Mobile,
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalBUFRSurfaceSeaLevel {
@@ -81,7 +80,6 @@ pub enum ObservationalBUFRSurfaceSeaLevel {
     OtherSurfaceData,
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalBUFRText {
     AdministrativeMessage,
@@ -89,7 +87,6 @@ pub enum ObservationalBUFRText {
     RequestData,
     OtherText,
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationalBUFRUpperAir {
@@ -119,7 +116,6 @@ pub enum ObservationalBUFRUpperAir {
     UpperWindMarineUpTo100HPAMarine,
     OtherUpperAirReport,
 }
-
 
 /// Term T2 definitions when T1=ObservationalDataBinaryBUFR or ForecastBinaryBUFR
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -157,26 +153,48 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalDataBinary {
                     'Q' => ObservationalBUFRSatellite::IASI,
                     'S' => ObservationalBUFRSatellite::ATMS,
                     'T' => ObservationalBUFRSatellite::MWTS,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                    other => {
+                        return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                            value.t1, value.t2, other,
+                        ))
+                    }
                 }),
-                'O' => ObservationalDataBinaryBUFRSubType::OceanographicLimnographic(ObservationalBUFROceanic::try_from(value)?),
+                'O' => ObservationalDataBinaryBUFRSubType::OceanographicLimnographic(
+                    ObservationalBUFROceanic::try_from(value)?,
+                ),
                 'P' => ObservationalDataBinaryBUFRSubType::Pictorial(match value.a1 {
                     'C' => ObservationalBUFRPictoral::RadarCompositeImagery,
                     'I' => ObservationalBUFRPictoral::SatelliteImagery,
                     'R' => ObservationalBUFRPictoral::RadarImagery,
                     'X' => ObservationalBUFRPictoral::NotDefined,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                    other => {
+                        return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                            value.t1, value.t2, other,
+                        ))
+                    }
                 }),
-                'S' => ObservationalDataBinaryBUFRSubType::SurfaceSeaLevel(ObservationalBUFRSurfaceSeaLevel::try_from(value)?),
+                'S' => ObservationalDataBinaryBUFRSubType::SurfaceSeaLevel(
+                    ObservationalBUFRSurfaceSeaLevel::try_from(value)?,
+                ),
                 'T' => ObservationalDataBinaryBUFRSubType::Text(match value.a1 {
                     'A' => ObservationalBUFRText::AdministrativeMessage,
                     'B' => ObservationalBUFRText::ServiceMessage,
                     'R' => ObservationalBUFRText::RequestData,
                     'X' => ObservationalBUFRText::OtherText,
-                    other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+                    other => {
+                        return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                            value.t1, value.t2, other,
+                        ))
+                    }
                 }),
-                'U' => ObservationalDataBinaryBUFRSubType::UpperAir(ObservationalBUFRUpperAir::try_from(value)?),
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
+                'U' => ObservationalDataBinaryBUFRSubType::UpperAir(
+                    ObservationalBUFRUpperAir::try_from(value)?,
+                ),
+                other => {
+                    return Err(DataTypeDesignatorParseError::UnrecognizedT2(
+                        value.t1, other,
+                    ))
+                }
             },
             area: GeographicalAreaDesignator::try_from(value.t2)?,
             enumerator: value.ii,
@@ -194,11 +212,19 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalBUFRUpperAir {
             'D' => ObservationalBUFRUpperAir::Dropsonde,
             'E' => ObservationalBUFRUpperAir::OzoneVerticalSounding,
             'I' => ObservationalBUFRUpperAir::DispersalTransportAnalysis,
-            'J' if (20..=39).contains(&value.ii) => ObservationalBUFRUpperAir::UpperWindEntireSounding(LandStation::Mobile),
-            'J' if (40..=59).contains(&value.ii) => ObservationalBUFRUpperAir::UpperWindEntireSoundingMarine,
+            'J' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::UpperWindEntireSounding(LandStation::Mobile)
+            }
+            'J' if (40..=59).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::UpperWindEntireSoundingMarine
+            }
             'J' => ObservationalBUFRUpperAir::UpperWindEntireSounding(LandStation::Fixed),
-            'K' if (20..=39).contains(&value.ii) => ObservationalBUFRUpperAir::RadioSoundingUpTo100HPA(LandStation::Mobile),
-            'K' if (40..=59).contains(&value.ii) => ObservationalBUFRUpperAir::RadioSoundingUpTo100HPAMarine,
+            'K' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::RadioSoundingUpTo100HPA(LandStation::Mobile)
+            }
+            'K' if (40..=59).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::RadioSoundingUpTo100HPAMarine
+            }
             'K' => ObservationalBUFRUpperAir::RadioSoundingUpTo100HPA(LandStation::Fixed),
             'L' => ObservationalBUFRUpperAir::TotalOzone,
             'M' => ObservationalBUFRUpperAir::ModelDerivedSondes,
@@ -207,16 +233,28 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalBUFRUpperAir {
             'P' => ObservationalBUFRUpperAir::Profiler,
             'Q' => ObservationalBUFRUpperAir::RASSTemperatureProfiler,
             'R' => ObservationalBUFRUpperAir::Radiance,
-            'S' if (20..=39).contains(&value.ii) => ObservationalBUFRUpperAir::RadiosondesSounding(LandStation::Mobile),
-            'S' if (40..=59).contains(&value.ii) => ObservationalBUFRUpperAir::RadiosondesSoundingMarine,
+            'S' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::RadiosondesSounding(LandStation::Mobile)
+            }
+            'S' if (40..=59).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::RadiosondesSoundingMarine
+            }
             'S' => ObservationalBUFRUpperAir::RadiosondesSounding(LandStation::Fixed),
             'T' => ObservationalBUFRUpperAir::SatelliteDerivedSondes,
             'U' => ObservationalBUFRUpperAir::MonthlyStatisticsDataMarine,
-            'W' if (20..=39).contains(&value.ii) => ObservationalBUFRUpperAir::UpperWindUpTo100HPA(LandStation::Mobile),
-            'W' if (40..=59).contains(&value.ii) => ObservationalBUFRUpperAir::UpperWindMarineUpTo100HPAMarine,
+            'W' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::UpperWindUpTo100HPA(LandStation::Mobile)
+            }
+            'W' if (40..=59).contains(&value.ii) => {
+                ObservationalBUFRUpperAir::UpperWindMarineUpTo100HPAMarine
+            }
             'W' => ObservationalBUFRUpperAir::UpperWindUpTo100HPA(LandStation::Fixed),
             'X' => ObservationalBUFRUpperAir::OtherUpperAirReport,
-            other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+            other => {
+                return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                    value.t1, value.t2, other,
+                ))
+            }
         })
     }
 }
@@ -225,35 +263,59 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalBUFRSurfaceSeaLevel {
     type Error = DataTypeDesignatorParseError;
     fn try_from(value: UnparsedProductIdentifier) -> Result<Self, Self::Error> {
         Ok(match value.a1 {
-            'A' if (30..=59).contains(&value.ii) => ObservationalBUFRSurfaceSeaLevel::NMinuteObservationLandStation,
+            'A' if (30..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::NMinuteObservationLandStation
+            }
             'A' => ObservationalBUFRSurfaceSeaLevel::RoutinelyScheduledLandStation,
             'B' => ObservationalBUFRSurfaceSeaLevel::RadarReportAB,
-            'C' if (46..=59).contains(&value.ii) => ObservationalBUFRSurfaceSeaLevel::ClimaticObservationMarine,
+            'C' if (46..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::ClimaticObservationMarine
+            }
             'C' if value.ii == 60 => ObservationalBUFRSurfaceSeaLevel::ClimaticObservationMonthly,
             'C' => ObservationalBUFRSurfaceSeaLevel::ClimaticObservationLandStation,
             'D' => ObservationalBUFRSurfaceSeaLevel::RadiologicalObservation,
             'E' => ObservationalBUFRSurfaceSeaLevel::SurfaceOzoneMeasurement,
             'F' => ObservationalBUFRSurfaceSeaLevel::AtmosphericsSource,
-            'I' if (46..=59).contains(&value.ii) => 
-                ObservationalBUFRSurfaceSeaLevel::IntermediateSynopticObservation(LandStation::Mobile),
-            'I' => ObservationalBUFRSurfaceSeaLevel::IntermediateSynopticObservation(LandStation::Fixed),
-            'M' if (46..=59).contains(&value.ii) =>
-                ObservationalBUFRSurfaceSeaLevel::MainSynopticObservation(LandStation::Mobile),
+            'I' if (46..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::IntermediateSynopticObservation(
+                    LandStation::Mobile,
+                )
+            }
+            'I' => ObservationalBUFRSurfaceSeaLevel::IntermediateSynopticObservation(
+                LandStation::Fixed,
+            ),
+            'M' if (46..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::MainSynopticObservation(LandStation::Mobile)
+            }
             'M' => ObservationalBUFRSurfaceSeaLevel::MainSynopticObservation(LandStation::Fixed),
-            'N' if (46..=59).contains(&value.ii) =>
-                ObservationalBUFRSurfaceSeaLevel::SynopticObservationNonStandardTime(LandStation::Mobile),
-            'N' => ObservationalBUFRSurfaceSeaLevel::SynopticObservationNonStandardTime(LandStation::Fixed),
+            'N' if (46..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::SynopticObservationNonStandardTime(
+                    LandStation::Mobile,
+                )
+            }
+            'N' => ObservationalBUFRSurfaceSeaLevel::SynopticObservationNonStandardTime(
+                LandStation::Fixed,
+            ),
             'R' => ObservationalBUFRSurfaceSeaLevel::Hydrologic,
-            'S' if (20..=39).contains(&value.ii) => ObservationalBUFRSurfaceSeaLevel::OneHourObservationMarineStation,
-            'S' if (40..=59).contains(&value.ii) => ObservationalBUFRSurfaceSeaLevel::NMinuteObservationMarineStation,
+            'S' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::OneHourObservationMarineStation
+            }
+            'S' if (40..=59).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::NMinuteObservationMarineStation
+            }
             'S' => ObservationalBUFRSurfaceSeaLevel::SynopticObservationMarineStation,
-            'T' if (20..=39).contains(&value.ii) =>
-                ObservationalBUFRSurfaceSeaLevel::ObservedWaterLevelTimeSeries,
+            'T' if (20..=39).contains(&value.ii) => {
+                ObservationalBUFRSurfaceSeaLevel::ObservedWaterLevelTimeSeries
+            }
             'T' => ObservationalBUFRSurfaceSeaLevel::TideGaugeObservation,
             'V' => ObservationalBUFRSurfaceSeaLevel::SpecialAeronauticalObservation,
             'W' => ObservationalBUFRSurfaceSeaLevel::AviationRoutineWeatherObservation,
             'X' => ObservationalBUFRSurfaceSeaLevel::OtherSurfaceData,
-            other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+            other => {
+                return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                    value.t1, value.t2, other,
+                ))
+            }
         })
     }
 }
@@ -271,7 +333,11 @@ impl TryFrom<UnparsedProductIdentifier> for ObservationalBUFROceanic {
             'W' => ObservationalBUFROceanic::SeasurfaceWaves,
             'X' => ObservationalBUFROceanic::OtherSeaEnvironmental,
             'Z' => ObservationalBUFROceanic::DeepOceanTsunameter,
-            other => return Err(DataTypeDesignatorParseError::UnrecognizedA1(value.t1, value.t2, other)),
+            other => {
+                return Err(DataTypeDesignatorParseError::UnrecognizedA1(
+                    value.t1, value.t2, other,
+                ))
+            }
         })
     }
 }

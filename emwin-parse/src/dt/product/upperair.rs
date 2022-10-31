@@ -1,4 +1,6 @@
-use crate::dt::{code::CodeForm, UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
+use crate::dt::{
+    area::AreaCode, code::CodeForm, DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// U
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

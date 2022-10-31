@@ -1,4 +1,4 @@
-use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
+use crate::dt::{area::AreaCode, DataTypeDesignatorParseError, UnparsedProductIdentifier};
 
 /// N
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

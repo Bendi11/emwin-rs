@@ -1,5 +1,8 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::SeaLevelDesignator};
-
+use crate::dt::{
+    area::{GeographicalAreaDesignator, ReferenceTimeDesignator},
+    level::SeaLevelDesignator,
+    DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// O
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,7 +53,11 @@ impl TryFrom<UnparsedProductIdentifier> for OceanographicInformation {
                 'U' | 'V' => OceanographicSubType::CurrentComponent,
                 'W' => OceanographicSubType::TemperatureWarming,
                 'X' => OceanographicSubType::Mixed,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
+                other => {
+                    return Err(DataTypeDesignatorParseError::UnrecognizedT2(
+                        value.t1, other,
+                    ))
+                }
             },
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: ReferenceTimeDesignator::parse_for_dghjopt(value.a2)?,

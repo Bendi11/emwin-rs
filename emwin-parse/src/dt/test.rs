@@ -2,6 +2,14 @@ use super::*;
 
 #[test]
 fn test_parse() {
-    let weather_roundup: DataTypeDesignator = "ASCA".parse().unwrap();
-   // assert_eq!(weather_roundup, DataTypeDesignator::Analysis(AnalysisT2::Surface, area));
+    let weather_roundup: DataTypeDesignator = "UDCA00".parse().unwrap();
+    eprintln!("{:#?}", weather_roundup);
+    assert!(matches!(
+        weather_roundup,
+        DataTypeDesignator::Analysis(Analysis {
+            subtype: AnalysisSubType::WeatherSummary,
+            area: _,
+            enumerator: _,
+        })
+    ));
 }

@@ -1,8 +1,5 @@
-
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AirLevelDesignator(u8);
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SeaLevelDesignator(u8);
@@ -10,7 +7,7 @@ pub struct SeaLevelDesignator(u8);
 impl TryFrom<u8> for AirLevelDesignator {
     type Error = InvalidAirLevelDesignator;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ok(Self(value)) 
+        Ok(Self(value))
     }
 }
 
@@ -32,5 +29,3 @@ pub enum InvalidSeaLevelDesignator {
     #[error("Invalid sea level designator {0}")]
     Invalid(u8),
 }
-
-

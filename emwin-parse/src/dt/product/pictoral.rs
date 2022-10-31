@@ -1,4 +1,8 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, DataTypeDesignatorParseError, UnparsedProductIdentifier, level::AirLevelDesignator};
+use crate::dt::{
+    area::{GeographicalAreaDesignator, ReferenceTimeDesignator},
+    level::AirLevelDesignator,
+    DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// P
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

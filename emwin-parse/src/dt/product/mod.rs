@@ -1,9 +1,9 @@
-pub mod bufr;
-pub mod aviationxml;
-pub mod analysis;
 pub mod addressedmsg;
-pub mod climatic;
+pub mod analysis;
+pub mod aviationxml;
+pub mod bufr;
 pub mod cap;
+pub mod climatic;
 pub mod crex;
 pub mod forecast;
 pub mod gridpoint;
@@ -19,12 +19,12 @@ pub mod upperair;
 pub mod warning;
 
 pub use self::{
-    bufr::{forecast::*, observational::*},
-    aviationxml::*,
-    analysis::*,
     addressedmsg::*,
-    climatic::*,
+    analysis::*,
+    aviationxml::*,
+    bufr::{forecast::*, observational::*},
     cap::*,
+    climatic::*,
     crex::*,
     forecast::*,
     gridpoint::*,

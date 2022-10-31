@@ -10,10 +10,14 @@ pub mod header;
 pub trait ProductParser {
     type Error;
     type Product;
-    
+
     /// Parse an instance of [Self::Product] from the given reader, optionally returning [Self::Error]
     /// should the given document be invalid
-    async fn parse<R: tokio::io::AsyncBufRead>(&self, file: R, header: AWIPSProductIdentifer) -> Result<Self::Product, Self::Error>;
+    async fn parse<R: tokio::io::AsyncBufRead>(
+        &self,
+        mut file: R,
+        header: AWIPSProductIdentifer,
+    ) -> Result<Self::Product, Self::Error>;
 }
 
 /// Context containing all state needed when parsing and operating on EMWIN data

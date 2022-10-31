@@ -1,13 +1,33 @@
-use std::{str::FromStr, num::ParseIntError};
 pub use self::product::*;
 use self::{
-    area::{AreaCodeParseError, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError}, analysis::Analysis, addressedmsg::AddressedMessage, climatic::ClimaticData, gridpoint::GridPointInformation, satelliteimagery::SatelliteImagery, forecast::Forecast, bufr::{observational::ObservationalDataBinary, forecast::ForecastDataBinary}, aviationxml::AviationInformationXML, notice::Notice, oceanographic::OceanographicInformation, pictoral::PictoralInformation, pictoral_regional::RegionalPictoralInformation, surface::SurfaceData, satellite::SatelliteData, upperair::UpperAirData, warning::Warning, cap::CommonAlertProtocolMessage, level::{InvalidAirLevelDesignator, InvalidSeaLevelDesignator},
+    addressedmsg::AddressedMessage,
+    analysis::Analysis,
+    area::{
+        AreaCodeParseError, GeographicalAreaDesignatorParseError, ReferenceTimeDesignatorParseError,
+    },
+    aviationxml::AviationInformationXML,
+    bufr::{forecast::ForecastDataBinary, observational::ObservationalDataBinary},
+    cap::CommonAlertProtocolMessage,
+    climatic::ClimaticData,
+    forecast::Forecast,
+    gridpoint::GridPointInformation,
+    level::{InvalidAirLevelDesignator, InvalidSeaLevelDesignator},
+    notice::Notice,
+    oceanographic::OceanographicInformation,
+    pictoral::PictoralInformation,
+    pictoral_regional::RegionalPictoralInformation,
+    satellite::SatelliteData,
+    satelliteimagery::SatelliteImagery,
+    surface::SurfaceData,
+    upperair::UpperAirData,
+    warning::Warning,
 };
+use std::{num::ParseIntError, str::FromStr};
 
 pub mod product;
 
-pub mod code;
 pub mod area;
+pub mod code;
 pub mod level;
 #[cfg(test)]
 mod test;
@@ -72,9 +92,9 @@ impl FromStr for DataTypeDesignator {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() < 6 {
-            return Err(DataTypeDesignatorParseError::Length)
+            return Err(DataTypeDesignatorParseError::Length);
         }
-        
+
         let mut iter = s.chars();
 
         let ident = UnparsedProductIdentifier {
@@ -95,13 +115,17 @@ impl FromStr for DataTypeDesignator {
             'T' => Self::SatelliteData(SatelliteData::try_from(ident)?),
             'U' => Self::UpperAirData(UpperAirData::try_from(ident)?),
             'W' => Self::Warning(Warning::try_from(ident)?),
-            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(GridPointInformation::try_from(ident)?),
+            'D' | 'G' | 'H' | 'Y' => {
+                Self::GridPointInformation(GridPointInformation::try_from(ident)?)
+            }
             'I' => Self::ObservationalDataBinaryBUFR(ObservationalDataBinary::try_from(ident)?),
             'J' => Self::ForecastBinaryBUFR(ForecastDataBinary::try_from(ident)?),
             'O' => Self::OceanographicInformation(OceanographicInformation::try_from(ident)?),
             'E' => Self::SatelliteImagery(SatelliteImagery::try_from(ident)?),
             'P' => Self::PictoralInformationBinary(PictoralInformation::try_from(ident)?),
-            'Q' => Self::PictoralInformationRegionalBinary(RegionalPictoralInformation::try_from(ident)?),
+            'Q' => Self::PictoralInformationRegionalBinary(RegionalPictoralInformation::try_from(
+                ident,
+            )?),
             'L' => Self::AviationInformationXML(AviationInformationXML::try_from(ident)?),
             'V' => Self::National(National::try_from(ident)?),
             'K' => Self::CREX(CREX::try_from(ident)?),
@@ -137,7 +161,4 @@ pub enum DataTypeDesignatorParseError {
     InvalidSeaLevel(#[from] InvalidSeaLevelDesignator),
 }
 
-
-impl DataTypeDesignator {
-
-}
+impl DataTypeDesignator {}

@@ -1,5 +1,4 @@
-use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError, area::AreaCode};
-
+use crate::dt::{area::AreaCode, DataTypeDesignatorParseError, UnparsedProductIdentifier};
 
 /// F
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -11,7 +10,6 @@ pub struct Forecast {
     /// ii
     pub enumerator: u8,
 }
-
 
 /// Term T2 definition when T1=Forecast
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,7 +38,7 @@ pub enum ForecastSubType {
     VolcanicAshAdvisory,
     WinterSports,
     Misc,
-    ShippingArea
+    ShippingArea,
 }
 
 impl TryFrom<UnparsedProductIdentifier> for Forecast {

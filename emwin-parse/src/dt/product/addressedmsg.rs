@@ -1,5 +1,4 @@
-use crate::dt::{UnparsedProductIdentifier, DataTypeDesignatorParseError};
-
+use crate::dt::{DataTypeDesignatorParseError, UnparsedProductIdentifier};
 
 /// format @ WMO-No. 386 p.103 attachment II-6
 ///
@@ -37,8 +36,12 @@ impl TryFrom<UnparsedProductIdentifier> for AddressedMessage {
                 ('R', 'R') => AddressedMessageType::GTSRequest,
                 ('R', 'Q') => AddressedMessageType::RequestToDB,
                 ('D', 'A') => AddressedMessageType::GTSOrDBResponse,
-                _ => return Err(DataTypeDesignatorParseError::UnrecognizedA2(value.t1, value.t2, value.a1, value.a2)),
-            }
+                _ => {
+                    return Err(DataTypeDesignatorParseError::UnrecognizedA2(
+                        value.t1, value.t2, value.a1, value.a2,
+                    ))
+                }
+            },
         })
     }
 }

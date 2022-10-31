@@ -1,4 +1,3 @@
-
 /// From WMO No. 386 P. 88
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AreaCode(char, char);
@@ -33,17 +32,17 @@ impl ReferenceTimeDesignator {
     pub const fn hours(&self) -> u16 {
         self.0
     }
-    
+
     /// Create a new `ReferenceTimeDesignator` from a given number of hours
     pub const fn from_hours(hours: u16) -> Self {
         Self(hours)
     }
-    
+
     /// Create a new `ReferenceTimeDesignator` from a given number of days
     pub const fn from_days(days: u16) -> Self {
         Self(days * 24)
     }
-    
+
     /// Parse a time designator for the A2 term of a D, G, H, J, O, or P product
     pub const fn parse_for_dghjopt(val: char) -> Result<Self, ReferenceTimeDesignatorParseError> {
         Ok(match val {
@@ -73,7 +72,7 @@ impl ReferenceTimeDesignator {
             other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
         })
     }
-    
+
     /// Parse the reference time designator term A2 for proucts Q, X, and Y
     pub const fn parse_for_qxy(val: char) -> Result<Self, ReferenceTimeDesignatorParseError> {
         Ok(Self::from_hours(match val {
@@ -103,7 +102,7 @@ impl TryFrom<(char, char)> for AreaCode {
     type Error = AreaCodeParseError;
 
     fn try_from(value: (char, char)) -> Result<Self, Self::Error> {
-        Ok(Self(value.0, value.1)) 
+        Ok(Self(value.0, value.1))
     }
 }
 
@@ -112,16 +111,24 @@ impl TryFrom<char> for GeographicalAreaDesignator {
     fn try_from(value: char) -> Result<Self, Self::Error> {
         Ok(match value {
             'A' => Self::ZeroToNinetyWest(GeographicalAreaDesignatorHemisphere::NorthernHemisphere),
-            'B' => Self::NinetyToOneEightyWest(GeographicalAreaDesignatorHemisphere::NorthernHemisphere),
-            'C' => Self::OneEightytoNinetyEast(GeographicalAreaDesignatorHemisphere::NorthernHemisphere),
+            'B' => Self::NinetyToOneEightyWest(
+                GeographicalAreaDesignatorHemisphere::NorthernHemisphere,
+            ),
+            'C' => Self::OneEightytoNinetyEast(
+                GeographicalAreaDesignatorHemisphere::NorthernHemisphere,
+            ),
             'D' => Self::NinetyToZeroEast(GeographicalAreaDesignatorHemisphere::NorthernHemisphere),
             'E' => Self::ZeroToNinetyWest(GeographicalAreaDesignatorHemisphere::TropicalBelt),
             'F' => Self::NinetyToOneEightyWest(GeographicalAreaDesignatorHemisphere::TropicalBelt),
             'G' => Self::OneEightytoNinetyEast(GeographicalAreaDesignatorHemisphere::TropicalBelt),
             'H' => Self::NinetyToZeroEast(GeographicalAreaDesignatorHemisphere::TropicalBelt),
             'I' => Self::ZeroToNinetyWest(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
-            'J' => Self::NinetyToOneEightyWest(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
-            'K' => Self::OneEightytoNinetyEast(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
+            'J' => Self::NinetyToOneEightyWest(
+                GeographicalAreaDesignatorHemisphere::SouthernHemisphere,
+            ),
+            'K' => Self::OneEightytoNinetyEast(
+                GeographicalAreaDesignatorHemisphere::SouthernHemisphere,
+            ),
             'L' => Self::NinetyToZeroEast(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
             'N' => Self::Hemisphere(GeographicalAreaDesignatorHemisphere::NorthernHemisphere),
             'S' => Self::Hemisphere(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
@@ -131,7 +138,6 @@ impl TryFrom<char> for GeographicalAreaDesignator {
         })
     }
 }
-
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum GeographicalAreaDesignatorParseError {

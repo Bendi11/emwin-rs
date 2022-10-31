@@ -1,0 +1,9 @@
+[package]
+name = "emwind"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.21", default-features = false, features = ["rt-multi-thread", "io-std", "io-util", "macros"] }
+emwin-parse = { path = "../emwin-parse" }
+notify = "5.0"

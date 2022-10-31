@@ -1,4 +1,8 @@
-use crate::dt::{area::{GeographicalAreaDesignator, ReferenceTimeDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError, level::AirLevelDesignator};
+use crate::dt::{
+    area::{GeographicalAreaDesignator, ReferenceTimeDesignator},
+    level::AirLevelDesignator,
+    DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 /// D, G, H, Y
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,7 +47,11 @@ impl TryFrom<UnparsedProductIdentifier> for GridPointInformation {
                 'J' => GridPointSubType::WaveHeight,
                 'K' => GridPointSubType::SwellHeight,
                 'M' => GridPointSubType::NationalUse,
-                other => return Err(DataTypeDesignatorParseError::UnrecognizedT2(value.t1, other)),
+                other => {
+                    return Err(DataTypeDesignatorParseError::UnrecognizedT2(
+                        value.t1, other,
+                    ))
+                }
             },
             area: GeographicalAreaDesignator::try_from(value.a1)?,
             time: match value.t1 {

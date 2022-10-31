@@ -1,5 +1,7 @@
-use crate::dt::{area::{ReferenceTimeDesignator, GeographicalAreaDesignator}, UnparsedProductIdentifier, DataTypeDesignatorParseError};
-
+use crate::dt::{
+    area::{GeographicalAreaDesignator, ReferenceTimeDesignator},
+    DataTypeDesignatorParseError, UnparsedProductIdentifier,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CommonAlertProtocolMessage {

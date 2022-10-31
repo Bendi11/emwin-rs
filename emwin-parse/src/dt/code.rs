@@ -1,4 +1,3 @@
-
 /// Identifier for a code form that a document is formatted in
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
@@ -47,7 +46,7 @@ pub enum CodeForm {
     ROCOB = 39,
     ROCOBSHIP = 40,
     TEMPDROP = 37,
-    
+
     LASTCODE = 10000,
     RECCO,
     Text,
