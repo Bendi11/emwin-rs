@@ -103,7 +103,7 @@ impl RegionalWeatherRoundupItem {
 
         let mut num = preceded(
             space1,
-            map_res(take_while(char::is_numeric), |s: &str| s.parse::<i32>()),
+            map_res(take_while(|c: char| !c.is_whitespace()), |s: &str| s.parse::<i32>()),
         );
 
         let (input, temperature) = num(input)?;
