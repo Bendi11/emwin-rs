@@ -14,7 +14,7 @@ dirs = "4.0"
 log = { version = "0.4" }
 toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
-systemd-journal-logger = "0.5"
+stderrlog = "0.5"
 
 [package.metadata.deb]
 name = "emwind"
