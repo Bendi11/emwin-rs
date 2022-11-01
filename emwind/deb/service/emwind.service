@@ -9,6 +9,8 @@ ExecStart=/usr/bin/emwind
 Restart=always
 PrivateTmp=true
 NoNewPrivileges=true
+User=goesguy
+Group=goesguy
 
 [Install]
 WantedBy=default.target
