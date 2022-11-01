@@ -4,8 +4,8 @@ use std::str::FromStr;
 
 use nom::{
     bytes::complete::{tag, take, take_while},
-    character::complete::{anychar, multispace1, space0, space1},
-    combinator::map_res,
+    character::complete::{anychar, multispace1, space0, space1, char},
+    combinator::{map_res, opt},
     error::ErrorKind,
     multi::many_till,
     sequence::{preceded, terminated},
@@ -91,9 +91,12 @@ impl RegionalWeatherRoundup {
 impl RegionalWeatherRoundupItem {
     /// Parse a single weather report from one line
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, (city_parts, sky)) = many_till(
-            anychar,
-            preceded(space0, RegionalWeatherSkyCondition::parse),
+        let (input, (city_parts, sky)) = preceded(
+            opt(char('*')),
+            many_till(
+                anychar,
+                preceded(space0, RegionalWeatherSkyCondition::parse),
+            ),
         )(input)?;
 
         let city = city_parts.into_iter().collect::<String>();
