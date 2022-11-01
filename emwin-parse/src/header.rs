@@ -1,7 +1,7 @@
-use std::{str::FromStr, num::ParseIntError, convert::Infallible};
+use std::{num::ParseIntError, str::FromStr};
 
 use chrono::{NaiveDateTime, NaiveTime};
-use nom::{IResult, combinator::map_res, bytes::complete::take, character::complete::space1};
+use nom::{bytes::complete::take, character::complete::space1, combinator::map_res, IResult};
 
 use crate::dt::{DataTypeDesignator, DataTypeDesignatorParseError};
 
@@ -22,7 +22,7 @@ pub struct AWIPSProductIdentifer {
 /// Four-letter country code
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CCCC {
-    pub code: [char ; 4],
+    pub code: [char; 4],
 }
 
 /// A parsed EMWIN filename
@@ -36,7 +36,10 @@ pub struct GoesFileName {
     pub priority: u8,
 }
 
-fn expect<I: Iterator<Item = (usize, char)>>(iter: &mut I, ch: char) -> Result<(), GoesFileNameParseError> {
+fn expect<I: Iterator<Item = (usize, char)>>(
+    iter: &mut I,
+    ch: char,
+) -> Result<(), GoesFileNameParseError> {
     let next = iter.next().ok_or_else(|| GoesFileNameParseError::Length)?.1;
     if ch != next {
         Err(GoesFileNameParseError::Unexpected(next, ch))
@@ -45,7 +48,10 @@ fn expect<I: Iterator<Item = (usize, char)>>(iter: &mut I, ch: char) -> Result<(
     }
 }
 
-fn expect_str<I: Iterator<Item = (usize, char)>>(iter: &mut I, st: &str) -> Result<(), GoesFileNameParseError> {
+fn expect_str<I: Iterator<Item = (usize, char)>>(
+    iter: &mut I,
+    st: &str,
+) -> Result<(), GoesFileNameParseError> {
     for ch in st.chars() {
         expect(iter, ch)?;
     }
@@ -65,12 +71,11 @@ impl<T> Expect for Option<T> {
     }
 }
 
-
 impl FromStr for GoesFileName {
     type Err = GoesFileNameParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.char_indices().peekable();
-        
+
         match chars.next().require()?.1 {
             'A' | 'Z' => (),
             other => return Err(GoesFileNameParseError::Unexpected(other, 'A')),
@@ -92,9 +97,9 @@ impl FromStr for GoesFileName {
         for _ in 0..6 {
             chars.next().require()?;
         }
-        
+
         let last_modify = NaiveTime::parse_from_str(&s[12..][..6], "%d%H%M")?;
-        
+
         //skip [BBB]
         match chars.next().require()?.1 {
             '_' => (),
@@ -107,7 +112,7 @@ impl FromStr for GoesFileName {
 
         expect_str(&mut chars, "C_KWIN_")?;
         let ts_idx = chars.peek().require()?.0;
-        
+
         for _ in 0..14 {
             chars.next().require()?;
         }
@@ -123,7 +128,10 @@ impl FromStr for GoesFileName {
         let sequence: u32 = s[seq_idx..][..6].parse()?;
         expect(&mut chars, '-')?;
         let priority = chars.next().require()?.1;
-        let priority = priority.to_digit(10).ok_or_else(|| GoesFileNameParseError::Priority(priority))? as u8;
+        let priority = priority
+            .to_digit(10)
+            .ok_or_else(|| GoesFileNameParseError::Priority(priority))?
+            as u8;
 
         Ok(Self {
             wmo_product_id,
@@ -138,23 +146,17 @@ impl FromStr for GoesFileName {
 
 impl WMOProductIdentifier {
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, datatype) = map_res(
-            take(6usize),
-            |dt: &str| dt.parse::<DataTypeDesignator>()
-        )(input)?;
+        let (input, datatype) =
+            map_res(take(6usize), |dt: &str| dt.parse::<DataTypeDesignator>())(input)?;
 
         let (input, _) = space1(input)?;
-        let (input, country) = map_res(
-            take(4usize),
-            |c: &str| c.parse::<CCCC>()
-        )(input)?;
+        let (input, country) = map_res(take(4usize), |c: &str| c.parse::<CCCC>())(input)?;
 
         let (input, _) = space1(input)?;
 
-        let (input, creation_time) = map_res(
-            take(6usize),
-            |ts: &str| NaiveTime::parse_from_str(ts, "%d%H%M")
-        )(input)?;
+        let (input, creation_time) = map_res(take(6usize), |ts: &str| {
+            NaiveTime::parse_from_str(ts, "%d%H%M")
+        })(input)?;
 
         Ok((
             input,
@@ -162,7 +164,7 @@ impl WMOProductIdentifier {
                 datatype,
                 country,
                 creation_time,
-            }
+            },
         ))
     }
 }
@@ -193,9 +195,7 @@ impl FromStr for CCCC {
     type Err = CCCCParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
-        let mut next = || {
-            chars.next().ok_or_else(|| CCCCParseError::Length)
-        };
+        let mut next = || chars.next().ok_or_else(|| CCCCParseError::Length);
 
         Ok(Self {
             code: [next()?, next()?, next()?, next()?],
@@ -203,16 +203,21 @@ impl FromStr for CCCC {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn parse_filename() {
-        let filename: GoesFileName = "A_FXUS65KABQ121804AAB_C_KWIN_20160112180901_008996-2-AFDABQNM.TXT".parse().unwrap();
+        let filename: GoesFileName =
+            "A_FXUS65KABQ121804AAB_C_KWIN_20160112180901_008996-2-AFDABQNM.TXT"
+                .parse()
+                .unwrap();
         assert!(filename.priority == 2);
         assert!(filename.sequence == 8996);
-        assert!(matches!(filename.wmo_product_id, DataTypeDesignator::Forecast(_)));
+        assert!(matches!(
+            filename.wmo_product_id,
+            DataTypeDesignator::Forecast(_)
+        ));
     }
 }

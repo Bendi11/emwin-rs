@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use header::AWIPSProductIdentifer;
 
 pub mod dt;
-pub mod header;
 pub mod formats;
+pub mod header;
 
 /// Any type implementing `ProductParser` contains all state needed to fallibly parse a `Product` from a
 /// type implementing `AsyncRead`

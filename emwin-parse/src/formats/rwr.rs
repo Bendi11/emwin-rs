@@ -2,10 +2,17 @@
 
 use std::str::FromStr;
 
-use chrono::NaiveTime;
-use nom::{IResult, bytes::complete::{take, tag, take_while, take_till, take_until}, combinator::map_res, character::{complete::{space1, newline, anychar, line_ending}, is_alphabetic, is_newline}, sequence::{terminated, preceded, tuple}, multi::{count, many_till}, error::ErrorKind};
+use nom::{
+    bytes::complete::{tag, take, take_while},
+    character::complete::{anychar, multispace1, space0, space1},
+    combinator::map_res,
+    error::ErrorKind,
+    multi::many_till,
+    sequence::{preceded, terminated},
+    IResult,
+};
 
-use crate::{dt::{DataTypeDesignator, area::AreaCode}, header::WMOProductIdentifier};
+use crate::{dt::area::AreaCode, header::WMOProductIdentifier};
 
 #[derive(Clone, Debug)]
 pub struct RegionalWeatherRoundup {
@@ -38,40 +45,36 @@ pub enum RegionalWeatherSkyCondition {
 
 impl RegionalWeatherRoundup {
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, header) = terminated(
-            WMOProductIdentifier::parse,
-            newline,
+        let (input, header) = terminated(WMOProductIdentifier::parse, multispace1)(input)?;
+
+        let (input, area) = preceded(
+            tag("RWR"),
+            map_res(take(2usize), |code: &str| code.parse::<AreaCode>()),
         )(input)?;
 
-        let (input, area) = terminated(
-            preceded(
-                tag("RWR"),
-                map_res(
-                    take(2usize),
-                    |code: &str| code.parse::<AreaCode>(),
-                ),
-            ),
-            count(newline, 2),
-        )(input)?;
-        
         let mut reports = vec![];
         let mut city = false;
 
-        for line in input.lines() {
+        for line in input.lines().filter(|line| line.len() > 2) {
             match city {
-                false => if line.starts_with("CITY") { city = true },
+                false => {
+                    if line.starts_with("CITY") {
+                        city = true
+                    }
+                }
                 true => {
-                    if line.starts_with("$$") { city = false }
-                    else if line.len() > 1 {
+                    if line.starts_with("$$") {
+                        city = false
+                    } else {
                         match RegionalWeatherRoundupItem::parse(line) {
                             Ok((_, item)) => reports.push(item),
                             Err(e) => {
                                 log::warn!("Failed to parse RWR item: {}", e);
                             }
-                        } 
+                        }
                     }
                 }
-            } 
+            }
         }
 
         Ok((
@@ -80,7 +83,7 @@ impl RegionalWeatherRoundup {
                 header,
                 area,
                 reports,
-            }
+            },
         ))
     }
 }
@@ -89,20 +92,15 @@ impl RegionalWeatherRoundupItem {
     /// Parse a single weather report from one line
     pub fn parse(input: &str) -> IResult<&str, Self> {
         let (input, (city_parts, sky)) = many_till(
-            take_till(|c: char| c.is_whitespace()),
-            RegionalWeatherSkyCondition::parse,
+            anychar,
+            preceded(space0, RegionalWeatherSkyCondition::parse),
         )(input)?;
 
-        let city = city_parts
-            .into_iter()
-            .collect::<String>();
+        let city = city_parts.into_iter().collect::<String>();
 
         let mut num = preceded(
             space1,
-            map_res(
-                take_while(char::is_numeric),
-                |s: &str| s.parse::<i32>()
-            )
+            map_res(take_while(char::is_numeric), |s: &str| s.parse::<i32>()),
         );
 
         let (input, temperature) = num(input)?;
@@ -117,23 +115,23 @@ impl RegionalWeatherRoundupItem {
                 temperature,
                 dew_point,
                 relative_humidity,
-            }
+            },
         ))
     }
 }
 
 impl RegionalWeatherSkyCondition {
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (rest, designator) = take_while(
-            |c: char| !c.is_whitespace(),
-        )(input)?;
-        
+        let (rest, designator) = take_while(|c: char| !c.is_whitespace())(input)?;
+
         Ok((
             rest,
-            Self::from_str(designator).map_err(|_|nom::Err::Error(nom::error::Error {
-                input: designator,
-                code: ErrorKind::Fail,
-            }))?,
+            Self::from_str(designator).map_err(|_| {
+                nom::Err::Error(nom::error::Error {
+                    input: designator,
+                    code: ErrorKind::Fail,
+                })
+            })?,
         ))
     }
 }
@@ -153,4 +151,16 @@ impl FromStr for RegionalWeatherSkyCondition {
             _ => return Err(()),
         })
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    pub fn test_rwr() {
+        let _ = RegionalWeatherRoundup::parse(EX_RWR).unwrap_or_else(|e| panic!("{}", e));
+    }
+
+    const EX_RWR: &str = include_str!("test/rwr.txt");
 }

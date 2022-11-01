@@ -1,8 +1,15 @@
-use std::{time::Duration, process::ExitCode, path::{PathBuf, Path}};
+use std::{
+    path::{Path, PathBuf},
+    process::ExitCode,
+    time::Duration,
+};
 
-use notify::{Watcher, RecommendedWatcher, Event, EventKind, event::CreateKind};
+use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use serde::{Deserialize, Serialize};
-use tokio::{sync::mpsc::{channel, Receiver}, io::{AsyncWriteExt, AsyncReadExt}};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::mpsc::{channel, Receiver},
+};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
@@ -21,14 +28,16 @@ async fn main() -> ExitCode {
         move |res| {
             tokio::runtime::Handle::current().block_on(async {
                 match res {
-                    Ok(event) => if let Err(e) = tx.send(event).await {
-                        log::error!("Failed to send event through channel: {}", e);
-                    },
+                    Ok(event) => {
+                        if let Err(e) = tx.send(event).await {
+                            log::error!("Failed to send event through channel: {}", e);
+                        }
+                    }
                     Err(e) => log::error!("Failed to receive filesystem event: {}", e),
                 }
             });
         },
-        notify::Config::default().with_poll_interval(Duration::from_secs(600))
+        notify::Config::default().with_poll_interval(Duration::from_secs(600)),
     ) {
         Ok(watcher) => watcher,
         Err(e) => {
@@ -68,7 +77,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
                                 return ExitCode::FAILURE;
                             }
                         }
-                    },
+                    }
                     Err(e) => {
                         log::error!(
                             "Failed to open configuration file at {}: {}",
@@ -76,7 +85,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
                             e,
                         );
                         return ExitCode::FAILURE;
-                    },
+                    }
                 }
             } else {
                 let config = Config::default();
@@ -87,17 +96,19 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
                         e,
                     );
                 } else {
-                    write_config(&config_path, &config).await; 
+                    write_config(&config_path, &config).await;
                 }
                 config
             }
-        },
+        }
         None => {
-            log::warn!("Failed to find system configuration directory, using default configuration");
+            log::warn!(
+                "Failed to find system configuration directory, using default configuration"
+            );
             Config::default()
-        },
+        }
     };
-    
+
     if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
@@ -109,9 +120,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
 
     while let Some(event) = rx.recv().await {
         match event.kind {
-            EventKind::Create(CreateKind::File) => {
-
-            },
+            EventKind::Create(CreateKind::File) => {}
             _ => (),
         }
     }
@@ -129,11 +138,15 @@ async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
                     return;
                 }
             };
-            
+
             if let Err(e) = file.write_all(&buf).await {
-                log::error!("Failed to write default configuration file {}: {}", path.as_ref().display(), e);
+                log::error!(
+                    "Failed to write default configuration file {}: {}",
+                    path.as_ref().display(),
+                    e
+                );
             }
-        },
+        }
         Err(e) => {
             log::warn!(
                 "Failed to create configuration file {}: {}, using default configuration",
