@@ -3,6 +3,7 @@ use header::AWIPSProductIdentifer;
 
 pub mod dt;
 pub mod header;
+pub mod formats;
 
 /// Any type implementing `ProductParser` contains all state needed to fallibly parse a `Product` from a
 /// type implementing `AsyncRead`

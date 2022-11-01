@@ -1,13 +1,16 @@
-use std::{str::FromStr, num::ParseIntError};
+use std::{str::FromStr, num::ParseIntError, convert::Infallible};
 
 use chrono::{NaiveDateTime, NaiveTime};
+use nom::{IResult, combinator::map_res, bytes::complete::take, character::complete::space1};
 
 use crate::dt::{DataTypeDesignator, DataTypeDesignatorParseError};
 
-/// A full WMO product identifier with data type designator, country code, and timezone
+/// A full WMO product identifier with data type designator, country code, and time
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WMOProductIdentifier {
-    pub dataype: DataTypeDesignator,
+    pub datatype: DataTypeDesignator,
+    pub country: CCCC,
+    pub creation_time: NaiveTime,
 }
 
 /// A full AWIPS product identifier containing a WMO abbreviated heading and AFOS PIL
@@ -61,6 +64,7 @@ impl<T> Expect for Option<T> {
         self.ok_or_else(|| GoesFileNameParseError::Length)
     }
 }
+
 
 impl FromStr for GoesFileName {
     type Err = GoesFileNameParseError;
@@ -132,6 +136,36 @@ impl FromStr for GoesFileName {
     }
 }
 
+impl WMOProductIdentifier {
+    pub fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, datatype) = map_res(
+            take(6usize),
+            |dt: &str| dt.parse::<DataTypeDesignator>()
+        )(input)?;
+
+        let (input, _) = space1(input)?;
+        let (input, country) = map_res(
+            take(4usize),
+            |c: &str| c.parse::<CCCC>()
+        )(input)?;
+
+        let (input, _) = space1(input)?;
+
+        let (input, creation_time) = map_res(
+            take(6usize),
+            |ts: &str| NaiveTime::parse_from_str(ts, "%d%H%M")
+        )(input)?;
+
+        Ok((
+            input,
+            Self {
+                datatype,
+                country,
+                creation_time,
+            }
+        ))
+    }
+}
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum GoesFileNameParseError {
@@ -148,6 +182,27 @@ pub enum GoesFileNameParseError {
     #[error("Goes filename is not the correct length")]
     Length,
 }
+
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum CCCCParseError {
+    #[error("4-letter country code string is too short")]
+    Length,
+}
+
+impl FromStr for CCCC {
+    type Err = CCCCParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        let mut next = || {
+            chars.next().ok_or_else(|| CCCCParseError::Length)
+        };
+
+        Ok(Self {
+            code: [next()?, next()?, next()?, next()?],
+        })
+    }
+}
+
 
 #[cfg(test)]
 mod test {

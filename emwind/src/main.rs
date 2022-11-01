@@ -6,7 +6,7 @@ use tokio::{sync::mpsc::{channel, Receiver}, io::{AsyncWriteExt, AsyncReadExt}};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    /// Folder that contains all
+    /// Folder that contains all GOES output files
     #[serde(rename = "goes-dir")]
     pub goes_dir: PathBuf,
 }
@@ -87,7 +87,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
                         e,
                     );
                 } else {
-                    create_default_config(&config_path, &config).await; 
+                    write_config(&config_path, &config).await; 
                 }
                 config
             }
@@ -119,7 +119,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     ExitCode::SUCCESS
 }
 
-async fn create_default_config<P: AsRef<Path>>(path: P, config: &Config) {
+async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
     match tokio::fs::File::create(&path).await {
         Ok(mut file) => {
             let buf = match toml::to_vec(&config) {

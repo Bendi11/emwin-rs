@@ -115,9 +115,7 @@ impl FromStr for DataTypeDesignator {
             'T' => Self::SatelliteData(SatelliteData::try_from(ident)?),
             'U' => Self::UpperAirData(UpperAirData::try_from(ident)?),
             'W' => Self::Warning(Warning::try_from(ident)?),
-            'D' | 'G' | 'H' | 'Y' => {
-                Self::GridPointInformation(GridPointInformation::try_from(ident)?)
-            }
+            'D' | 'G' | 'H' | 'Y' => Self::GridPointInformation(GridPointInformation::try_from(ident)?),
             'I' => Self::ObservationalDataBinaryBUFR(ObservationalDataBinary::try_from(ident)?),
             'J' => Self::ForecastBinaryBUFR(ForecastDataBinary::try_from(ident)?),
             'O' => Self::OceanographicInformation(OceanographicInformation::try_from(ident)?),

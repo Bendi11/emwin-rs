@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 /// From WMO No. 386 P. 88
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AreaCode(char, char);
@@ -106,6 +108,15 @@ impl TryFrom<(char, char)> for AreaCode {
     }
 }
 
+impl FromStr for AreaCode {
+    type Err = AreaCodeParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        let mut next = || chars.next().ok_or_else(|| AreaCodeParseError::Length);
+        Ok(Self(next()?, next()?))
+    }
+}
+
 impl TryFrom<char> for GeographicalAreaDesignator {
     type Error = GeographicalAreaDesignatorParseError;
     fn try_from(value: char) -> Result<Self, Self::Error> {
@@ -149,6 +160,8 @@ pub enum GeographicalAreaDesignatorParseError {
 pub enum AreaCodeParseError {
     #[error("Unrecognized area code {0}{1}")]
     Invalid(char, char),
+    #[error("Area code string is not two characters")]
+    Length,
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
