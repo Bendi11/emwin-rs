@@ -23,6 +23,10 @@ pub const CONFIG_FILE: &str = "config.toml";
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    if let Err(e) = systemd_journal_logger::init() {
+        eprintln!("Failed to initialize systemd journal logger: {}", e);
+    }
+
     let (tx, rx) = channel(10);
     let watcher = match RecommendedWatcher::new(
         move |res| {

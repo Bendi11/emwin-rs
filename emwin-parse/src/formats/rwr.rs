@@ -69,7 +69,7 @@ impl RegionalWeatherRoundup {
                         match RegionalWeatherRoundupItem::parse(line) {
                             Ok((_, item)) => reports.push(item),
                             Err(e) => {
-                                log::warn!("Failed to parse RWR item: {}", e);
+                                log::info!("Failed to parse RWR item: {}", e);
                             }
                         }
                     }

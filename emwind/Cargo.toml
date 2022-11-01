@@ -1,5 +1,8 @@
 [package]
 name = "emwind"
+authors = ["bkliebmann@gmail.com"]
+description = "System service for parsing EMWIN files"
+license = "LGPL-2.1-only"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,3 +14,19 @@ dirs = "4.0"
 log = { version = "0.4" }
 toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
+systemd-journal-logger = "0.5"
+
+[package.metadata.deb]
+name = "emwind"
+depends = "$auto, systemd"
+extended-description = "Systemd service that automatically parses new EMWIN data pulled from a satellite downlink"
+section = "utils"
+assets = [
+    ["target/release/emwind", "usr/bin/emwind", "754"],
+]
+maintainer-scripts = "deb/scripts"
+priority="optional"
+conf-files = ["${XDG_CONFIG_HOME}/emwind/config.toml"]
+
+[package.metadata.deb.systemd-units]
+unit-scripts = "deb/service"

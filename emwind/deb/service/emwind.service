@@ -1,0 +1,14 @@
+[Unit]
+Description=Automatic parsing of EMWIN file
+AssertPathExists=/usr/bin/emwind
+
+[Service]
+Type=simple
+WorkingDirectory=~
+ExecStart=/usr/bin/emwind
+Restart=always
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
