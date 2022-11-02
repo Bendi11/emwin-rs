@@ -24,7 +24,7 @@ pub const CONFIG_FILE: &str = "config.toml";
 #[tokio::main]
 async fn main() -> ExitCode {
     if let Err(e) = stderrlog::new().show_module_names(false).init() {
-        eprintln!("Failed to initialize systemd journal logger: {}", e);
+        eprintln!("Failed to initialize logger: {}", e);
     }
 
     let (tx, rx) = channel(10);
