@@ -3,8 +3,8 @@
 use std::str::FromStr;
 
 use chrono::NaiveTime;
-use nom::{IResult, combinator::map_res, bytes::complete::{take, take_till}, sequence::{preceded, Tuple, tuple}, character::complete::{space1, anychar}};
-use uom::si::{f32::{Pressure, Angle, Length, ThermodynamicTemperature}, angle::degree, pressure::hectopascal, length::foot, thermodynamic_temperature::degree_celsius};
+use nom::{IResult, combinator::{map_res, all_consuming}, bytes::complete::{take, take_till}, sequence::{preceded, Tuple, tuple}, character::complete::{space1, anychar}, branch::alt};
+use uom::si::{f32::{Pressure, Angle, Length, ThermodynamicTemperature, MassDensity}, angle::degree, pressure::hectopascal, length::foot, thermodynamic_temperature::degree_celsius};
 
 use crate::util::TIME_YYGGGG;
 
@@ -27,7 +27,17 @@ pub struct AmdarReportItem {
     /// Measure in hundreds of feet above the standard datum plane of 1013.2 hPa
     pub pressure_altitude: Length,
     /// Measure of temperature at the given altitude
-    pub temperature: ThermodynamicTemperature,
+    pub air_temperature: ThermodynamicTemperature,
+    pub humidity_or_dew_point: HumidityOrDewPoint,
+}
+
+
+#[derive(Clone, Copy, Debug,)]
+pub enum HumidityOrDewPoint {
+    /// Ranging from [0., 1.] for relative humidity
+    RelativeHumidity(f32),
+    /// Dew point temperature
+    DewPoint(ThermodynamicTemperature),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,24 +119,42 @@ impl AmdarReportItem {
 
         let pressure_altitude = Length::new::<foot>(alt_sign * pressure_altitude);
 
-        let (input, temperature_sign) = preceded(
+        let (input, air_temperature) = preceded(space1, Self::parse_temp)(input)?;
+
+        let (input, humidity_or_dew_point) = preceded(
             space1,
             map_res(
-                take(2),
-                |s: &str| Ok(match s {
-                    "PS" => 1f32,
-                    "MS" => -1f32,
-                    _ => return Err("Invalid temperature sign string"),
-                })
-            )
+                take_till(|c: char| c.is_whitespace()),
+                |s: &str| match s.len() {
+                    5 => Ok(HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)),
+                    3 => Ok(
+                        HumidityOrDewPoint::RelativeHumidity(
+                            s.parse::<f32>()
+                                .map_err(|e| nom::error::Error::new(s, nom::error::ErrorKind::Float))? / 100f32
+                        )
+                    ),
+                }
+            ),
+        )(input)?;
+
+    }
+
+    fn parse_temp(input: &str) -> IResult<&str, ThermodynamicTemperature> {
+        let (input, temperature_sign) = map_res(
+            take(2usize),
+            |s: &str| Ok(match s {
+                "PS" => 1f32,
+                "MS" => -1f32,
+                _ => return Err("Invalid temperature sign string"),
+            })
         )(input)?;
 
         let (input, temperature) = map_res(
-            take(3),
+            take(3usize),
             |s: &str| s.parse::<f32>(),
         )(input)?;
 
-        let temperature = TemperatureInterval::new::<degree_celsius>(temperature * 10f32 * temperature_sign);
+        Ok((input, ThermodynamicTemperature::new::<degree_celsius>(temperature / 10f32 * temperature_sign)))
     }
 }
 
