@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use chrono::NaiveTime;
 use nom::{
+    branch::alt,
     bytes::complete::{tag, take, take_till},
     character::{
         complete::{anychar, multispace0, multispace1, space0, space1},
@@ -12,7 +13,7 @@ use nom::{
     combinator::{map_res, opt},
     multi::separated_list1,
     sequence::{preceded, terminated, tuple},
-    IResult, branch::alt,
+    IResult,
 };
 use uom::si::{
     angle::degree,
@@ -118,10 +119,8 @@ impl AmdarReport {
         let (input, header) = WMOProductIdentifier::parse(input)?;
         let (input, _) = preceded(multispace1, preceded(tag("AMDAR "), take(4usize)))(input)?;
 
-        let (input, items) = separated_list1(
-            multispace1,
-            preceded(multispace0, AmdarReportItem::parse),
-        )(input)?;
+        let (input, items) =
+            separated_list1(multispace1, preceded(multispace0, AmdarReportItem::parse))(input)?;
 
         Ok((input, Self { header, items }))
     }
@@ -263,10 +262,7 @@ impl AmdarReportItem {
 
         let (input, _) = alt((
             tag("="),
-            terminated(
-                take_till(|c: char| c == '=' || c == '\n'),
-                char('=')
-            )
+            terminated(take_till(|c: char| c == '=' || c == '\n'), char('=')),
         ))(input)?;
 
         Ok((

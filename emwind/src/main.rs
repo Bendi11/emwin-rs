@@ -4,7 +4,14 @@ use std::{
     time::Duration,
 };
 
-use emwin_parse::{header::GoesFileName, dt::{DataTypeDesignator, AnalysisSubType, product::Analysis, upperair::UpperAirData, UpperAirDataSubType, code::CodeForm}, formats::{rwr::RegionalWeatherRoundup, amdar::AmdarReport}};
+use emwin_parse::{
+    dt::{
+        code::CodeForm, product::Analysis, upperair::UpperAirData, AnalysisSubType,
+        DataTypeDesignator, UpperAirDataSubType,
+    },
+    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup},
+    header::GoesFileName,
+};
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
@@ -15,20 +22,20 @@ use tokio::{
 
 /// Action to take when an unrecognized file appears in the input directory
 #[derive(Serialize, Deserialize)]
-#[serde(tag="on",content="path")]
+#[serde(tag = "on", content = "path")]
 pub enum UnrecognizedFileOpt {
-    #[serde(rename="delete")]
+    #[serde(rename = "delete")]
     Delete,
-    #[serde(rename="leave")]
+    #[serde(rename = "leave")]
     None,
-    #[serde(rename="move")]
+    #[serde(rename = "move")]
     Move(PathBuf),
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     /// Folder that contains all GOES output files
-    #[serde(rename="goes-dir")]
+    #[serde(rename = "goes-dir")]
     pub goes_dir: PathBuf,
     /// What to do when we get an unrecognized file in the input directory
     pub unrecognized: UnrecognizedFileOpt,
@@ -40,7 +47,7 @@ pub const CONFIG: OnceCell<Config> = OnceCell::new();
 pub const CONFIG_FOLDER: &str = "emwind/";
 pub const CONFIG_FILE: &str = "config.toml";
 
-#[tokio::main(flavor="current_thread")]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     if let Err(e) = stderrlog::new().show_module_names(false).init() {
         eprintln!("Failed to initialize logger: {}", e);
@@ -60,8 +67,7 @@ async fn main() -> ExitCode {
                 }
             });
         },
-        notify::Config::default()
-            .with_poll_interval(Duration::from_secs(600)),
+        notify::Config::default().with_poll_interval(Duration::from_secs(600)),
     ) {
         Ok(watcher) => watcher,
         Err(e) => {
@@ -144,16 +150,17 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
 
     while let Some(event) = rx.recv().await {
         match event.kind {
-            EventKind::Create(CreateKind::File) => if let Err(e) = tokio::spawn(async move { on_create(event).await }).await {
-                log::error!("Failed to spawn file reader task: {}", e);
-            },
+            EventKind::Create(CreateKind::File) => {
+                if let Err(e) = tokio::spawn(async move { on_create(event).await }).await {
+                    log::error!("Failed to spawn file reader task: {}", e);
+                }
+            }
             _ => (),
         }
     }
 
     ExitCode::SUCCESS
 }
-
 
 pub async fn on_create(event: Event) {
     for path in event.paths {
@@ -164,7 +171,7 @@ pub async fn on_create(event: Event) {
                     Err(e) => {
                         log::error!("Failed to parse newly created filename {}", filename);
                         CONFIG.wait().failure.do_for(&path).await;
-                        return
+                        return;
                     }
                 };
 
@@ -180,7 +187,10 @@ pub async fn on_create(event: Event) {
                 };
 
                 match filename.wmo_product_id {
-                    DataTypeDesignator::Analysis(Analysis { subtype: AnalysisSubType::Surface, .. } ) => {
+                    DataTypeDesignator::Analysis(Analysis {
+                        subtype: AnalysisSubType::Surface,
+                        ..
+                    }) => {
                         let Some(src) = read.await else { return };
                         let rwr = match RegionalWeatherRoundup::parse(&src) {
                             Ok((_, rwr)) => rwr,
@@ -190,8 +200,11 @@ pub async fn on_create(event: Event) {
                                 return;
                             }
                         };
-                    },
-                    DataTypeDesignator::UpperAirData(UpperAirData { subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR), .. }) => {
+                    }
+                    DataTypeDesignator::UpperAirData(UpperAirData {
+                        subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
+                        ..
+                    }) => {
                         let Some(src) = read.await else { return };
                         let report = match AmdarReport::parse(&src) {
                             Ok((_, report)) => report,
@@ -201,17 +214,20 @@ pub async fn on_create(event: Event) {
                                 return;
                             }
                         };
-                    },
+                    }
                     _ => {
                         log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
                         CONFIG.wait().unrecognized.do_for(&path).await;
                     }
                 }
-            },
+            }
             None => {
-                log::error!("Newly created file {} contains invalid unicode characters", path.display());
+                log::error!(
+                    "Newly created file {} contains invalid unicode characters",
+                    path.display()
+                );
                 CONFIG.wait().unrecognized.do_for(&path).await;
-            },
+            }
         }
     }
 }
@@ -220,20 +236,30 @@ impl UnrecognizedFileOpt {
     /// Attempt to execute the given action for a file at `path`
     pub async fn do_for(&self, path: impl AsRef<Path>) {
         match self {
-            Self::Delete => if let Err(e) = tokio::fs::remove_file(&path).await {
-                log::error!("Failed to delete file {}: {}", path.as_ref().display(), e);
-            },
-            Self::Move(to) => if let Err(e) = tokio::fs::copy(
-                &path,
-                to.join(
-                    path
-                        .as_ref()
-                        .file_name()
-                        .unwrap_or(path.as_ref().as_os_str())
+            Self::Delete => {
+                if let Err(e) = tokio::fs::remove_file(&path).await {
+                    log::error!("Failed to delete file {}: {}", path.as_ref().display(), e);
+                }
+            }
+            Self::Move(to) => {
+                if let Err(e) = tokio::fs::copy(
+                    &path,
+                    to.join(
+                        path.as_ref()
+                            .file_name()
+                            .unwrap_or(path.as_ref().as_os_str()),
+                    ),
                 )
-            ).await {
-                log::error!("Failed to move file {} to {}: {}", path.as_ref().display(), to.display(), e);
-            },
+                .await
+                {
+                    log::error!(
+                        "Failed to move file {} to {}: {}",
+                        path.as_ref().display(),
+                        to.display(),
+                        e
+                    );
+                }
+            }
             Self::None => (),
         }
     }
@@ -273,7 +299,9 @@ impl Default for Config {
         Self {
             goes_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/"),
             unrecognized: UnrecognizedFileOpt::Delete,
-            failure: UnrecognizedFileOpt::Move(dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/")),
+            failure: UnrecognizedFileOpt::Move(
+                dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),
+            ),
         }
     }
 }
