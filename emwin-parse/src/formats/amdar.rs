@@ -3,10 +3,10 @@
 use std::str::FromStr;
 
 use chrono::NaiveTime;
-use nom::{IResult, combinator::map_res, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar}, streaming::char}};
+use nom::{IResult, combinator::map_res, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar, multispace1}, streaming::char}, multi::separated_list0};
 use uom::si::{f32::{Angle, Length, ThermodynamicTemperature, Velocity}, angle::degree, length::foot, thermodynamic_temperature::degree_celsius, velocity::knot};
 
-use crate::util::TIME_YYGGGG;
+use crate::{util::TIME_YYGGGG, header::WMOProductIdentifier};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 
@@ -14,7 +14,9 @@ use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 /// A single AMDAR report parsed from FM 42 data
 #[derive(Clone, Debug,)]
 pub struct AmdarReport {
-    
+    pub header: WMOProductIdentifier,
+    pub time: NaiveTime,
+    pub items: Vec<AmdarReportItem>, 
 }
 
 #[derive(Clone, Debug)]
@@ -96,6 +98,36 @@ pub enum FlightPhase {
     Descent,
     /// UNS
     Unsteady,
+}
+
+impl AmdarReport {
+    pub fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, header) = WMOProductIdentifier::parse(input)?;
+        let (input, time) = preceded(
+            multispace1,
+            preceded(
+                tag("AMDAR "),
+                map_res(
+                    take(4usize),
+                    |s: &str| NaiveTime::parse_from_str(s, "%d%H")
+                ),
+            ),
+        )(input)?;
+
+        let (input, items) = separated_list0(
+            multispace1,
+            AmdarReportItem::parse,
+        )(input)?;
+
+        Ok((
+            input,
+            Self {
+                header,
+                time,
+                items,
+            }
+        ))
+    }
 }
 
 impl AmdarReportItem {
