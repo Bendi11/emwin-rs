@@ -7,14 +7,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.21", default-features = false, features = ["rt-multi-thread", "io-std", "io-util", "macros", "sync", "fs"] }
+tokio = { version = "1.21", default-features = false, features = ["rt", "io-std", "io-util", "macros", "sync", "fs"] }
 emwin-parse = { path = "../emwin-parse" }
-notify = "5.0"
+notify = { version = "5.0", default-features = false, features = ["macos_fsevent"] }
 dirs = "4.0"
 log = { version = "0.4" }
 toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
-stderrlog = "0.5"
+stderrlog = { version = "0.5", default-features = false }
 
 [package.metadata.deb]
 name = "emwind"

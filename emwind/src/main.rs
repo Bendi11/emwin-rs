@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use emwin_parse::{header::GoesFileName, dt::{DataTypeDesignator, AnalysisSubType, product::Analysis, upperair::UpperAirData, UpperAirDataSubType, code::CodeForm}, formats::{rwr::RegionalWeatherRoundup, amdar::AmdarReport}};
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -21,7 +22,7 @@ pub struct Config {
 pub const CONFIG_FOLDER: &str = "emwind/";
 pub const CONFIG_FILE: &str = "config.toml";
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> ExitCode {
     if let Err(e) = stderrlog::new().show_module_names(false).init() {
         eprintln!("Failed to initialize logger: {}", e);
@@ -41,7 +42,8 @@ async fn main() -> ExitCode {
                 }
             });
         },
-        notify::Config::default().with_poll_interval(Duration::from_secs(600)),
+        notify::Config::default()
+            .with_poll_interval(Duration::from_secs(600)),
     ) {
         Ok(watcher) => watcher,
         Err(e) => {
@@ -124,12 +126,70 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
 
     while let Some(event) = rx.recv().await {
         match event.kind {
-            EventKind::Create(CreateKind::File) => {}
+            EventKind::Create(CreateKind::File) => if let Err(e) = tokio::spawn(async move { on_create(event).await }).await {
+                log::error!("Failed to spawn file reader task: {}", e);
+            },
             _ => (),
         }
     }
 
     ExitCode::SUCCESS
+}
+
+
+pub async fn on_create(event: Event) {
+    for path in event.paths {
+        match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
+            Some(filename) => {
+                let filename: GoesFileName = match filename.parse() {
+                    Ok(f) => f,
+                    Err(e) => {
+                        log::error!("Failed to parse newly created filename {}", filename);
+                        return
+                    }
+                };
+
+                let read = || async {
+                    match tokio::fs::read_to_string(&path).await {
+                        Ok(src) => Some(src),
+                        Err(e) => {
+                            log::error!("Failed to read file {}: {}", path.display(), e);
+                            None
+                        }
+                    }
+                };
+
+                match filename.wmo_product_id {
+                    DataTypeDesignator::Analysis(Analysis { subtype: AnalysisSubType::Surface, .. } ) => {
+                        let Some(src) = read().await else { return };
+                        let rwr = match RegionalWeatherRoundup::parse(&src) {
+                            Ok((_, rwr)) => rwr,
+                            Err(e) => {
+                                log::error!("Failed to parse regional weather roundup: {}", e);
+                                return;
+                            }
+                        };
+                    },
+                    DataTypeDesignator::UpperAirData(UpperAirData { subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR), .. }) => {
+                        let Some(src) = read().await else { return };
+                        let report = match AmdarReport::parse(&src) {
+                            Ok((_, report)) => report,
+                            Err(e) => {
+                                log::error!("Failed to parse AMDAR upper air report: {}", e);
+                                return;
+                            }
+                        };
+                    },
+                    _ => {
+                        log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
+                    }
+                }
+            },
+            None => {
+                log::error!("Newly created file {} contains invalid unicode characters", path.display());
+            },
+        }
+    }
 }
 
 async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
