@@ -12,7 +12,7 @@ use nom::{
     combinator::{map_res, opt},
     multi::separated_list1,
     sequence::{preceded, terminated, tuple},
-    IResult,
+    IResult, branch::alt,
 };
 use uom::si::{
     angle::degree,
@@ -120,7 +120,7 @@ impl AmdarReport {
 
         let (input, items) = separated_list1(
             multispace1,
-            preceded(multispace0, terminated(AmdarReportItem::parse, char('='))),
+            preceded(multispace0, AmdarReportItem::parse),
         )(input)?;
 
         Ok((input, Self { header, items }))
@@ -260,6 +260,14 @@ impl AmdarReportItem {
                 }),
             )),
         )(input)?;
+
+        let (input, _) = alt((
+            tag("="),
+            terminated(
+                take_till(|c: char| c == '=' || c == '\n'),
+                char('=')
+            )
+        ))(input)?;
 
         Ok((
             input,

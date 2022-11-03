@@ -3,3 +3,6 @@ members = [
     "emwin-parse",
     "emwind",
 ]
+
+[profile.release]
+lto = true
