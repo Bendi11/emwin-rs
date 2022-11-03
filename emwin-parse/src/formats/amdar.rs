@@ -333,7 +333,6 @@ mod test {
     #[test]
     pub fn test_amdar() {
         let (_, amdar) = AmdarReport::parse(AMDAR).unwrap();
-        eprintln!("{:#?}", amdar);
-        panic!();
+        assert_eq!(amdar.items.len(), 8);
     }
 }
