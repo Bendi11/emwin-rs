@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use chrono::NaiveTime;
-use nom::{IResult, combinator::map_res, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar, multispace1}, streaming::char}, multi::separated_list0};
+use nom::{IResult, combinator::{map_res, opt}, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar, multispace1, space0, multispace0}, streaming::char}, multi::separated_list1};
 use uom::si::{f32::{Angle, Length, ThermodynamicTemperature, Velocity}, angle::degree, length::foot, thermodynamic_temperature::degree_celsius, velocity::knot};
 
 use crate::{util::TIME_YYGGGG, header::WMOProductIdentifier};
@@ -15,7 +15,6 @@ use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 #[derive(Clone, Debug,)]
 pub struct AmdarReport {
     pub header: WMOProductIdentifier,
-    pub time: NaiveTime,
     pub items: Vec<AmdarReportItem>, 
 }
 
@@ -30,7 +29,7 @@ pub struct AmdarReportItem {
     pub pressure_altitude: Length,
     /// Measure of temperature at the given altitude
     pub air_temperature: ThermodynamicTemperature,
-    pub humidity_or_dew_point: HumidityOrDewPoint,
+    pub humidity_or_dew_point: Option<HumidityOrDewPoint>,
     pub true_wind_direction: Angle,
     pub wind_speed: Velocity,
     pub turbulence: Option<Turbulence>,
@@ -103,27 +102,23 @@ pub enum FlightPhase {
 impl AmdarReport {
     pub fn parse(input: &str) -> IResult<&str, Self> {
         let (input, header) = WMOProductIdentifier::parse(input)?;
-        let (input, time) = preceded(
+        let (input, _) = preceded(
             multispace1,
             preceded(
                 tag("AMDAR "),
-                map_res(
-                    take(4usize),
-                    |s: &str| NaiveTime::parse_from_str(s, "%d%H")
-                ),
+                take(4usize)
             ),
         )(input)?;
 
-        let (input, items) = separated_list0(
+        let (input, items) = separated_list1(
             multispace1,
-            AmdarReportItem::parse,
+            preceded(multispace0, terminated(AmdarReportItem::parse, char('='))),
         )(input)?;
 
         Ok((
             input,
             Self {
                 header,
-                time,
                 items,
             }
         ))
@@ -137,12 +132,12 @@ impl AmdarReportItem {
             |s: &str| s.parse::<FlightPhase>()
         )(input)?;
 
-        let (input, aircraft_identifier) = take_till(char::is_whitespace)(input)?;
+        let (input, aircraft_identifier) = preceded(space1, take_till(char::is_whitespace))(input)?;
         let (input, (angle, dir)) = preceded(
             space1,
             tuple(
                 (
-                    parse_degreesminutes,
+                    parse_degreesminutes::<2>,
                     map_res(
                         take(1usize),
                         |c: &str| c.parse::<LatitudeDir>()
@@ -157,7 +152,7 @@ impl AmdarReportItem {
             space1,
             tuple(
                 (
-                parse_degreesminutes,
+                parse_degreesminutes::<3>,
                     map_res(
                         take(1usize),
                         |c: &str| c.parse::<LongitudeDir>(),
@@ -190,28 +185,31 @@ impl AmdarReportItem {
         let pressure_altitude = Length::new::<foot>(alt_sign * pressure_altitude);
 
         let (input, air_temperature) = preceded(space1, Self::parse_temp)(input)?;
-
+        
+        
         let (input, humidity_or_dew_point) = preceded(
             space1,
-            map_res(
-                take_till(|c: char| c.is_whitespace()),
-                |s: &str| match s.len() {
-                    5 => Ok::<HumidityOrDewPoint, nom::Err<nom::error::Error<&str>>>(
-                        HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)
-                    ),
-                    3 => Ok(
-                        HumidityOrDewPoint::RelativeHumidity(
-                            s.parse::<f32>()
-                                .map_err(|_| nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::Float)))? / 100f32
-                        )
-                    ),
-                    _ => return Err(nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::OneOf))),
-                }
+            opt(
+                map_res(
+                    take_till(|c: char| c.is_whitespace()),
+                    |s: &str| match s.len() {
+                        5 => Ok::<HumidityOrDewPoint, nom::Err<nom::error::Error<&str>>>(
+                            HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)
+                        ),
+                        3 => Ok(
+                            HumidityOrDewPoint::RelativeHumidity(
+                                s.parse::<f32>()
+                                    .map_err(|_| nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::Float)))? / 100f32
+                            )
+                        ),
+                        _ => return Err(nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::OneOf))),
+                    }
+                )
             ),
         )(input)?;
 
         let (input, true_wind_direction) = preceded(
-            space1,
+            space0,
             terminated(
                 map_res(
                     take(3usize),
@@ -220,6 +218,7 @@ impl AmdarReportItem {
                 char('/'),
             )
         )(input)?;
+
 
         let true_wind_direction = Angle::new::<degree>(true_wind_direction);
         
@@ -249,7 +248,7 @@ impl AmdarReportItem {
         )(input)?;
 
         let (input, (navigation_system, transmission_system, precision)) = preceded(
-            space1,
+            tuple((space1, char('S'))),
             tuple((
                 map_res(
                     anychar,
@@ -344,5 +343,19 @@ pub struct InvalidFlightPhase;
 impl std::fmt::Display for InvalidFlightPhase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Invalid flight phase string")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const AMDAR: &str = include_str!("./test/amdar.txt");
+
+    #[test]
+    pub fn test_amdar() {
+        let (_, amdar) = AmdarReport::parse(AMDAR).unwrap();
+        eprintln!("{:#?}", amdar);
+        panic!();
     }
 }

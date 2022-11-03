@@ -1,7 +1,7 @@
 use std::{num::ParseIntError, str::FromStr};
 
 use chrono::{NaiveDateTime, NaiveTime};
-use nom::{bytes::complete::take, character::complete::space1, combinator::map_res, IResult};
+use nom::{bytes::complete::take, character::{complete::space1, streaming::char}, combinator::{map_res, opt}, IResult, sequence::tuple};
 
 use crate::{dt::{DataTypeDesignator, DataTypeDesignatorParseError}, util::TIME_YYGGGG};
 
@@ -158,6 +158,13 @@ impl WMOProductIdentifier {
         let (input, creation_time) = map_res(take(6usize), |ts: &str| {
             NaiveTime::parse_from_str(ts, TIME_YYGGGG)
         })(input)?;
+
+        let (input, _) = opt(
+            tuple((
+                char(' '),
+                take(3usize)
+            ))
+        )(input)?;
 
         Ok((
             input,

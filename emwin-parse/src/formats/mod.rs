@@ -5,10 +5,10 @@ use nom::{IResult, combinator::map_res, bytes::complete::take};
 pub mod rwr;
 pub mod amdar;
 
-/// Parse an angle in degrees minutes (DDMM) format
-pub fn parse_degreesminutes(input: &str) -> IResult<&str, f32> {
+/// Parse an angle in degrees minutes ({D}MM) format
+pub fn parse_degreesminutes<const D: usize>(input: &str) -> IResult<&str, f32> {
     let (input, degrees) = map_res(
-        take(2usize),
+        take(D),
         |s: &str| s.parse::<f32>(),
     )(input)?;
 
