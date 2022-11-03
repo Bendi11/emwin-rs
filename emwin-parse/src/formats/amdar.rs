@@ -3,19 +3,34 @@
 use std::str::FromStr;
 
 use chrono::NaiveTime;
-use nom::{IResult, combinator::{map_res, opt}, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar, multispace1, space0, multispace0}, streaming::char}, multi::separated_list1};
-use uom::si::{f32::{Angle, Length, ThermodynamicTemperature, Velocity}, angle::degree, length::foot, thermodynamic_temperature::degree_celsius, velocity::knot};
+use nom::{
+    bytes::complete::{tag, take, take_till},
+    character::{
+        complete::{anychar, multispace0, multispace1, space0, space1},
+        streaming::char,
+    },
+    combinator::{map_res, opt},
+    multi::separated_list1,
+    sequence::{preceded, terminated, tuple},
+    IResult,
+};
+use uom::si::{
+    angle::degree,
+    f32::{Angle, Length, ThermodynamicTemperature, Velocity},
+    length::foot,
+    thermodynamic_temperature::degree_celsius,
+    velocity::knot,
+};
 
-use crate::{util::TIME_YYGGGG, header::WMOProductIdentifier};
+use crate::{header::WMOProductIdentifier, util::TIME_YYGGGG};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 
-
 /// A single AMDAR report parsed from FM 42 data
-#[derive(Clone, Debug,)]
+#[derive(Clone, Debug)]
 pub struct AmdarReport {
     pub header: WMOProductIdentifier,
-    pub items: Vec<AmdarReportItem>, 
+    pub items: Vec<AmdarReportItem>,
 }
 
 #[derive(Clone, Debug)]
@@ -36,7 +51,6 @@ pub struct AmdarReportItem {
     pub navigation_system: Option<NavigationSystem>,
     pub transmission_system: Option<TransmissionSystem>,
     pub precision: Option<TemperaturePrecision>,
-
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -71,7 +85,7 @@ pub enum Turbulence {
     Severe,
 }
 
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub enum HumidityOrDewPoint {
     /// Ranging from [0., 1.] for relative humidity
     RelativeHumidity(f32),
@@ -102,140 +116,106 @@ pub enum FlightPhase {
 impl AmdarReport {
     pub fn parse(input: &str) -> IResult<&str, Self> {
         let (input, header) = WMOProductIdentifier::parse(input)?;
-        let (input, _) = preceded(
-            multispace1,
-            preceded(
-                tag("AMDAR "),
-                take(4usize)
-            ),
-        )(input)?;
+        let (input, _) = preceded(multispace1, preceded(tag("AMDAR "), take(4usize)))(input)?;
 
         let (input, items) = separated_list1(
             multispace1,
             preceded(multispace0, terminated(AmdarReportItem::parse, char('='))),
         )(input)?;
 
-        Ok((
-            input,
-            Self {
-                header,
-                items,
-            }
-        ))
+        Ok((input, Self { header, items }))
     }
 }
 
 impl AmdarReportItem {
     pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (input, phase) = map_res(
-            take(3usize),
-            |s: &str| s.parse::<FlightPhase>()
-        )(input)?;
+        let (input, phase) = map_res(take(3usize), |s: &str| s.parse::<FlightPhase>())(input)?;
 
         let (input, aircraft_identifier) = preceded(space1, take_till(char::is_whitespace))(input)?;
         let (input, (angle, dir)) = preceded(
             space1,
-            tuple(
-                (
-                    parse_degreesminutes::<2>,
-                    map_res(
-                        take(1usize),
-                        |c: &str| c.parse::<LatitudeDir>()
-                    )
-                )
-            )
+            tuple((
+                parse_degreesminutes::<2>,
+                map_res(take(1usize), |c: &str| c.parse::<LatitudeDir>()),
+            )),
         )(input)?;
 
         let lat = Angle::new::<degree>(dir.to_north(angle));
 
         let (input, (angle, dir)) = preceded(
             space1,
-            tuple(
-                (
+            tuple((
                 parse_degreesminutes::<3>,
-                    map_res(
-                        take(1usize),
-                        |c: &str| c.parse::<LongitudeDir>(),
-                    )
-                )
-            )
+                map_res(take(1usize), |c: &str| c.parse::<LongitudeDir>()),
+            )),
         )(input)?;
-        
+
         let lon = Angle::new::<degree>(dir.to_east(angle));
 
-        let (input, time) = preceded(space1, map_res(take(6usize), |s: &str| NaiveTime::parse_from_str(s, TIME_YYGGGG)))(input)?;
+        let (input, time) = preceded(
+            space1,
+            map_res(take(6usize), |s: &str| {
+                NaiveTime::parse_from_str(s, TIME_YYGGGG)
+            }),
+        )(input)?;
 
         let (input, alt_sign) = preceded(
             space1,
-            map_res(
-                anychar,
-                |c: char| Ok(match c {
+            map_res(anychar, |c: char| {
+                Ok(match c {
                     'F' => 1f32,
                     'A' => -1f32,
                     _ => return Err("Unknown pressure altimiter sign character"),
                 })
-            )
+            }),
         )(input)?;
 
-        let (input, pressure_altitude) = map_res(
-            take(3usize),
-            |s: &str| s.parse::<f32>()
-        )(input)?;
+        let (input, pressure_altitude) = map_res(take(3usize), |s: &str| s.parse::<f32>())(input)?;
 
         let pressure_altitude = Length::new::<foot>(alt_sign * pressure_altitude);
 
         let (input, air_temperature) = preceded(space1, Self::parse_temp)(input)?;
-        
-        
+
         let (input, humidity_or_dew_point) = preceded(
             space1,
-            opt(
-                map_res(
-                    take_till(|c: char| c.is_whitespace()),
-                    |s: &str| match s.len() {
-                        5 => Ok::<HumidityOrDewPoint, nom::Err<nom::error::Error<&str>>>(
-                            HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)
-                        ),
-                        3 => Ok(
-                            HumidityOrDewPoint::RelativeHumidity(
-                                s.parse::<f32>()
-                                    .map_err(|_| nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::Float)))? / 100f32
-                            )
-                        ),
-                        _ => return Err(nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::OneOf))),
+            opt(map_res(
+                take_till(|c: char| c.is_whitespace()),
+                |s: &str| match s.len() {
+                    5 => Ok::<HumidityOrDewPoint, nom::Err<nom::error::Error<&str>>>(
+                        HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?),
+                    ),
+                    3 => Ok(HumidityOrDewPoint::RelativeHumidity(
+                        s.parse::<f32>().map_err(|_| {
+                            nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::Float))
+                        })? / 100f32,
+                    )),
+                    _ => {
+                        return Err(nom::Err::Error(nom::error::Error::new(
+                            s,
+                            nom::error::ErrorKind::OneOf,
+                        )))
                     }
-                )
-            ),
+                },
+            )),
         )(input)?;
 
         let (input, true_wind_direction) = preceded(
             space0,
-            terminated(
-                map_res(
-                    take(3usize),
-                    |s: &str| s.parse::<f32>()
-                ),
-                char('/'),
-            )
+            terminated(map_res(take(3usize), |s: &str| s.parse::<f32>()), char('/')),
         )(input)?;
-
 
         let true_wind_direction = Angle::new::<degree>(true_wind_direction);
-        
-        let (input, wind_speed) = map_res(
-            take(3usize),
-            |s: &str| s.parse::<f32>(),
-        )(input)?;
-        
+
+        let (input, wind_speed) = map_res(take(3usize), |s: &str| s.parse::<f32>())(input)?;
+
         let wind_speed = Velocity::new::<knot>(wind_speed);
 
         let (input, turbulence) = preceded(
             space1,
             preceded(
                 tag("TB"),
-                map_res(
-                    anychar,
-                    |c: char| Ok(Some(match c {
+                map_res(anychar, |c: char| {
+                    Ok(Some(match c {
                         '0' => Turbulence::None,
                         '1' => Turbulence::Light,
                         '2' => Turbulence::Moderate,
@@ -243,25 +223,23 @@ impl AmdarReportItem {
                         '/' => return Ok(None),
                         _ => return Err("invalid turbulence value"),
                     }))
-                )
-            )
+                }),
+            ),
         )(input)?;
 
         let (input, (navigation_system, transmission_system, precision)) = preceded(
             tuple((space1, char('S'))),
             tuple((
-                map_res(
-                    anychar,
-                    |c: char| Ok(Some(match c {
+                map_res(anychar, |c: char| {
+                    Ok(Some(match c {
                         '0' => NavigationSystem::Intertial,
                         '1' => NavigationSystem::OMEGA,
                         '/' => return Ok(None),
-                        _ => return Err("invalid navigation system character")
+                        _ => return Err("invalid navigation system character"),
                     }))
-                ),
-                map_res(
-                    anychar,
-                    |c: char| Ok(Some(match c {
+                }),
+                map_res(anychar, |c: char| {
+                    Ok(Some(match c {
                         '0' => TransmissionSystem::ASDAR,
                         '1' => TransmissionSystem::ASDARWithACARS(false),
                         '2' => TransmissionSystem::ASDARWithACARS(true),
@@ -271,53 +249,54 @@ impl AmdarReportItem {
                         '/' => return Ok(None),
                         _ => return Err("invalid transmission system character"),
                     }))
-                ),
-                map_res(
-                    anychar,
-                    |c: char| Ok(Some(match c {
+                }),
+                map_res(anychar, |c: char| {
+                    Ok(Some(match c {
                         '1' => TemperaturePrecision::Low,
                         '0' => TemperaturePrecision::High,
                         '/' => return Ok(None),
                         _ => return Err("invalid temperature precision character"),
                     }))
-                )
-            ))
+                }),
+            )),
         )(input)?;
 
-        Ok((input, Self {
-            phase,
-            aircraft_identifier: aircraft_identifier.to_owned(),
-            lat,
-            lon,
-            time,
-            pressure_altitude,
-            air_temperature,
-            humidity_or_dew_point,
-            true_wind_direction,
-            wind_speed,
-            turbulence,
-            navigation_system,
-            transmission_system,
-            precision,
-        }))
+        Ok((
+            input,
+            Self {
+                phase,
+                aircraft_identifier: aircraft_identifier.to_owned(),
+                lat,
+                lon,
+                time,
+                pressure_altitude,
+                air_temperature,
+                humidity_or_dew_point,
+                true_wind_direction,
+                wind_speed,
+                turbulence,
+                navigation_system,
+                transmission_system,
+                precision,
+            },
+        ))
     }
 
     fn parse_temp(input: &str) -> IResult<&str, ThermodynamicTemperature> {
-        let (input, temperature_sign) = map_res(
-            take(2usize),
-            |s: &str| Ok(match s {
+        let (input, temperature_sign) = map_res(take(2usize), |s: &str| {
+            Ok(match s {
                 "PS" => 1f32,
                 "MS" => -1f32,
                 _ => return Err("Invalid temperature sign string"),
             })
-        )(input)?;
+        })(input)?;
 
-        let (input, temperature) = map_res(
-            take(3usize),
-            |s: &str| s.parse::<f32>(),
-        )(input)?;
+        let (input, temperature) = map_res(take(3usize), |s: &str| s.parse::<f32>())(input)?;
 
-        Ok((input, ThermodynamicTemperature::new::<degree_celsius>(temperature / 10f32 * temperature_sign)))
+        Ok((
+            input,
+            ThermodynamicTemperature::new::<degree_celsius>(temperature / 10f32 * temperature_sign),
+        ))
     }
 }
 
@@ -336,8 +315,7 @@ impl FromStr for FlightPhase {
     }
 }
 
-
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub struct InvalidFlightPhase;
 
 impl std::fmt::Display for InvalidFlightPhase {

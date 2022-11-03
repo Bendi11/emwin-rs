@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use nom::{
     bytes::complete::{tag, take, take_while},
-    character::complete::{anychar, multispace1, space0, space1, char},
+    character::complete::{anychar, char, multispace1, space0, space1},
     combinator::{map_res, opt},
     error::ErrorKind,
     multi::many_till,
@@ -103,7 +103,9 @@ impl RegionalWeatherRoundupItem {
 
         let mut num = preceded(
             space1,
-            map_res(take_while(|c: char| !c.is_whitespace()), |s: &str| s.parse::<i32>()),
+            map_res(take_while(|c: char| !c.is_whitespace()), |s: &str| {
+                s.parse::<i32>()
+            }),
         );
 
         let (input, temperature) = num(input)?;
