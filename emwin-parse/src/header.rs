@@ -3,7 +3,7 @@ use std::{num::ParseIntError, str::FromStr};
 use chrono::{NaiveDateTime, NaiveTime};
 use nom::{bytes::complete::take, character::complete::space1, combinator::map_res, IResult};
 
-use crate::dt::{DataTypeDesignator, DataTypeDesignatorParseError};
+use crate::{dt::{DataTypeDesignator, DataTypeDesignatorParseError}, util::TIME_YYGGGG};
 
 /// A full WMO product identifier with data type designator, country code, and time
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -144,6 +144,7 @@ impl FromStr for GoesFileName {
     }
 }
 
+
 impl WMOProductIdentifier {
     pub fn parse(input: &str) -> IResult<&str, Self> {
         let (input, datatype) =
@@ -155,7 +156,7 @@ impl WMOProductIdentifier {
         let (input, _) = space1(input)?;
 
         let (input, creation_time) = map_res(take(6usize), |ts: &str| {
-            NaiveTime::parse_from_str(ts, "%d%H%M")
+            NaiveTime::parse_from_str(ts, TIME_YYGGGG)
         })(input)?;
 
         Ok((

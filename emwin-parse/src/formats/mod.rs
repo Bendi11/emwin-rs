@@ -21,18 +21,6 @@ pub fn parse_degreesminutes(input: &str) -> IResult<&str, f32> {
 }
 
 
-#[derive(Clone, Copy, Debug,)]
-pub struct Latitude {
-    pub angle: f32,
-    pub dir: LatitudeDir,
-}
-
-#[derive(Clone, Copy, Debug,)]
-pub struct Longitude {
-    pub angle: f32,
-    pub dir: LongitudeDir,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LatitudeDir {
     North,
@@ -68,5 +56,25 @@ impl FromStr for LatitudeDir {
             'S' => Self::South,
             other => return Err(InvalidLatLong(other)),
         })
+    }
+}
+
+impl LatitudeDir {
+    pub fn to_north(&self, ang: f32) -> f32 {
+        if *self == Self::South {
+            ang * -1f32
+        } else {
+            ang
+        }
+    }
+}
+
+impl LongitudeDir {
+    pub fn to_east(&self, ang: f32) -> f32 {
+        if *self == Self::West {
+            ang * -1f32
+        } else {
+            ang
+        }
     }
 }

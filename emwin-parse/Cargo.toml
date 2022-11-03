@@ -10,3 +10,4 @@ log = "0.4"
 thiserror = "1.0"
 chrono = "0.4"
 nom = "7.1"
+uom = { version = "0.33", default-features = false, features = ["f32", "si", "std"] }
