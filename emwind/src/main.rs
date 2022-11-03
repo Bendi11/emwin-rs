@@ -6,18 +6,36 @@ use std::{
 
 use emwin_parse::{header::GoesFileName, dt::{DataTypeDesignator, AnalysisSubType, product::Analysis, upperair::UpperAirData, UpperAirDataSubType, code::CodeForm}, formats::{rwr::RegionalWeatherRoundup, amdar::AmdarReport}};
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
+use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc::{channel, Receiver},
 };
 
+/// Action to take when an unrecognized file appears in the input directory
+#[derive(Serialize, Deserialize)]
+#[serde(tag="on",content="path")]
+pub enum UnrecognizedFileOpt {
+    #[serde(rename="delete")]
+    Delete,
+    #[serde(rename="leave")]
+    None,
+    #[serde(rename="move")]
+    Move(PathBuf),
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     /// Folder that contains all GOES output files
-    #[serde(rename = "goes-dir")]
+    #[serde(rename="goes-dir")]
     pub goes_dir: PathBuf,
+    /// What to do when we get an unrecognized file in the input directory
+    pub unrecognized: UnrecognizedFileOpt,
+    pub failure: UnrecognizedFileOpt,
 }
+
+pub const CONFIG: OnceCell<Config> = OnceCell::new();
 
 pub const CONFIG_FOLDER: &str = "emwind/";
 pub const CONFIG_FILE: &str = "config.toml";
@@ -56,7 +74,7 @@ async fn main() -> ExitCode {
 }
 
 async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
-    let config = match dirs::config_dir() {
+    CONFIG.set(match dirs::config_dir() {
         Some(dir) => {
             let config_path = dir.join(CONFIG_FOLDER).join(CONFIG_FILE);
             if config_path.exists() {
@@ -113,12 +131,12 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             );
             Config::default()
         }
-    };
+    });
 
-    if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
+    if let Err(e) = watcher.watch(&CONFIG.wait().goes_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
-            config.goes_dir.display(),
+            CONFIG.wait().goes_dir.display(),
             e,
         );
         return ExitCode::FAILURE;
@@ -145,15 +163,17 @@ pub async fn on_create(event: Event) {
                     Ok(f) => f,
                     Err(e) => {
                         log::error!("Failed to parse newly created filename {}", filename);
+                        CONFIG.wait().failure.do_for(&path).await;
                         return
                     }
                 };
 
-                let read = || async {
+                let read = async {
                     match tokio::fs::read_to_string(&path).await {
                         Ok(src) => Some(src),
                         Err(e) => {
                             log::error!("Failed to read file {}: {}", path.display(), e);
+                            CONFIG.wait().failure.do_for(&path).await;
                             None
                         }
                     }
@@ -161,33 +181,60 @@ pub async fn on_create(event: Event) {
 
                 match filename.wmo_product_id {
                     DataTypeDesignator::Analysis(Analysis { subtype: AnalysisSubType::Surface, .. } ) => {
-                        let Some(src) = read().await else { return };
+                        let Some(src) = read.await else { return };
                         let rwr = match RegionalWeatherRoundup::parse(&src) {
                             Ok((_, rwr)) => rwr,
                             Err(e) => {
                                 log::error!("Failed to parse regional weather roundup: {}", e);
+                                CONFIG.wait().failure.do_for(&path).await;
                                 return;
                             }
                         };
                     },
                     DataTypeDesignator::UpperAirData(UpperAirData { subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR), .. }) => {
-                        let Some(src) = read().await else { return };
+                        let Some(src) = read.await else { return };
                         let report = match AmdarReport::parse(&src) {
                             Ok((_, report)) => report,
                             Err(e) => {
                                 log::error!("Failed to parse AMDAR upper air report: {}", e);
+                                CONFIG.wait().failure.do_for(&path).await;
                                 return;
                             }
                         };
                     },
                     _ => {
                         log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
+                        CONFIG.wait().unrecognized.do_for(&path).await;
                     }
                 }
             },
             None => {
                 log::error!("Newly created file {} contains invalid unicode characters", path.display());
+                CONFIG.wait().unrecognized.do_for(&path).await;
             },
+        }
+    }
+}
+
+impl UnrecognizedFileOpt {
+    /// Attempt to execute the given action for a file at `path`
+    pub async fn do_for(&self, path: impl AsRef<Path>) {
+        match self {
+            Self::Delete => if let Err(e) = tokio::fs::remove_file(&path).await {
+                log::error!("Failed to delete file {}: {}", path.as_ref().display(), e);
+            },
+            Self::Move(to) => if let Err(e) = tokio::fs::copy(
+                &path,
+                to.join(
+                    path
+                        .as_ref()
+                        .file_name()
+                        .unwrap_or(path.as_ref().as_os_str())
+                )
+            ).await {
+                log::error!("Failed to move file {} to {}: {}", path.as_ref().display(), to.display(), e);
+            },
+            Self::None => (),
         }
     }
 }
@@ -224,7 +271,9 @@ async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            goes_dir: "~/goes/".into(),
+            goes_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/"),
+            unrecognized: UnrecognizedFileOpt::Delete,
+            failure: UnrecognizedFileOpt::Move(dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/")),
         }
     }
 }
