@@ -3,8 +3,8 @@
 use std::str::FromStr;
 
 use chrono::NaiveTime;
-use nom::{IResult, combinator::{map_res, all_consuming}, bytes::complete::{take, take_till}, sequence::{preceded, Tuple, tuple}, character::complete::{space1, anychar}, branch::alt};
-use uom::si::{f32::{Pressure, Angle, Length, ThermodynamicTemperature, MassDensity}, angle::degree, pressure::hectopascal, length::foot, thermodynamic_temperature::degree_celsius};
+use nom::{IResult, combinator::map_res, bytes::complete::{take, take_till, tag}, sequence::{preceded, tuple, terminated}, character::{complete::{space1, anychar}, streaming::char}};
+use uom::si::{f32::{Angle, Length, ThermodynamicTemperature, Velocity}, angle::degree, length::foot, thermodynamic_temperature::degree_celsius, velocity::knot};
 
 use crate::util::TIME_YYGGGG;
 
@@ -29,8 +29,46 @@ pub struct AmdarReportItem {
     /// Measure of temperature at the given altitude
     pub air_temperature: ThermodynamicTemperature,
     pub humidity_or_dew_point: HumidityOrDewPoint,
+    pub true_wind_direction: Angle,
+    pub wind_speed: Velocity,
+    pub turbulence: Option<Turbulence>,
+    pub navigation_system: Option<NavigationSystem>,
+    pub transmission_system: Option<TransmissionSystem>,
+    pub precision: Option<TemperaturePrecision>,
+
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum TransmissionSystem {
+    ASDAR,
+    /// false if ACARS not operative
+    ASDARWithACARS(bool),
+    ACARS,
+    /// false if ASDAR not operative
+    ACARSWithASDAR(bool),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum TemperaturePrecision {
+    /// +/- 2.0 C
+    Low,
+    /// +/- 1.0 C
+    High,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum NavigationSystem {
+    Intertial,
+    OMEGA,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Turbulence {
+    None,
+    Light,
+    Moderate,
+    Severe,
+}
 
 #[derive(Clone, Copy, Debug,)]
 pub enum HumidityOrDewPoint {
@@ -98,7 +136,7 @@ impl AmdarReportItem {
         
         let lon = Angle::new::<degree>(dir.to_east(angle));
 
-        let (input, time) = preceded(space1, map_res(take(6), |s: &str| NaiveTime::parse_from_str(s, TIME_YYGGGG)))(input)?;
+        let (input, time) = preceded(space1, map_res(take(6usize), |s: &str| NaiveTime::parse_from_str(s, TIME_YYGGGG)))(input)?;
 
         let (input, alt_sign) = preceded(
             space1,
@@ -107,13 +145,13 @@ impl AmdarReportItem {
                 |c: char| Ok(match c {
                     'F' => 1f32,
                     'A' => -1f32,
-                    other => return Err("Unknown pressure altimiter sign character"),
+                    _ => return Err("Unknown pressure altimiter sign character"),
                 })
             )
         )(input)?;
 
         let (input, pressure_altitude) = map_res(
-            take(3),
+            take(3usize),
             |s: &str| s.parse::<f32>()
         )(input)?;
 
@@ -126,17 +164,111 @@ impl AmdarReportItem {
             map_res(
                 take_till(|c: char| c.is_whitespace()),
                 |s: &str| match s.len() {
-                    5 => Ok(HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)),
+                    5 => Ok::<HumidityOrDewPoint, nom::Err<nom::error::Error<&str>>>(
+                        HumidityOrDewPoint::DewPoint(Self::parse_temp(s).map(|(_, r)| r)?)
+                    ),
                     3 => Ok(
                         HumidityOrDewPoint::RelativeHumidity(
                             s.parse::<f32>()
-                                .map_err(|e| nom::error::Error::new(s, nom::error::ErrorKind::Float))? / 100f32
+                                .map_err(|_| nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::Float)))? / 100f32
                         )
                     ),
+                    _ => return Err(nom::Err::Error(nom::error::Error::new(s, nom::error::ErrorKind::OneOf))),
                 }
             ),
         )(input)?;
 
+        let (input, true_wind_direction) = preceded(
+            space1,
+            terminated(
+                map_res(
+                    take(3usize),
+                    |s: &str| s.parse::<f32>()
+                ),
+                char('/'),
+            )
+        )(input)?;
+
+        let true_wind_direction = Angle::new::<degree>(true_wind_direction);
+        
+        let (input, wind_speed) = map_res(
+            take(3usize),
+            |s: &str| s.parse::<f32>(),
+        )(input)?;
+        
+        let wind_speed = Velocity::new::<knot>(wind_speed);
+
+        let (input, turbulence) = preceded(
+            space1,
+            preceded(
+                tag("TB"),
+                map_res(
+                    anychar,
+                    |c: char| Ok(Some(match c {
+                        '0' => Turbulence::None,
+                        '1' => Turbulence::Light,
+                        '2' => Turbulence::Moderate,
+                        '3' => Turbulence::Severe,
+                        '/' => return Ok(None),
+                        _ => return Err("invalid turbulence value"),
+                    }))
+                )
+            )
+        )(input)?;
+
+        let (input, (navigation_system, transmission_system, precision)) = preceded(
+            space1,
+            tuple((
+                map_res(
+                    anychar,
+                    |c: char| Ok(Some(match c {
+                        '0' => NavigationSystem::Intertial,
+                        '1' => NavigationSystem::OMEGA,
+                        '/' => return Ok(None),
+                        _ => return Err("invalid navigation system character")
+                    }))
+                ),
+                map_res(
+                    anychar,
+                    |c: char| Ok(Some(match c {
+                        '0' => TransmissionSystem::ASDAR,
+                        '1' => TransmissionSystem::ASDARWithACARS(false),
+                        '2' => TransmissionSystem::ASDARWithACARS(true),
+                        '3' => TransmissionSystem::ACARS,
+                        '4' => TransmissionSystem::ACARSWithASDAR(false),
+                        '5' => TransmissionSystem::ACARSWithASDAR(true),
+                        '/' => return Ok(None),
+                        _ => return Err("invalid transmission system character"),
+                    }))
+                ),
+                map_res(
+                    anychar,
+                    |c: char| Ok(Some(match c {
+                        '1' => TemperaturePrecision::Low,
+                        '0' => TemperaturePrecision::High,
+                        '/' => return Ok(None),
+                        _ => return Err("invalid temperature precision character"),
+                    }))
+                )
+            ))
+        )(input)?;
+
+        Ok((input, Self {
+            phase,
+            aircraft_identifier: aircraft_identifier.to_owned(),
+            lat,
+            lon,
+            time,
+            pressure_altitude,
+            air_temperature,
+            humidity_or_dew_point,
+            true_wind_direction,
+            wind_speed,
+            turbulence,
+            navigation_system,
+            transmission_system,
+            precision,
+        }))
     }
 
     fn parse_temp(input: &str) -> IResult<&str, ThermodynamicTemperature> {
