@@ -31,7 +31,7 @@ pub struct TAFWind {
 
 
 /// Significant weather reported in FM 15 and 51
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SignificantWeather {
     pub intensity: SignificantWeatherIntensity,
     pub descriptor: Option<SignificantWeatherDescriptor>,
@@ -39,7 +39,7 @@ pub struct SignificantWeather {
     pub phenomena: Option<SignificantWeatherPhenomena>,
 }
 
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone,Copy,Debug, PartialEq, Eq)]
 pub enum SignificantWeatherIntensity {
     Light,
     Moderate,
@@ -47,7 +47,7 @@ pub enum SignificantWeatherIntensity {
     Vicinity,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignificantWeatherDescriptor {
     Shallow,
     Patches,
@@ -73,7 +73,7 @@ bitflags::bitflags! {
 }
 
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignificantWeatherPhenomena {
     Mist,
     Fog,
@@ -180,5 +180,23 @@ impl SignificantWeatherPrecipitation {
         }
 
         Ok((input, me))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    pub fn test_significant_weather() {
+        let (_, sigwth) = SignificantWeather::parse("+SNRA").unwrap();
+        let correct_weather = SignificantWeather {
+            intensity: SignificantWeatherIntensity::Heavy,
+            descriptor: None,
+            precipitation: SignificantWeatherPrecipitation::RAIN | SignificantWeatherPrecipitation::SNOW,
+            phenomena: None,
+        };
+
+        assert_eq!(sigwth, correct_weather);
     }
 }
