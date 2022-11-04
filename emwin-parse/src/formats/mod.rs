@@ -5,6 +5,7 @@ use nom::{bytes::complete::take, combinator::map_res, IResult};
 pub mod amdar;
 pub mod rwr;
 pub mod taf;
+pub mod codetbl;
 
 /// Parse an angle in degrees minutes ({D}MM) format
 pub fn parse_degreesminutes<const D: usize>(input: &str) -> IResult<&str, f32> {
