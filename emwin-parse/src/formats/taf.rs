@@ -226,8 +226,10 @@ impl TAFReportItem {
             )),
             tag("SM"),
         );
-
+        
         enum VisFirst { Number(f32), SM(f32) }
+
+        let (input, cavok) = opt(preceded(space1, tag("CAVOK")))(input)?;
 
         let (input, vis_first) = preceded(
             space1,
