@@ -1,8 +1,8 @@
 use chrono::{NaiveTime, Duration};
-use nom::{IResult, combinator::{recognize, map_opt, opt, map_res}, bytes::complete::{take, tag, take_till}, character::{complete::{anychar, space1}, streaming::char}, branch::alt, sequence::{preceded, terminated, separated_pair}, Parser};
-use uom::si::{f32::{Angle, Velocity, Length}, angle::degree, velocity::{knot, meter_per_second}};
+use nom::{IResult, combinator::{recognize, map_opt, opt, map_res}, bytes::complete::{take, tag, take_till}, character::{complete::{anychar, space1, digit1}, streaming::char}, branch::alt, sequence::{preceded, terminated, separated_pair, tuple}, Parser, multi::many0};
+use uom::si::{f32::{Angle, Velocity, Length}, angle::degree, velocity::{knot, meter_per_second}, length::{mile, meter}};
 
-use crate::{header::CCCC, util::{TIME_YYGGGG, parse_yygg}};
+use crate::{header::CCCC, util::{TIME_YYGGGG, parse_yygg}, formats::codetbl::parse_1690};
 
 
 
@@ -32,11 +32,11 @@ pub enum TAFReportKind {
     Correction,
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug,)]
 pub struct TAFSignificantWeatherReport {
     pub horizontal_vis: Length,
     pub significant_weather: Option<SignificantWeather>,
-    pub clouds: Option<TAFSignificantWeatherReportClouds>,
+    pub clouds: Vec<TAFSignificantWeatherReportClouds>,
 }
 
 #[derive(Clone, Copy, Debug,)]
@@ -210,13 +210,104 @@ impl TAFReportItem {
             max_speed,
         };
 
+        let vis_sm = terminated(
+            tuple((
+                map_res(
+                    digit1,
+                    |s: &str| s.parse::<f32>(),
+                ),
+                opt(preceded(
+                    char('/'),
+                    map_res(
+                        digit1,
+                        |s: &str| s.parse::<f32>(),
+                    ),
+                )),
+            )),
+            tag("SM"),
+        );
+
+        enum VisFirst { Number(f32), SM(f32) }
+
         let (input, vis_first) = preceded(
             space1,
-            map_res(
-                take_till(|c: char| !c.is_whitespace()),
-                |s: &str| 
+            alt((
+                map_res(
+                    digit1,
+                    |s: &str| Ok(VisFirst::Number(s.parse::<f32>()?))
+                ),
+                map_res(
+                    vis_sm,
+                    |(first, denominator)| Ok(match denominator {
+                        Some(d) => VisFirst::SM(first / d),
+                        None => VisFirst::SM(first),
+                    })
+                ),
+            )),
+        )(input)?;
+
+        let (input, visibility) = match vis_first {
+            VisFirst::Number(whole) => match opt(vis_sm)(input)? {
+                (input, Some((numerator, Some(denominator)))) => (input, Length::new::<mile>(whole + numerator / denominator)),
+                (input, Some((numerator, None))) => (input, Length::new::<mile>(whole + numerator)),
+                (input, None) => (input, Length::new::<meter>(whole)),
+            },
+            VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
+        };
+
+        let (input, weather) = opt(
+            preceded(
+                space1,
+                alt((
+                    SignificantWeather::parse.map(|w| Some(w)),
+                    map_res(
+                        take(3usize),
+                        |s: &str| if s == "NSW" {
+                            Ok(None) 
+                        } else {
+                            Err(())
+                        }
+                    )
+                )),
             )
-        )
+        )(input)?;
+
+        let weather = weather.flatten();
+
+        fn parse_clouds(input: &str) -> IResult<&str, Option<TAFSignificantWeatherReportClouds>> {
+            let (input, amount) = opt(preceded(
+                space1,
+                alt((
+                    tag("VV").map(|_| None),
+                    map_res(
+                        take(3usize),
+                        |s: &str| Ok(match s {
+                            "FEW" => Some(CloudAmount::Few),
+                            "SCT" => Some(CloudAmount::Scattered),
+                            "BKN" => Some(CloudAmount::Broken),
+                            "OVC" => Some(CloudAmount::Overcast),
+                            _ => return Err(()),
+                        })
+                    )
+                ))
+            ))(input)?;
+
+            Ok(match amount {
+                Some(amount) => {
+                    let (input, altitude) = parse_1690(input)?;
+                    (
+                        input,
+                        Some(TAFSignificantWeatherReportClouds {
+                            amount,
+                            altitude,
+                        }),
+                    )
+                },
+                None => (input, None),
+            })
+        }
+
+        let (input, clouds) = many0(map_res(parse_clouds, |c| c.ok_or(())))(input)?;
     }
 }
 
