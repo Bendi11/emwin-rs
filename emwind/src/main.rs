@@ -80,7 +80,7 @@ async fn main() -> ExitCode {
 }
 
 async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
-    CONFIG.set(match dirs::config_dir() {
+    let _ = CONFIG.set(match dirs::config_dir() {
         Some(dir) => {
             let config_path = dir.join(CONFIG_FOLDER).join(CONFIG_FILE);
             if config_path.exists() {
@@ -169,7 +169,7 @@ pub async fn on_create(event: Event) {
                 let filename: GoesFileName = match filename.parse() {
                     Ok(f) => f,
                     Err(e) => {
-                        log::error!("Failed to parse newly created filename {}", filename);
+                        log::error!("Failed to parse newly created filename {}: {}", filename, e);
                         CONFIG.wait().failure.do_for(&path).await;
                         return;
                     }
