@@ -1,5 +1,5 @@
 use chrono::NaiveTime;
-use nom::{IResult, combinator::{recognize, map_opt, opt, map_res}, bytes::complete::take};
+use nom::{IResult, combinator::{recognize, map_opt, opt, map_res}, bytes::complete::take, character::complete::anychar, branch::alt};
 use uom::si::f32::{Angle, Velocity, Length};
 
 use crate::header::CCCC;
@@ -42,6 +42,7 @@ pub struct SignificantWeather {
 #[derive(Clone,Copy,Debug)]
 pub enum SignificantWeatherIntensity {
     Light,
+    Moderate,
     Heavy,
     Vicinity,
 }
@@ -88,8 +89,75 @@ pub enum SignificantWeatherPhenomena {
     DustStorm,
 }
 
-impl SignificantWeatherPrecipitation {
+impl SignificantWeather {
     pub fn parse(input: &str) -> IResult<&str, Self> {
+        let (input, intensity) = opt(
+            alt((
+                map_opt(
+                    anychar,
+                    |c: char| Some(match c {
+                        '-' => SignificantWeatherIntensity::Light,
+                        '+' => SignificantWeatherIntensity::Heavy,
+                        _ => return None,
+                    })
+                ),
+                map_opt(
+                    take(2usize),
+                    |s: &str| (s == "VC").then_some(SignificantWeatherIntensity::Moderate),
+                )
+            ))
+        )(input)?;
+
+        let intensity = intensity.unwrap_or(SignificantWeatherIntensity::Moderate);
+        let (input, descriptor) = opt(map_opt(
+            take(2usize),
+            |s: &str| Some(match s {
+                "MI" => SignificantWeatherDescriptor::Shallow,
+                "BC" => SignificantWeatherDescriptor::Patches,
+                "PR" => SignificantWeatherDescriptor::Partial,
+                "DR" => SignificantWeatherDescriptor::LowDrifting,
+                "BL" => SignificantWeatherDescriptor::Blowing,
+                "SH" => SignificantWeatherDescriptor::Showers,
+                "TS" => SignificantWeatherDescriptor::Thunderstorm,
+                "FZ" => SignificantWeatherDescriptor::Supercooled,
+                _ => return None,
+            })
+        ))(input)?;
+
+        let (input, precipitation) = SignificantWeatherPrecipitation::parse(input)?;
+        let (input, phenomena) = opt(map_opt(
+            take(2usize),
+            |s: &str| Some(match s {
+                "BR" => SignificantWeatherPhenomena::Mist,
+                "FG" => SignificantWeatherPhenomena::Fog,
+                "FU" => SignificantWeatherPhenomena::Smoke,
+                "VA" => SignificantWeatherPhenomena::Ash,
+                "DU" => SignificantWeatherPhenomena::Dust,
+                "SA" => SignificantWeatherPhenomena::Sand,
+                "HZ" => SignificantWeatherPhenomena::Haze,
+                "PO" => SignificantWeatherPhenomena::DustSandSwirls,
+                "SQ" => SignificantWeatherPhenomena::Squalls,
+                "FC" => SignificantWeatherPhenomena::FunnelCloud,
+                "SS" => SignificantWeatherPhenomena::SandStorm,
+                "DS" => SignificantWeatherPhenomena::DustStorm,
+                _ => return None,
+            })
+        ))(input)?;
+
+        Ok((
+            input,
+            Self {
+                intensity,
+                descriptor,
+                precipitation,
+                phenomena,
+            }
+        ))
+    }
+}
+
+impl SignificantWeatherPrecipitation {
+    pub fn parse(mut input: &str) -> IResult<&str, Self> {
         let mut me = Self::empty();
         while let (new_input, Some(prec)) = opt(
             map_res(
