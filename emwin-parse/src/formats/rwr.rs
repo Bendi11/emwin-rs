@@ -6,13 +6,12 @@ use nom::{
     bytes::complete::{tag, take, take_while},
     character::complete::{anychar, char, multispace1, space0, space1},
     combinator::{map_res, opt},
-    error::ErrorKind,
+    error::{ErrorKind, FromExternalError},
     multi::many_till,
     sequence::{preceded, terminated},
-    IResult,
 };
 
-use crate::{dt::area::AreaCode, header::WMOProductIdentifier};
+use crate::{dt::area::AreaCode, header::WMOProductIdentifier, ParseResult, ParseError};
 
 #[derive(Clone, Debug)]
 pub struct RegionalWeatherRoundup {
@@ -44,7 +43,7 @@ pub enum RegionalWeatherSkyCondition {
 }
 
 impl RegionalWeatherRoundup {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, header) = terminated(WMOProductIdentifier::parse, multispace1)(input)?;
 
         let (input, area) = preceded(
@@ -90,7 +89,7 @@ impl RegionalWeatherRoundup {
 
 impl RegionalWeatherRoundupItem {
     /// Parse a single weather report from one line
-    pub fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, (city_parts, sky)) = preceded(
             opt(char('*')),
             many_till(
@@ -126,23 +125,25 @@ impl RegionalWeatherRoundupItem {
 }
 
 impl RegionalWeatherSkyCondition {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
-        let (rest, designator) = take_while(|c: char| !c.is_whitespace())(input)?;
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        let (rest, designator) = map_res(
+            take_while(|c: char| !c.is_whitespace()),
+            Self::from_str,
+        )(input)?;
 
         Ok((
             rest,
-            Self::from_str(designator).map_err(|_| {
-                nom::Err::Error(nom::error::Error {
-                    input: designator,
-                    code: ErrorKind::Fail,
-                })
-            })?,
+            designator, 
         ))
     }
 }
 
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[error("invalid sky condition")]
+pub struct RegionalWeatherSkyConditionParseErr;
+
 impl FromStr for RegionalWeatherSkyCondition {
-    type Err = ();
+    type Err = RegionalWeatherSkyConditionParseErr;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "CLOUDY" => Self::Cloudy,
@@ -153,7 +154,7 @@ impl FromStr for RegionalWeatherSkyCondition {
             "FAIR" => Self::Fair,
             "CLEAR" => Self::Clear,
             "N/A" => Self::NA,
-            _ => return Err(()),
+            _ => return Err(RegionalWeatherSkyConditionParseErr),
         })
     }
 }

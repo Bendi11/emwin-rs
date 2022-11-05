@@ -6,12 +6,11 @@ use nom::{
     character::{complete::space1, streaming::char},
     combinator::{map_res, opt},
     sequence::tuple,
-    IResult,
 };
 
 use crate::{
     dt::{DataTypeDesignator, DataTypeDesignatorParseError},
-    util::TIME_YYGGGG,
+    util::TIME_YYGGGG, ParseResult,
 };
 
 /// A full WMO product identifier with data type designator, country code, and time
@@ -154,7 +153,7 @@ impl FromStr for GoesFileName {
 }
 
 impl WMOProductIdentifier {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, datatype) =
             map_res(take(6usize), |dt: &str| dt.parse::<DataTypeDesignator>())(input)?;
 

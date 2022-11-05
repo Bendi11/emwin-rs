@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use nom::{bytes::complete::take, combinator::map_res, IResult};
+use nom::{bytes::complete::take, combinator::map_res};
+
+use crate::ParseResult;
 
 pub mod amdar;
 pub mod rwr;
@@ -8,7 +10,7 @@ pub mod taf;
 pub mod codetbl;
 
 /// Parse an angle in degrees minutes ({D}MM) format
-pub fn parse_degreesminutes<const D: usize>(input: &str) -> IResult<&str, f32> {
+pub fn parse_degreesminutes<const D: usize>(input: &str) -> ParseResult<&str, f32> {
     let (input, degrees) = map_res(take(D), |s: &str| s.parse::<f32>())(input)?;
 
     let (input, minutes) = map_res(take(2usize), |s: &str| s.parse::<f32>())(input)?;
@@ -28,7 +30,8 @@ pub enum LongitudeDir {
     West,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, thiserror::Error)]
+#[error("Invalid compass direction {0}, expecting N, E, S, W")]
 pub struct InvalidLatLong(char);
 
 impl FromStr for LongitudeDir {

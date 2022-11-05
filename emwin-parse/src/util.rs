@@ -1,12 +1,14 @@
 use chrono::{Duration, NaiveTime};
-use nom::{IResult, sequence::tuple, combinator::map_res, bytes::complete::take};
+use nom::{sequence::tuple, combinator::map_res, bytes::complete::take};
+
+use crate::ParseResult;
 
 /// chrono format string for dates in YYGGgg format
 pub const TIME_YYGGGG: &str = "%d%H%M";
 
 /// Parse a duration in YYGG (days-hours) format
-pub fn parse_yygg(input: &str) -> IResult<&str, NaiveTime> {
-    fn parsenum(input: &str) -> IResult<&str, i64> {
+pub fn parse_yygg(input: &str) -> ParseResult<&str, NaiveTime> {
+    fn parsenum(input: &str) -> ParseResult<&str, i64> {
         map_res(
             take(2usize),
             |s: &str| s.parse::<i64>(),

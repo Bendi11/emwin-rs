@@ -1,16 +1,17 @@
 use std::num::ParseFloatError;
 
 use chrono::{NaiveTime, Duration};
-use nom::{IResult, combinator::{recognize, map_opt, opt, map_res}, bytes::complete::{take, tag, take_till}, character::{complete::{anychar, space1, digit1}, streaming::char}, branch::alt, sequence::{preceded, terminated, separated_pair, tuple}, Parser, multi::many0};
+use nom::{combinator::{recognize, map_opt, opt, map_res}, bytes::complete::{take, tag, take_till}, character::{complete::{anychar, space1, digit1, multispace1}, streaming::char}, branch::alt, sequence::{preceded, terminated, separated_pair, tuple}, Parser, multi::{many0, separated_list0}, error::{FromExternalError, ErrorKind}};
 use uom::si::{f32::{Angle, Velocity, Length}, angle::degree, velocity::{knot, meter_per_second}, length::{mile, meter}};
 
-use crate::{header::CCCC, util::{TIME_YYGGGG, parse_yygg}, formats::codetbl::parse_1690};
+use crate::{header::{CCCC, WMOProductIdentifier}, util::{TIME_YYGGGG, parse_yygg}, formats::codetbl::parse_1690, ParseResult, ParseError};
 
 
 
 /// Aerodome forecast report in AM 51 TAF format
 #[derive(Clone, Debug,)]
 pub struct TAFReport {
+    pub header: WMOProductIdentifier,
     pub items: Vec<TAFReportItem>,
 }
 
@@ -142,12 +143,44 @@ pub enum TAFReportItemGroupKind {
     }
 }
 
+impl TAFReport {
+    pub fn parse(input: &str) -> ParseResult<&str, TAFReport> {
+        let (input, header) = WMOProductIdentifier::parse(input)?;
+
+        let mut input = input;
+        let mut items = vec![];
+
+        while !input.is_empty() {
+            let (new_input, report) = match preceded(multispace1, TAFReportItem::parse)(input) {
+                Ok((i, Some(r))) => (i, r),
+                Ok((_, None)) => continue,
+                Err(e) => {
+                    log::warn!("Failed to parse a TAF report item: {}", e);
+                    input = multispace1(input)?.0;
+                    continue
+                }
+            };
+            
+            items.push(report);
+            input = new_input;
+        }
+
+        Ok((
+            input,
+            Self {
+                header,
+                items,
+            }
+        ))
+    }
+}
+
 impl TAFReportItem {
     /// Attempt to parse a `TAFReportItem`, returning `None` if the report is NIL
-    pub fn parse(input: &str) -> IResult<&str, Option<Self>> {
+    pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
         let (input, kind) = preceded(
             tag("TAF"),
-            opt(preceded(space1, map_opt(
+            opt(preceded(multispace1, map_opt(
                 take(3usize),
                 |s: &str| Some(match s {
                     "AMD" => TAFReportKind::Amendment,
@@ -195,10 +228,7 @@ impl TAFReportItem {
         
         let (input, (horizontal_vis, significant_weather, clouds)) = parse_vis_weather_clouds(input)?;
         
-        let (input, groups) = terminated(
-            many0(TAFReportItemGroup::parse),
-            char('='),
-        )(input)?;
+        let (input, groups) = preceded(multispace1, separated_list0(tuple((tag("\n\n\n"), space1)), TAFReportItemGroup::parse))(input)?;
 
         Ok((input, Some(Self {
             country,
@@ -215,8 +245,8 @@ impl TAFReportItem {
 }
 
 impl TAFReportItemGroup {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
-        fn parse_from_to(input: &str) -> IResult<&str, (NaiveTime, NaiveTime)> {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        fn parse_from_to(input: &str) -> ParseResult<&str, (NaiveTime, NaiveTime)> {
             separated_pair(parse_yygg, char('/'), parse_yygg)(input)
         }
 
@@ -250,7 +280,7 @@ impl TAFReportItemGroup {
                     ))
                 )(input)?
             },
-            _ => return Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Tag))),
+            _ => return Err(nom::Err::Error(ParseError::<&str>::from_external_error(first, ErrorKind::Fail, "Invalid TAF report group"))),
         };
 
         let (input, wind) = parse_wind(input)?;
@@ -266,7 +296,7 @@ impl TAFReportItemGroup {
     }
 }
 
-fn parse_wind(input: &str) -> IResult<&str, TAFWind> {
+fn parse_wind(input: &str) -> ParseResult<&str, TAFWind> {
     let (input, direction) = preceded(
         space1,
         map_res(
@@ -310,7 +340,7 @@ fn parse_wind(input: &str) -> IResult<&str, TAFWind> {
 }
 
 fn parse_vis_weather_clouds(input: &str)
-    -> IResult<&str, (Option<Length>, Option<SignificantWeather>, Vec<TAFSignificantWeatherReportClouds>)> {
+    -> ParseResult<&str, (Option<Length>, Option<SignificantWeather>, Vec<TAFSignificantWeatherReportClouds>)> {
         let mut vis_sm = terminated(
             tuple((
                 map_res(
@@ -371,7 +401,7 @@ fn parse_vis_weather_clouds(input: &str)
                                 |s: &str| if s == "NSW" {
                                     Ok(None) 
                                 } else {
-                                    Err(())
+                                    Err("weather string is not NSW")
                                 }
                             )
                         )),
@@ -380,7 +410,7 @@ fn parse_vis_weather_clouds(input: &str)
 
                 let weather = weather.flatten();
 
-                fn parse_clouds(input: &str) -> IResult<&str, Option<TAFSignificantWeatherReportClouds>> {
+                fn parse_clouds(input: &str) -> ParseResult<&str, Option<TAFSignificantWeatherReportClouds>> {
                     let (input, amount) = opt(preceded(
                         space1,
                         alt((
@@ -392,7 +422,7 @@ fn parse_vis_weather_clouds(input: &str)
                                     "SCT" => Some(CloudAmount::Scattered),
                                     "BKN" => Some(CloudAmount::Broken),
                                     "OVC" => Some(CloudAmount::Overcast),
-                                    _ => return Err(()),
+                                    _ => return Err("invalid cloud amount code"),
                                 })
                             )
                         ))
@@ -413,7 +443,10 @@ fn parse_vis_weather_clouds(input: &str)
                     })
                 }
 
-                let (input, clouds) = many0(map_res(parse_clouds, |c| c.ok_or(())))(input)?;
+                let (input, clouds) = many0(map_res(
+                    parse_clouds,
+                    |c| c.ok_or("failed to parse cloud description")
+                    ))(input)?;
 
                 (input, (Some(visibility), weather, clouds))
             }
@@ -421,7 +454,7 @@ fn parse_vis_weather_clouds(input: &str)
 }
 
 impl SignificantWeather {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, intensity) = opt(
             alt((
                 map_opt(
@@ -488,7 +521,7 @@ impl SignificantWeather {
 }
 
 impl SignificantWeatherPrecipitation {
-    pub fn parse(mut input: &str) -> IResult<&str, Self> {
+    pub fn parse(mut input: &str) -> ParseResult<&str, Self> {
         let mut me = Self::empty();
         while let (new_input, Some(prec)) = opt(
             map_res(
@@ -502,7 +535,7 @@ impl SignificantWeatherPrecipitation {
                     "GR" => Self::HAIL,
                     "GS" => Self::SMALLHAIL,
                     "UP" => Self::UNKNOWN,
-                    _ => return Err(()),
+                    _ => return Err("invalid precipitation code"),
                 })
             )
         )(input)? {
@@ -517,6 +550,13 @@ impl SignificantWeatherPrecipitation {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    const TAF: &str = include_str!("./test/taf.txt");
+
+    #[test]
+    pub fn test_taf() {
+        let (_, taf) = TAFReport::parse(TAF).unwrap();
+    }
 
     #[test]
     pub fn test_significant_weather() {
