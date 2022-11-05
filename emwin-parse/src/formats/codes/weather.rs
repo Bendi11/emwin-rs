@@ -1,7 +1,11 @@
-use nom::{combinator::{opt, map_opt, map_res}, branch::alt, bytes::complete::take, character::complete::anychar};
+use nom::{
+    branch::alt,
+    bytes::complete::take,
+    character::complete::anychar,
+    combinator::{map_opt, map_res, opt},
+};
 
 use crate::ParseResult;
-
 
 /// Significant weather reported in FM 15 and 51
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -151,5 +155,3 @@ impl SignificantWeatherPrecipitation {
         Ok((input, me))
     }
 }
-
-

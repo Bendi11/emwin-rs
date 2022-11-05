@@ -1,8 +1,7 @@
-use chrono::{NaiveTime, Duration};
-use nom::{combinator::map_res, bytes::complete::take, sequence::tuple, error::context};
+use chrono::{Duration, NaiveTime};
+use nom::{bytes::complete::take, combinator::map_res, error::context, sequence::tuple};
 
 use crate::ParseResult;
-
 
 /// chrono format string for dates in YYGGgg format
 const TIME_YYGGGG: &str = "%d%H%M";
@@ -11,10 +10,9 @@ const TIME_YYGGGG: &str = "%d%H%M";
 pub fn yygggg(input: &str) -> ParseResult<&str, NaiveTime> {
     context(
         "time in YYGGgg format",
-        map_res(
-            take(6usize),
-            |s: &str| NaiveTime::parse_from_str(s, TIME_YYGGGG),
-        )
+        map_res(take(6usize), |s: &str| {
+            NaiveTime::parse_from_str(s, TIME_YYGGGG)
+        }),
     )(input)
 }
 

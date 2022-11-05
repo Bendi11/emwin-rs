@@ -1,11 +1,14 @@
 use nom::Parser;
 
-use crate::{ParseResult, ParseError};
+use crate::{ParseError, ParseResult};
 
 /// Combinator used to provide a recovery strategy for tolerant parsers
 /// `recovery` is a parser that should consume characters until the expected end of the parsed
 /// text, like [take_while](nom::bytes::complete::take_while)
-pub fn recover<I, O1, O2, P, S>(mut parser: P, mut recovery: S) -> impl FnMut(I) -> ParseResult<I, Option<O1>>
+pub fn recover<I, O1, O2, P, S>(
+    mut parser: P,
+    mut recovery: S,
+) -> impl FnMut(I) -> ParseResult<I, Option<O1>>
 where
     I: Copy,
     P: Parser<I, O1, ParseError<I>>,
@@ -13,10 +16,7 @@ where
 {
     move |input| match parser.parse(input) {
         Ok((r, o)) => Ok((r, Some(o))),
-        Err(nom::Err::Error(_)) => Ok((
-            recovery.parse(input)?.0,
-            None
-        )),
+        Err(nom::Err::Error(_)) => Ok((recovery.parse(input)?.0, None)),
         Err(e) => return Err(e),
     }
 }
@@ -33,10 +33,7 @@ mod test {
 
     #[test]
     fn test_recovery() {
-        let mut parser = recover(
-            fromstr::<'_, f32>(5),
-            take_until(" "),
-        );
+        let mut parser = recover(fromstr::<'_, f32>(5), take_until(" "));
 
         let (rest, num) = parser(TEST_FAIL).unwrap();
         assert!(num.is_none());

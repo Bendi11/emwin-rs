@@ -8,8 +8,9 @@ use nom::{
     },
     combinator::{map_opt, map_res, opt},
     error::context,
+    multi::many_till,
     sequence::{preceded, separated_pair, terminated, tuple},
-    Parser, multi::many_till,
+    Parser,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
@@ -18,12 +19,20 @@ use uom::si::{
 };
 
 use crate::{
-    formats::{codetbl::parse_1690, codes::visibility::vvvv},
+    formats::{codes::visibility::vvvv, codetbl::parse_1690},
     header::{WMOProductIdentifier, CCCC},
-    parse::{time::{yygg, yygggg}, fromstr, recover::recover}, ParseResult,
+    parse::{
+        fromstr,
+        recover::recover,
+        time::{yygg, yygggg},
+    },
+    ParseResult,
 };
 
-use super::codes::{wind::{ddd, ff}, weather::SignificantWeather};
+use super::codes::{
+    weather::SignificantWeather,
+    wind::{ddd, ff},
+};
 
 /// Aerodome forecast report in AM 51 TAF format
 #[derive(Clone, Debug)]
@@ -76,7 +85,6 @@ pub enum CloudAmount {
     Overcast,
 }
 
-
 #[derive(Clone, Debug)]
 pub struct TAFReportItemGroup {
     pub kind: TAFReportItemGroupKind,
@@ -122,7 +130,10 @@ impl TAFReport {
             )(input)
             {
                 Ok((i, Some(Some(r)))) => (i, r),
-                Ok((i, _)) => { input = i; continue },
+                Ok((i, _)) => {
+                    input = i;
+                    continue;
+                }
                 Err(e) => {
                     log::error!(
                         "Failed to parse a TAF report item: {}",
@@ -173,13 +184,7 @@ impl TAFReportItem {
 
         let (input, origin_date) = context(
             "time of report origin",
-            preceded(
-                space1,
-                terminated(
-                    yygggg,
-                    char('Z'),
-                ),
-            ),
+            preceded(space1, terminated(yygggg, char('Z'))),
         )(input)?;
 
         let (input, Some(time_range)) = context("from / to report date", preceded(
@@ -199,7 +204,10 @@ impl TAFReportItem {
 
         let (input, wind) = context(
             "wind levels",
-            preceded(space0, alt((TAFWind::parse.map(Some), tag("CNL").map(|_| None)))),
+            preceded(
+                space0,
+                alt((TAFWind::parse.map(Some), tag("CNL").map(|_| None))),
+            ),
         )(input)?;
 
         let (input, (horizontal_vis, significant_weather, clouds)) =
@@ -212,10 +220,7 @@ impl TAFReportItem {
             let (new_input, group) = preceded(
                 multispace0,
                 alt((
-                    recover(
-                        TAFReportItemGroup::parse,
-                        take_till(|c| c == '\n'),
-                    ),
+                    recover(TAFReportItemGroup::parse, take_till(|c| c == '\n')),
                     char('=').map(|_| None),
                 )),
             )(input)?;
@@ -253,46 +258,53 @@ impl TAFReportItemGroup {
         fn parse_prob(input: &str) -> ParseResult<&str, TAFReportItemGroupKind> {
             let (input, probability) = context("item group probability", fromstr(2))(input)?;
 
-            context("item following probability estimate", preceded(
-                space1,
-                alt((
-                    preceded(tuple((tag("TEMPO"), space1)), parse_from_to).map(
-                        move |(from, to)| TAFReportItemGroupKind::TemporaryChange {
+            context(
+                "item following probability estimate",
+                preceded(
+                    space1,
+                    alt((
+                        preceded(tuple((tag("TEMPO"), space1)), parse_from_to).map(
+                            move |(from, to)| TAFReportItemGroupKind::TemporaryChange {
+                                probability,
+                                from,
+                                to,
+                            },
+                        ),
+                        parse_from_to.map(move |(from, to)| TAFReportItemGroupKind::Probable {
                             probability,
                             from,
                             to,
-                        },
-                    ),
-                    parse_from_to.map(move |(from, to)| TAFReportItemGroupKind::Probable {
-                        probability,
-                        from,
-                        to,
-                    }),
-                )),
-            ))(input)
+                        }),
+                    )),
+                ),
+            )(input)
         }
 
         let (input, kind) = context(
             "item group",
             alt((
-                context("BECMG group", preceded(
-                    tuple((tag("BECMG"), space1)),
-                    parse_from_to
-                        .map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
-                )),
-                context("TEMPO group", preceded(
-                    tuple((tag("TEMPO"), space1)),
-                    parse_from_to
-                        .map(|(from, to)| TAFReportItemGroupKind::TemporaryChange {
+                context(
+                    "BECMG group",
+                    preceded(
+                        tuple((tag("BECMG"), space1)),
+                        parse_from_to.map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
+                    ),
+                ),
+                context(
+                    "TEMPO group",
+                    preceded(
+                        tuple((tag("TEMPO"), space1)),
+                        parse_from_to.map(|(from, to)| TAFReportItemGroupKind::TemporaryChange {
                             probability: 100f32,
                             from,
                             to,
                         }),
-                )),
-                context("FM group", preceded(
-                    tag("FM"),
-                    yygggg.map(TAFReportItemGroupKind::TimeIndicator),
-                )),
+                    ),
+                ),
+                context(
+                    "FM group",
+                    preceded(tag("FM"), yygggg.map(TAFReportItemGroupKind::TimeIndicator)),
+                ),
                 context("PROB group", preceded(tag("PROB"), parse_prob)),
             )),
         )(input)?;
@@ -300,21 +312,10 @@ impl TAFReportItemGroup {
         let (input, wind) = opt(preceded(space0, TAFWind::parse))(input)?;
         let (input, (visibility, weather, clouds)) = parse_vis_weather_clouds(input)?;
 
-        let (input, _) = opt(
-            preceded(
-                space0,
-                preceded(
-                    tag("WS"),
-                    many_till(
-                        anychar,
-                        alt((
-                            tag("KT"),
-                            tag("MPS")
-                        ))
-                    )
-                )
-            )
-        )(input)?;
+        let (input, _) = opt(preceded(
+            space0,
+            preceded(tag("WS"), many_till(anychar, alt((tag("KT"), tag("MPS"))))),
+        ))(input)?;
 
         Ok((
             input,
@@ -334,10 +335,7 @@ impl TAFWind {
         let (input, direction) = ddd(input)?;
         let (input, speed) = ff(input)?;
 
-        let (input, max_speed) = opt(preceded(
-            char('G'),
-            fromstr(2),
-        ))(input)?;
+        let (input, max_speed) = opt(preceded(char('G'), fromstr(2)))(input)?;
 
         let (input, (speed, max_speed)) = context(
             "wind speed units",
@@ -365,7 +363,6 @@ impl TAFWind {
                 max_speed,
             },
         ))
-
     }
 }
 
@@ -457,13 +454,14 @@ fn parse_vis_weather_clouds(
 
 #[cfg(test)]
 mod test {
-    use crate::formats::codes::weather::{SignificantWeatherIntensity, SignificantWeatherPrecipitation};
+    use crate::formats::codes::weather::{
+        SignificantWeatherIntensity, SignificantWeatherPrecipitation,
+    };
 
     use super::*;
 
     const TAF: &str = include_str!("./test/taf.txt");
-    const ITEM: &str = 
-r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
+    const ITEM: &str = r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
   FM052200 16010G18KT P6SM SCT050 BKN250
   FM060300 17008G16KT P6SM SCT030 BKN100
   FM060900 18006KT P6SM VCSH SCT015 BKN030 WS020/20030KT
@@ -472,8 +470,8 @@ r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
 
     #[test]
     pub fn test_taf() {
-        let (_, _) = TAFReportItem::parse(ITEM)
-            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        let (_, _) =
+            TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
                 "{}",

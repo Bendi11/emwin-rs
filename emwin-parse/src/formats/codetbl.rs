@@ -1,7 +1,7 @@
 use nom::{bytes::complete::take, combinator::map_res, error::context, Parser};
 use uom::si::{f32::Length, length::meter};
 
-use crate::{ParseResult, parse::fromstr};
+use crate::{parse::fromstr, ParseResult};
 
 /// Parse altitude levels using code table 1690
 pub fn parse_1690(input: &str) -> ParseResult<&str, Length> {

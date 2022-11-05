@@ -6,8 +6,10 @@ use std::{
 
 use emwin_parse::{
     dt::{
-        code::CodeForm, product::{Analysis, Forecast}, upperair::UpperAirData, AnalysisSubType,
-        DataTypeDesignator, UpperAirDataSubType, ForecastSubType,
+        code::CodeForm,
+        product::{Analysis, Forecast},
+        upperair::UpperAirData,
+        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
     },
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesFileName,
@@ -214,7 +216,7 @@ pub async fn on_create(event: Event) {
                                 return;
                             }
                         };
-                    },
+                    }
                     DataTypeDesignator::Forecast(Forecast {
                         subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
                         ..

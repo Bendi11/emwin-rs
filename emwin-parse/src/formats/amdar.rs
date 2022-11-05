@@ -165,13 +165,7 @@ impl AmdarReportItem {
 
         let lon = Angle::new::<degree>(dir.to_east(angle));
 
-        let (input, time) = context(
-            "aircraft report time",
-            preceded(
-                space1,
-                yygggg, 
-            ),
-        )(input)?;
+        let (input, time) = context("aircraft report time", preceded(space1, yygggg))(input)?;
 
         let (input, alt_sign) = context(
             "altimiter sign character",

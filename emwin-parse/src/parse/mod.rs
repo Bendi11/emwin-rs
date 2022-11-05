@@ -2,12 +2,12 @@
 
 use std::str::FromStr;
 
-use nom::{combinator::map_res, bytes::complete::take, error::FromExternalError};
+use nom::{bytes::complete::take, combinator::map_res, error::FromExternalError};
 
 use crate::ParseResult;
 
-pub mod time;
 pub mod recover;
+pub mod time;
 
 /// Parse a value of type `T` using `T`'s [FromStr] implementation by taking `n` characters from
 /// the input string
@@ -16,8 +16,5 @@ where
     T: FromStr,
     crate::ParseError<&'a str>: FromExternalError<&'a str, <T as FromStr>::Err>,
 {
-    map_res(
-        take(n),
-        <T as FromStr>::from_str
-    )
+    map_res(take(n), <T as FromStr>::from_str)
 }

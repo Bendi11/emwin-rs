@@ -1,11 +1,22 @@
 use std::num::ParseFloatError;
 
-use nom::{error::context, combinator::{opt, map_res}, sequence::{preceded, terminated, tuple}, branch::alt, character::{complete::{digit1, space1}, streaming::char}};
+use nom::{
+    branch::alt,
+    character::{
+        complete::{digit1, space1},
+        streaming::char,
+    },
+    combinator::{map_res, opt},
+    error::context,
+    sequence::{preceded, terminated, tuple},
+};
 use nom_supreme::tag::complete::tag;
-use uom::si::{f32::Length, length::{mile, meter}};
+use uom::si::{
+    f32::Length,
+    length::{meter, mile},
+};
 
 use crate::ParseResult;
-
 
 /// Parse a surface horizontal visibility in `VVVV` format (pg. 227)
 pub fn vvvv(input: &str) -> ParseResult<&str, Option<Length>> {
