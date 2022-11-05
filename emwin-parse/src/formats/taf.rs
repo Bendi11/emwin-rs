@@ -1,11 +1,9 @@
-use std::num::ParseFloatError;
-
 use chrono::NaiveTime;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till, take_until},
     character::{
-        complete::{anychar, digit1, multispace0, multispace1, space0, space1},
+        complete::{anychar, multispace0, multispace1, space0, space1},
         streaming::char,
     },
     combinator::{map_opt, map_res, opt},
@@ -16,7 +14,6 @@ use nom::{
 use nom_supreme::tag::complete::tag;
 use uom::si::{
     f32::{Angle, Length, Velocity},
-    length::{meter, mile},
     velocity::{knot, meter_per_second},
 };
 
@@ -470,12 +467,12 @@ r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
   FM052200 16010G18KT P6SM SCT050 BKN250
   FM060300 17008G16KT P6SM SCT030 BKN100
   FM060900 18006KT P6SM VCSH SCT015 BKN030 WS020/20030KT
-  FM061400 18008G16KT P6SM VCSH SCT015 BK030
+  FM061400 18008G16KT P6SM VCSH SCT015 BKNERROR030
   FM062000 19010G17KT P6SM SCT025 BKN050="#;
 
     #[test]
     pub fn test_taf() {
-        let (_, item) = TAFReportItem::parse(ITEM)
+        let (_, _) = TAFReportItem::parse(ITEM)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(

@@ -1,4 +1,3 @@
-use header::AWIPSProductIdentifer;
 use nom::IResult;
 use nom_supreme::error::ErrorTree;
 

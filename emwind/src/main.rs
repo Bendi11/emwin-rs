@@ -6,14 +6,14 @@ use std::{
 
 use emwin_parse::{
     dt::{
-        code::CodeForm, product::Analysis, upperair::UpperAirData, AnalysisSubType,
-        DataTypeDesignator, UpperAirDataSubType,
+        code::CodeForm, product::{Analysis, Forecast}, upperair::UpperAirData, AnalysisSubType,
+        DataTypeDesignator, UpperAirDataSubType, ForecastSubType,
     },
-    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup},
+    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesFileName,
 };
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -192,7 +192,7 @@ pub async fn on_create(event: Event) {
                         ..
                     }) => {
                         let Some(src) = read.await else { return };
-                        let rwr = match RegionalWeatherRoundup::parse(&src) {
+                        let _ = match RegionalWeatherRoundup::parse(&src) {
                             Ok((_, rwr)) => rwr,
                             Err(e) => {
                                 log::error!("Failed to parse regional weather roundup: {}", e);
@@ -210,6 +210,20 @@ pub async fn on_create(event: Event) {
                             Ok((_, report)) => report,
                             Err(e) => {
                                 log::error!("Failed to parse AMDAR upper air report: {}", e);
+                                CONFIG.wait().failure.do_for(&path).await;
+                                return;
+                            }
+                        };
+                    },
+                    DataTypeDesignator::Forecast(Forecast {
+                        subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
+                        ..
+                    }) => {
+                        let Some(src) = read.await else { return };
+                        let forecast = match TAFReport::parse(&src) {
+                            Ok((_, forecast)) => forecast,
+                            Err(e) => {
+                                log::error!("Failed to parse TAF report: {}", e);
                                 CONFIG.wait().failure.do_for(&path).await;
                                 return;
                             }

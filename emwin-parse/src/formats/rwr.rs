@@ -6,13 +6,12 @@ use nom::{
     bytes::complete::{take, take_while},
     character::complete::{anychar, char, multispace1, space0, space1},
     combinator::{map_res, opt},
-    error::{ErrorKind, FromExternalError},
     multi::many_till,
     sequence::{preceded, terminated},
 };
 use nom_supreme::tag::complete::tag;
 
-use crate::{dt::area::AreaCode, header::WMOProductIdentifier, ParseError, ParseResult};
+use crate::{dt::area::AreaCode, header::WMOProductIdentifier, ParseResult};
 
 #[derive(Clone, Debug)]
 pub struct RegionalWeatherRoundup {
