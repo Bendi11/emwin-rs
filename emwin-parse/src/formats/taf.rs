@@ -3,7 +3,7 @@ use std::num::ParseFloatError;
 use chrono::NaiveTime;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take, take_until},
+    bytes::complete::{take, take_till, take_until},
     character::{
         complete::{anychar, digit1, multispace0, multispace1, space0, space1},
         streaming::char,
@@ -13,20 +13,20 @@ use nom::{
     sequence::{preceded, separated_pair, terminated, tuple},
     Parser, multi::many_till,
 };
+use nom_supreme::tag::complete::tag;
 use uom::si::{
-    angle::degree,
     f32::{Angle, Length, Velocity},
     length::{meter, mile},
     velocity::{knot, meter_per_second},
 };
 
 use crate::{
-    formats::codetbl::parse_1690,
+    formats::{codetbl::parse_1690, codes::visibility::vvvv},
     header::{WMOProductIdentifier, CCCC},
-    parse::{time::{yygg, yygggg}, fromstr}, ParseResult,
+    parse::{time::{yygg, yygggg}, fromstr, recover::recover}, ParseResult,
 };
 
-use super::codes::wind::ddd;
+use super::codes::{wind::{ddd, ff}, weather::SignificantWeather};
 
 /// Aerodome forecast report in AM 51 TAF format
 #[derive(Clone, Debug)]
@@ -79,63 +79,6 @@ pub enum CloudAmount {
     Overcast,
 }
 
-/// Significant weather reported in FM 15 and 51
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SignificantWeather {
-    pub intensity: SignificantWeatherIntensity,
-    pub descriptor: Option<SignificantWeatherDescriptor>,
-    pub precipitation: SignificantWeatherPrecipitation,
-    pub phenomena: Option<SignificantWeatherPhenomena>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SignificantWeatherIntensity {
-    Light,
-    Moderate,
-    Heavy,
-    Vicinity,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SignificantWeatherDescriptor {
-    Shallow,
-    Patches,
-    Partial,
-    LowDrifting,
-    Blowing,
-    Showers,
-    Thunderstorm,
-    Supercooled,
-}
-
-bitflags::bitflags! {
-    pub struct SignificantWeatherPrecipitation: u8 {
-        const DRIZZLE   = 0b00000001;
-        const RAIN      = 0b00000010;
-        const SNOW      = 0b00000100;
-        const SNOWGRAIN = 0b00001000;
-        const ICEPELLET = 0b00010000;
-        const HAIL      = 0b00100000;
-        const SMALLHAIL = 0b01000000;
-        const UNKNOWN   = 0b10000000;
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SignificantWeatherPhenomena {
-    Mist,
-    Fog,
-    Smoke,
-    Ash,
-    Dust,
-    Sand,
-    Haze,
-    DustSandSwirls,
-    Squalls,
-    FunnelCloud,
-    SandStorm,
-    DustStorm,
-}
 
 #[derive(Clone, Debug)]
 pub struct TAFReportItemGroup {
@@ -172,17 +115,22 @@ impl TAFReport {
         while !input.is_empty() {
             let (new_input, report) = match context(
                 "TAF report item",
-                preceded(multispace0, TAFReportItem::parse),
+                preceded(
+                    multispace0,
+                    recover(
+                        TAFReportItem::parse,
+                        take_until("="),
+                    ),
+                ),
             )(input)
             {
-                Ok((i, Some(r))) => (i, r),
-                Ok((_, None)) => continue,
+                Ok((i, Some(Some(r)))) => (i, r),
+                Ok((_, _)) => continue,
                 Err(e) => {
-                    eprintln!(
+                    log::error!(
                         "Failed to parse a TAF report item: {}",
                         crate::display_error(e)
                     );
-                    input = multispace1(input)?.0;
                     continue;
                 }
             };
@@ -253,7 +201,7 @@ impl TAFReportItem {
 
         let (input, wind) = context(
             "wind levels",
-            preceded(space0, alt((parse_wind.map(Some), tag("CNL").map(|_| None)))),
+            preceded(space0, alt((TAFWind::parse.map(Some), tag("CNL").map(|_| None)))),
         )(input)?;
 
         let (input, (horizontal_vis, significant_weather, clouds)) =
@@ -266,7 +214,10 @@ impl TAFReportItem {
             let (new_input, group) = preceded(
                 multispace0,
                 alt((
-                    TAFReportItemGroup::parse.map(|v| Some(v)),
+                    recover(
+                        TAFReportItemGroup::parse,
+                        take_till(|c| c == '\n'),
+                    ),
                     char('=').map(|_| None),
                 )),
             )(input)?;
@@ -348,7 +299,7 @@ impl TAFReportItemGroup {
             )),
         )(input)?;
 
-        let (input, wind) = opt(preceded(space0, parse_wind))(input)?;
+        let (input, wind) = opt(preceded(space0, TAFWind::parse))(input)?;
         let (input, (visibility, weather, clouds)) = parse_vis_weather_clouds(input)?;
 
         let (input, _) = opt(
@@ -380,45 +331,44 @@ impl TAFReportItemGroup {
     }
 }
 
-fn parse_wind(input: &str) -> ParseResult<&str, TAFWind> {
-    let (input, direction) = ddd(input)?;
+impl TAFWind {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        let (input, direction) = ddd(input)?;
+        let (input, speed) = ff(input)?;
 
-    let (input, speed) = context(
-        "wind speed",
-        fromstr(2),
-    )(input)?;
+        let (input, max_speed) = opt(preceded(
+            char('G'),
+            fromstr(2),
+        ))(input)?;
 
-    let (input, max_speed) = opt(preceded(
-        char('G'),
-        fromstr(2),
-    ))(input)?;
+        let (input, (speed, max_speed)) = context(
+            "wind speed units",
+            alt((
+                map_res(tag("KT"), |_| {
+                    Ok::<_, &str>((
+                        Velocity::new::<knot>(speed),
+                        max_speed.map(Velocity::new::<knot>),
+                    ))
+                }),
+                map_res(tag("MPS"), |_| {
+                    Ok::<_, &str>((
+                        Velocity::new::<meter_per_second>(speed),
+                        max_speed.map(Velocity::new::<meter_per_second>),
+                    ))
+                }),
+            )),
+        )(input)?;
 
-    let (input, (speed, max_speed)) = context(
-        "wind speed units",
-        alt((
-            map_res(tag("KT"), |_| {
-                Ok::<_, &str>((
-                    Velocity::new::<knot>(speed),
-                    max_speed.map(Velocity::new::<knot>),
-                ))
-            }),
-            map_res(tag("MPS"), |_| {
-                Ok::<_, &str>((
-                    Velocity::new::<meter_per_second>(speed),
-                    max_speed.map(Velocity::new::<meter_per_second>),
-                ))
-            }),
-        )),
-    )(input)?;
+        Ok((
+            input,
+            Self {
+                direction,
+                speed,
+                max_speed,
+            },
+        ))
 
-    Ok((
-        input,
-        TAFWind {
-            direction,
-            speed,
-            max_speed,
-        },
-    ))
+    }
 }
 
 fn parse_vis_weather_clouds(
@@ -431,67 +381,12 @@ fn parse_vis_weather_clouds(
         Vec<TAFSignificantWeatherReportClouds>,
     ),
 > {
-    let mut vis_sm = context(
-        "horizontal visibility",
-        terminated(
-            tuple((
-                map_res(digit1, |s: &str| s.parse::<f32>()),
-                opt(preceded(
-                    char('/'),
-                    map_res(digit1, |s: &str| s.parse::<f32>()),
-                )),
-            )),
-            tag("SM"),
-        ),
-    );
-
-    enum VisFirst {
-        Number(f32),
-        SM(f32),
-    }
-
     let (input, cavok) = opt(preceded(space1, tag("CAVOK")))(input)?;
 
     Ok(match cavok.is_some() {
         true => (input, (None, None, vec![])),
         false => {
-            let (input, vis_first) = opt(context(
-                "cloud visibility",
-                preceded(
-                    space1,
-                    alt((
-                        map_res(&mut vis_sm, |(first, denominator)| {
-                            Ok::<VisFirst, ParseFloatError>(match denominator {
-                                Some(d) => VisFirst::SM(first / d),
-                                None => VisFirst::SM(first),
-                            })
-                        }),
-                        map_res(digit1, |s: &str| {
-                            Ok::<VisFirst, ParseFloatError>(VisFirst::Number(s.parse::<f32>()?))
-                        }),
-                        map_res(tag("P6SM"), |_| {
-                            Ok::<_, ParseFloatError>(VisFirst::SM(6f32))
-                        }),
-                    )),
-                ),
-            ))(input)?;
-
-            let (input, visibility) = match vis_first {
-                Some(vis_first) => match vis_first {
-                    VisFirst::Number(whole) => match opt(vis_sm)(input)? {
-                        (input, Some((numerator, Some(denominator)))) => (
-                            input,
-                            Some(Length::new::<mile>(whole + numerator / denominator)),
-                        ),
-                        (input, Some((numerator, None))) => {
-                            (input, Some(Length::new::<mile>(whole + numerator)))
-                        }
-                        (input, None) => (input, Some(Length::new::<meter>(whole))),
-                    },
-                    VisFirst::SM(vis) => (input, Some(Length::new::<mile>(vis))),
-                },
-                None => (input, None),
-            };
+            let (input, visibility) = vvvv(input)?;
 
             let (input, weather) = opt(preceded(
                 space1,
@@ -562,94 +457,10 @@ fn parse_vis_weather_clouds(
     })
 }
 
-impl SignificantWeather {
-    pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, intensity) = opt(alt((
-            map_opt(anychar, |c: char| {
-                Some(match c {
-                    '-' => SignificantWeatherIntensity::Light,
-                    '+' => SignificantWeatherIntensity::Heavy,
-                    _ => return None,
-                })
-            }),
-            map_opt(take(2usize), |s: &str| {
-                (s == "VC").then_some(SignificantWeatherIntensity::Moderate)
-            }),
-        )))(input)?;
-
-        let intensity = intensity.unwrap_or(SignificantWeatherIntensity::Moderate);
-        let (input, descriptor) = opt(map_opt(take(2usize), |s: &str| {
-            Some(match s {
-                "MI" => SignificantWeatherDescriptor::Shallow,
-                "BC" => SignificantWeatherDescriptor::Patches,
-                "PR" => SignificantWeatherDescriptor::Partial,
-                "DR" => SignificantWeatherDescriptor::LowDrifting,
-                "BL" => SignificantWeatherDescriptor::Blowing,
-                "SH" => SignificantWeatherDescriptor::Showers,
-                "TS" => SignificantWeatherDescriptor::Thunderstorm,
-                "FZ" => SignificantWeatherDescriptor::Supercooled,
-                _ => return None,
-            })
-        }))(input)?;
-
-        let (input, precipitation) = SignificantWeatherPrecipitation::parse(input)?;
-        let (input, phenomena) = opt(map_opt(take(2usize), |s: &str| {
-            Some(match s {
-                "BR" => SignificantWeatherPhenomena::Mist,
-                "FG" => SignificantWeatherPhenomena::Fog,
-                "FU" => SignificantWeatherPhenomena::Smoke,
-                "VA" => SignificantWeatherPhenomena::Ash,
-                "DU" => SignificantWeatherPhenomena::Dust,
-                "SA" => SignificantWeatherPhenomena::Sand,
-                "HZ" => SignificantWeatherPhenomena::Haze,
-                "PO" => SignificantWeatherPhenomena::DustSandSwirls,
-                "SQ" => SignificantWeatherPhenomena::Squalls,
-                "FC" => SignificantWeatherPhenomena::FunnelCloud,
-                "SS" => SignificantWeatherPhenomena::SandStorm,
-                "DS" => SignificantWeatherPhenomena::DustStorm,
-                _ => return None,
-            })
-        }))(input)?;
-
-        Ok((
-            input,
-            Self {
-                intensity,
-                descriptor,
-                precipitation,
-                phenomena,
-            },
-        ))
-    }
-}
-
-impl SignificantWeatherPrecipitation {
-    pub fn parse(mut input: &str) -> ParseResult<&str, Self> {
-        let mut me = Self::empty();
-        while let (new_input, Some(prec)) = opt(map_res(take(2usize), |s: &str| {
-            Ok(match s {
-                "DZ" => Self::DRIZZLE,
-                "RA" => Self::RAIN,
-                "SN" => Self::SNOW,
-                "SG" => Self::SNOWGRAIN,
-                "PL" => Self::ICEPELLET,
-                "GR" => Self::HAIL,
-                "GS" => Self::SMALLHAIL,
-                "UP" => Self::UNKNOWN,
-                _ => return Err("invalid precipitation code"),
-            })
-        }))(input)?
-        {
-            input = new_input;
-            me |= prec;
-        }
-
-        Ok((input, me))
-    }
-}
-
 #[cfg(test)]
 mod test {
+    use crate::formats::codes::weather::{SignificantWeatherIntensity, SignificantWeatherPrecipitation};
+
     use super::*;
 
     const TAF: &str = include_str!("./test/taf.txt");
@@ -658,7 +469,7 @@ r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
   FM052200 16010G18KT P6SM SCT050 BKN250
   FM060300 17008G16KT P6SM SCT030 BKN100
   FM060900 18006KT P6SM VCSH SCT015 BKN030 WS020/20030KT
-  FM061400 18008G16KT P6SM VCSH SCT015 BKN030
+  FM061400 18008G16KT P6SM VCSH SCT015 BK030
   FM062000 19010G17KT P6SM SCT025 BKN050="#;
 
     #[test]

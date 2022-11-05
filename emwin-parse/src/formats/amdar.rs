@@ -5,7 +5,7 @@ use std::str::FromStr;
 use chrono::NaiveTime;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take, take_till},
+    bytes::complete::{take, take_till},
     character::{
         complete::{anychar, multispace0, multispace1, space0, space1},
         streaming::char,
@@ -16,6 +16,7 @@ use nom::{
     sequence::{preceded, terminated, tuple},
     Parser,
 };
+use nom_supreme::tag::complete::tag;
 use uom::si::{
     angle::degree,
     f32::{Angle, Length, ThermodynamicTemperature, Velocity},
