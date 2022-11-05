@@ -122,7 +122,7 @@ pub enum SignificantWeatherPhenomena {
 #[derive(Clone, Debug,)]
 pub struct TAFReportItemGroup {
     pub kind: TAFReportItemGroupKind,
-    pub wind: TAFWind,
+    pub wind: Option<TAFWind>,
     pub visibility: Option<Length>,
     pub weather: Option<SignificantWeather>,
     pub clouds: Vec<TAFSignificantWeatherReportClouds>,
@@ -179,7 +179,7 @@ impl TAFReport {
 impl TAFReportItem {
     /// Attempt to parse a `TAFReportItem`, returning `None` if the report is NIL
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, kind) = context("TAF item header", preceded(
+        let (input, kind) = context("TAF item header", opt(preceded(
             tag("TAF"),
             opt(preceded(multispace1, map_opt(
                 take(3usize),
@@ -189,12 +189,12 @@ impl TAFReportItem {
                     _ => return None,
                 })
             )))
-        ))(input)?;
+        )))(input)?;
 
 
-        let kind = kind.unwrap_or(TAFReportKind::Report);
+        let kind = kind.flatten().unwrap_or(TAFReportKind::Report);
 
-        let (input, country) = context("country code", preceded(multispace1, map_res(
+        let (input, country) = context("country code", preceded(multispace0, map_res(
             take(4usize),
             |s: &str| s.parse::<CCCC>()
         )))(input)?;
@@ -229,7 +229,21 @@ impl TAFReportItem {
         
         let (input, (horizontal_vis, significant_weather, clouds)) = parse_vis_weather_clouds(input)?;
         
-        let (input, groups) = context("TAF item groups", preceded(multispace1, separated_list0(tuple((tag("\n\n\n"), space1)), TAFReportItemGroup::parse)))(input)?;
+        let mut input = input;
+        let mut groups = vec![];
+
+        loop {
+            let (new_input, group) = preceded(multispace0, alt((
+                TAFReportItemGroup::parse.map(|v| Some(v)),
+                char('=').map(|_| None)
+            )))(input)?;
+            
+            input = new_input;
+            match group {
+                Some(group) => groups.push(group),
+                None => break,
+            }
+        }
 
         Ok((input, Some(Self {
             country,
@@ -251,40 +265,43 @@ impl TAFReportItemGroup {
             separated_pair(parse_yygg, char('/'), parse_yygg)(input)
         }
 
-        let (input, first) = take(2usize)(input)?;
-        let (input, kind) = match first {
-            "BE" => preceded(
-                tuple((tag("CMG"), space1)),
+        fn parse_prob(input: &str) -> ParseResult<&str, TAFReportItemGroupKind> {
+            let (input, probability) = map_res(take(2usize), |s: &str| s.parse::<f32>())(input)?;
+
+            preceded(
+                space1,
+                alt((
+                    preceded(tuple((tag("TEMPO"), space1)), parse_from_to).map(move |(from, to)| 
+                        TAFReportItemGroupKind::TemporaryChange { probability, from, to, }
+                    ),
+                    parse_from_to.map(move |(from, to)| TAFReportItemGroupKind::Probable { probability, from, to, })
+                ))
+            )(input)
+        }
+
+        let (input, kind) = alt((
+            preceded(
+                tuple((tag("BECMG"), space1)),
                 parse_from_to.map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
-            )(input)?,
-            "TE" => preceded(
-                tuple((tag("MPO"), space1)),
+            ),
+            preceded(
+                tuple((tag("TEMPO"), space1)),
                 parse_from_to.map(|(from, to)| TAFReportItemGroupKind::TemporaryChange { probability: 100f32, from, to, })
-            )(input)?,
-            "FM" => map_res(
-                take(6usize),
-                |s: &str| Ok::<_, chrono::ParseError>(TAFReportItemGroupKind::TimeIndicator(NaiveTime::parse_from_str(s, TIME_YYGGGG)?)),
-            )(input)?,
-            "PR" => {
-                let (input, probability) = preceded(
-                    tag("OB"),
-                    map_res(take(2usize), |s: &str| s.parse::<f32>())
-                )(input)?;
+            ),
+            preceded(
+                tag("FM"),
+                map_res(
+                    take(6usize),
+                    |s: &str| Ok::<_, chrono::ParseError>(TAFReportItemGroupKind::TimeIndicator(NaiveTime::parse_from_str(s, TIME_YYGGGG)?)),
+                ),
+            ),
+            preceded(
+                tag("PROB"),
+                parse_prob,
+            )
+        ))(input)?;
 
-                preceded(
-                    space1,
-                    alt((
-                        preceded(tuple((tag("TEMPO"), space1)), parse_from_to).map(move |(from, to)| 
-                            TAFReportItemGroupKind::TemporaryChange { probability, from, to, }
-                        ),
-                        parse_from_to.map(move |(from, to)| TAFReportItemGroupKind::Probable { probability, from, to, })
-                    ))
-                )(input)?
-            },
-            _ => return Err(nom::Err::Error(ParseError::<&str>::from_external_error(first, ErrorKind::Fail, "Invalid TAF report group"))),
-        };
-
-        let (input, wind) = parse_wind(input)?;
+        let (input, wind) = opt(parse_wind)(input)?;
         let (input, (visibility, weather, clouds)) = parse_vis_weather_clouds(input)?;
 
         Ok((input, Self {
@@ -362,7 +379,7 @@ fn parse_vis_weather_clouds(input: &str)
         Ok(match cavok.is_some() {
             true => (input, (None, None, vec![])),
             false => {
-                let (input, vis_first) = context("cloud visibility", preceded(
+                let (input, vis_first) = opt(context("cloud visibility", preceded(
                     space1,
                     alt((
                         map_res(
@@ -378,15 +395,18 @@ fn parse_vis_weather_clouds(input: &str)
                         ),
                         map_res(tag("P6SM"), |_| Ok::<_, ParseFloatError>(VisFirst::SM(6f32))),
                     )),
-                ))(input)?;
+                )))(input)?;
 
                 let (input, visibility) = match vis_first {
-                    VisFirst::Number(whole) => match opt(vis_sm)(input)? {
-                        (input, Some((numerator, Some(denominator)))) => (input, Length::new::<mile>(whole + numerator / denominator)),
-                        (input, Some((numerator, None))) => (input, Length::new::<mile>(whole + numerator)),
-                        (input, None) => (input, Length::new::<meter>(whole)),
-                    },
-                    VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
+                    Some(vis_first) => match vis_first {
+                            VisFirst::Number(whole) => match opt(vis_sm)(input)? {
+                                (input, Some((numerator, Some(denominator)))) => (input, Some(Length::new::<mile>(whole + numerator / denominator))),
+                                (input, Some((numerator, None))) => (input, Some(Length::new::<mile>(whole + numerator))),
+                                (input, None) => (input, Some(Length::new::<meter>(whole))),
+                            },
+                            VisFirst::SM(vis) => (input, Some(Length::new::<mile>(vis))),
+                        },
+                    None => (input, None)
                 };
 
                 let (input, weather) = opt(
@@ -436,8 +456,6 @@ fn parse_vis_weather_clouds(input: &str)
                         ))
                     ))(input)?;
 
-                    println!("Got amount {:?}", amount);
-
                     Ok(match amount {
                         Some(amount) => {
                             let (input, altitude) = parse_1690(input)?;
@@ -464,7 +482,7 @@ fn parse_vis_weather_clouds(input: &str)
                     }
                 }
 
-                (input, (Some(visibility), weather, clouds))
+                (input, (visibility, weather, clouds))
             }
         })
 }
@@ -568,9 +586,12 @@ mod test {
     use super::*;
 
     const TAF: &str = include_str!("./test/taf.txt");
+    const ITEM: &str = 
+r#"TEMPO 2200/2204 VRB06KT BKN025"#;
 
     #[test]
     pub fn test_taf() {
+        let (_, item) = TAFReportItemGroup::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!("{}", e.map_locations(|s| &s[0..s.find('\n').unwrap_or(s.len())])),
             e => panic!("{}", e),
