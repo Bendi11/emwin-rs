@@ -7,6 +7,7 @@ use nom::{combinator::map_res, bytes::complete::take, error::FromExternalError};
 use crate::ParseResult;
 
 pub mod time;
+pub mod recover;
 
 /// Parse a value of type `T` using `T`'s [FromStr] implementation by taking `n` characters from
 /// the input string

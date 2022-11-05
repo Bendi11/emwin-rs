@@ -1,15 +1,13 @@
-use std::num::ParseFloatError;
-
-use nom::{bytes::complete::take, combinator::map_res};
+use nom::{bytes::complete::take, combinator::map_res, error::context, Parser};
 use uom::si::{f32::Length, length::meter};
 
-use crate::ParseResult;
+use crate::{ParseResult, parse::fromstr};
 
 /// Parse altitude levels using code table 1690
 pub fn parse_1690(input: &str) -> ParseResult<&str, Length> {
-    map_res(take(3usize), |s: &str| {
-        Ok::<_, ParseFloatError>(Length::new::<meter>(s.parse::<f32>()? * 30f32))
-    })(input)
+    context("altitude (code table 1690)", fromstr(2))
+        .map(|v: f32| Length::new::<meter>(v * 30f32))
+        .parse(input)
 }
 
 /// Time group specified by symbols TT

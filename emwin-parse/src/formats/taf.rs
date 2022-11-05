@@ -23,7 +23,7 @@ use uom::si::{
 use crate::{
     formats::codetbl::parse_1690,
     header::{WMOProductIdentifier, CCCC},
-    parse::time::{yygg, yygggg}, ParseResult,
+    parse::{time::{yygg, yygggg}, fromstr}, ParseResult,
 };
 
 use super::codes::wind::ddd;
@@ -328,15 +328,17 @@ impl TAFReportItemGroup {
             alt((
                 preceded(
                     tuple((tag("BECMG"), space1)),
-                    parse_from_to.map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
+                    parse_from_to
+                        .map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
                 ),
                 preceded(
                     tuple((tag("TEMPO"), space1)),
-                    parse_from_to.map(|(from, to)| TAFReportItemGroupKind::TemporaryChange {
-                        probability: 100f32,
-                        from,
-                        to,
-                    }),
+                    parse_from_to
+                        .map(|(from, to)| TAFReportItemGroupKind::TemporaryChange {
+                            probability: 100f32,
+                            from,
+                            to,
+                        }),
                 ),
                 preceded(
                     tag("FM"),
@@ -367,12 +369,12 @@ fn parse_wind(input: &str) -> ParseResult<&str, TAFWind> {
 
     let (input, speed) = context(
         "wind speed",
-        map_res(take(2usize), |s: &str| s.parse::<f32>()),
+        fromstr(2),
     )(input)?;
 
     let (input, max_speed) = opt(preceded(
         char('G'),
-        map_res(take(2usize), |s: &str| s.parse::<f32>()),
+        fromstr(2),
     ))(input)?;
 
     let (input, (speed, max_speed)) = context(
