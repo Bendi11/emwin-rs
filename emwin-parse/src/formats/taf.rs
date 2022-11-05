@@ -1,20 +1,18 @@
 use std::num::ParseFloatError;
 
-use chrono::{Duration, NaiveTime};
+use chrono::NaiveTime;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take, take_till},
+    bytes::complete::{tag, take},
     character::{
         complete::{anychar, digit1, multispace0, multispace1, space0, space1},
         streaming::char,
     },
-    combinator::{map_opt, map_res, opt, recognize},
-    error::{context, ErrorKind, FromExternalError},
-    multi::{many0, separated_list0},
+    combinator::{map_opt, map_res, opt},
+    error::context,
     sequence::{preceded, separated_pair, terminated, tuple},
     Parser,
 };
-use nom_supreme::ParserExt;
 use uom::si::{
     angle::degree,
     f32::{Angle, Length, Velocity},
@@ -25,8 +23,7 @@ use uom::si::{
 use crate::{
     formats::codetbl::parse_1690,
     header::{WMOProductIdentifier, CCCC},
-    util::{parse_yygg, TIME_YYGGGG},
-    ParseError, ParseResult,
+    parse::time::{yygg, yygggg}, ParseResult,
 };
 
 /// Aerodome forecast report in AM 51 TAF format
@@ -231,9 +228,7 @@ impl TAFReportItem {
             preceded(
                 space1,
                 terminated(
-                    map_res(take(6usize), |s: &str| {
-                        NaiveTime::parse_from_str(s, TIME_YYGGGG)
-                    }),
+                    yygggg,
                     char('Z'),
                 ),
             ),
@@ -244,9 +239,9 @@ impl TAFReportItem {
             alt((
                 tag("NIL").map(|_| None),
                 separated_pair(
-                    parse_yygg,
+                    yygg,
                     char('/'),
-                    parse_yygg
+                    yygg
                 ).map(|v| Some(v))
             ))
         ))(input)? else {
@@ -301,7 +296,7 @@ impl TAFReportItem {
 impl TAFReportItemGroup {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
         fn parse_from_to(input: &str) -> ParseResult<&str, (NaiveTime, NaiveTime)> {
-            separated_pair(parse_yygg, char('/'), parse_yygg)(input)
+            separated_pair(yygg, char('/'), yygg)(input)
         }
 
         fn parse_prob(input: &str) -> ParseResult<&str, TAFReportItemGroupKind> {
@@ -343,11 +338,7 @@ impl TAFReportItemGroup {
                 ),
                 preceded(
                     tag("FM"),
-                    map_res(take(6usize), |s: &str| {
-                        Ok::<_, chrono::ParseError>(TAFReportItemGroupKind::TimeIndicator(
-                            NaiveTime::parse_from_str(s, TIME_YYGGGG)?,
-                        ))
-                    }),
+                    yygggg.map(TAFReportItemGroupKind::TimeIndicator),
                 ),
                 preceded(tag("PROB"), parse_prob),
             )),

@@ -10,7 +10,7 @@ use nom::{
 
 use crate::{
     dt::{DataTypeDesignator, DataTypeDesignatorParseError},
-    util::TIME_YYGGGG,
+    parse::time::yygggg,
     ParseResult,
 };
 
@@ -163,9 +163,7 @@ impl WMOProductIdentifier {
 
         let (input, _) = space1(input)?;
 
-        let (input, creation_time) = map_res(take(6usize), |ts: &str| {
-            NaiveTime::parse_from_str(ts, TIME_YYGGGG)
-        })(input)?;
+        let (input, creation_time) = yygggg(input)?;
 
         let (input, _) = opt(tuple((char(' '), take(3usize))))(input)?;
 

@@ -8,7 +8,7 @@ pub type ParseResult<I, O> = IResult<I, O, ParseError<I>>;
 pub mod dt;
 pub mod formats;
 pub mod header;
-mod util;
+mod parse;
 
 fn display_error(e: nom::Err<ParseError<&str>>) -> String {
     match e {

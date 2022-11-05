@@ -11,12 +11,11 @@ use nom::{
         streaming::char,
     },
     combinator::{map_res, opt},
-    error::{context, ErrorKind, FromExternalError},
+    error::context,
     multi::separated_list1,
     sequence::{preceded, terminated, tuple},
     Parser,
 };
-use nom_supreme::ParserExt;
 use uom::si::{
     angle::degree,
     f32::{Angle, Length, ThermodynamicTemperature, Velocity},
@@ -25,7 +24,7 @@ use uom::si::{
     velocity::knot,
 };
 
-use crate::{header::WMOProductIdentifier, util::TIME_YYGGGG, ParseError, ParseResult};
+use crate::{header::WMOProductIdentifier, parse::time::yygggg, ParseResult};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 
@@ -169,9 +168,7 @@ impl AmdarReportItem {
             "aircraft report time",
             preceded(
                 space1,
-                map_res(take(6usize), |s: &str| {
-                    NaiveTime::parse_from_str(s, TIME_YYGGGG)
-                }),
+                yygggg, 
             ),
         )(input)?;
 
