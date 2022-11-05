@@ -14,6 +14,7 @@ use nom::{
     multi::separated_list1,
     sequence::{preceded, terminated, tuple}, error::{FromExternalError, context, ErrorKind}, Parser,
 };
+use nom_supreme::ParserExt;
 use uom::si::{
     angle::degree,
     f32::{Angle, Length, ThermodynamicTemperature, Velocity},
@@ -116,7 +117,13 @@ pub enum FlightPhase {
 impl AmdarReport {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, header) = WMOProductIdentifier::parse(input)?;
-        let (input, _) = preceded(multispace1, preceded(tag("AMDAR "), take(4usize)))(input)?;
+        let (input, _) = preceded(
+            multispace1,
+            preceded(
+                tag("AMDAR "),
+                take(4usize)
+            )
+        )(input)?;
 
         let (input, items) =
             separated_list1(multispace1, preceded(multispace0, AmdarReportItem::parse))(input)?;
@@ -127,37 +134,37 @@ impl AmdarReport {
 
 impl AmdarReportItem {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, phase) = map_res(take(3usize), |s: &str| s.parse::<FlightPhase>())(input)?;
+        let (input, phase) = context("flight phase", map_res(take(3usize), |s: &str| s.parse::<FlightPhase>()))(input)?;
 
-        let (input, aircraft_identifier) = preceded(space1, take_till(char::is_whitespace))(input)?;
-        let (input, (angle, dir)) = preceded(
+        let (input, aircraft_identifier) = context("aircraft identifier", preceded(space1, take_till(char::is_whitespace)))(input)?;
+        let (input, (angle, dir)) = context("latitude", preceded(
             space1,
             tuple((
                 parse_degreesminutes::<2>,
                 map_res(take(1usize), |c: &str| c.parse::<LatitudeDir>()),
             )),
-        )(input)?;
+        ))(input)?;
 
         let lat = Angle::new::<degree>(dir.to_north(angle));
 
-        let (input, (angle, dir)) = preceded(
+        let (input, (angle, dir)) = context("longitude", preceded(
             space1,
             tuple((
                 parse_degreesminutes::<3>,
                 map_res(take(1usize), |c: &str| c.parse::<LongitudeDir>()),
             )),
-        )(input)?;
+        ))(input)?;
 
         let lon = Angle::new::<degree>(dir.to_east(angle));
 
-        let (input, time) = preceded(
+        let (input, time) = context("aircraft report time", preceded(
             space1,
             map_res(take(6usize), |s: &str| {
                 NaiveTime::parse_from_str(s, TIME_YYGGGG)
             }),
-        )(input)?;
+        ))(input)?;
 
-        let (input, alt_sign) = preceded(
+        let (input, alt_sign) = context("altimiter sign character", preceded(
             space1,
             map_res(anychar, |c: char| {
                 Ok(match c {
@@ -166,34 +173,38 @@ impl AmdarReportItem {
                     _ => return Err("Unknown pressure altimiter sign character"),
                 })
             }),
-        )(input)?;
+        ))(input)?;
 
-        let (input, pressure_altitude) = map_res(take(3usize), |s: &str| s.parse::<f32>())(input)?;
+        let (input, pressure_altitude) = context("pressure altimiter reading", map_res(take(3usize), |s: &str| s.parse::<f32>()))(input)?;
 
         let pressure_altitude = Length::new::<foot>(alt_sign * pressure_altitude);
 
-        let (input, air_temperature) = preceded(space1, Self::parse_temp)(input)?;
+        let (input, air_temperature) = context("air temperature", preceded(space1, Self::parse_temp))(input)?;
 
-        let (input, humidity_or_dew_point) = preceded(
+        let (input, humidity_or_dew_point) = context("humidity / dew point", preceded(
             space1,
             opt(alt((
-                Self::parse_temp.map(|v| HumidityOrDewPoint::DewPoint(v)),
-                map_res(take(3usize), |s: &str| s.parse::<f32>()).map(|v| HumidityOrDewPoint::RelativeHumidity(v))
+                Self::parse_temp
+                    .map(|v| HumidityOrDewPoint::DewPoint(v)),
+                map_res(
+                    terminated(take(3usize), space1),
+                    |s: &str| s.parse::<f32>())
+                        .map(|v| HumidityOrDewPoint::RelativeHumidity(v))
             )))
-        )(input)?;
+        ))(input)?;
 
-        let (input, true_wind_direction) = preceded(
+        let (input, true_wind_direction) = context("wind direction", preceded(
             space0,
             terminated(map_res(take(3usize), |s: &str| s.parse::<f32>()), char('/')),
-        )(input)?;
+        ))(input)?;
 
         let true_wind_direction = Angle::new::<degree>(true_wind_direction);
 
-        let (input, wind_speed) = map_res(take(3usize), |s: &str| s.parse::<f32>())(input)?;
+        let (input, wind_speed) = context("windspeed", map_res(take(3usize), |s: &str| s.parse::<f32>()))(input)?;
 
         let wind_speed = Velocity::new::<knot>(wind_speed);
 
-        let (input, turbulence) = preceded(
+        let (input, turbulence) = context("turbulence level", preceded(
             space1,
             preceded(
                 tag("TB"),
@@ -208,20 +219,20 @@ impl AmdarReportItem {
                     }))
                 }),
             ),
-        )(input)?;
+        ))(input)?;
 
         let (input, (navigation_system, transmission_system, precision)) = preceded(
             tuple((space1, char('S'))),
             tuple((
-                map_res(anychar, |c: char| {
+                context("navigation system code", map_res(anychar, |c: char| {
                     Ok(Some(match c {
                         '0' => NavigationSystem::Intertial,
                         '1' => NavigationSystem::OMEGA,
                         '/' => return Ok(None),
                         _ => return Err("invalid navigation system character"),
                     }))
-                }),
-                map_res(anychar, |c: char| {
+                })),
+                context("AMDAR report transmission system code", map_res(anychar, |c: char| {
                     Ok(Some(match c {
                         '0' => TransmissionSystem::ASDAR,
                         '1' => TransmissionSystem::ASDARWithACARS(false),
@@ -232,21 +243,21 @@ impl AmdarReportItem {
                         '/' => return Ok(None),
                         _ => return Err("invalid transmission system character"),
                     }))
-                }),
-                map_res(anychar, |c: char| {
+                })),
+                context("temperature precision code", map_res(anychar, |c: char| {
                     Ok(Some(match c {
                         '1' => TemperaturePrecision::Low,
                         '0' => TemperaturePrecision::High,
                         '/' => return Ok(None),
                         _ => return Err("invalid temperature precision character"),
                     }))
-                }),
+                })),
             )),
         )(input)?;
 
         let (input, _) = alt((
-            tag("="),
-            terminated(take_till(|c: char| c == '=' || c == '\n'), char('=')),
+            context("end of AMDAR report", tag("=")),
+            context("rest of AMDAR item", terminated(take_till(|c: char| c == '=' || c == '\n'), char('='))),
         ))(input)?;
 
         Ok((
@@ -315,7 +326,10 @@ mod test {
 
     #[test]
     pub fn test_amdar() {
-        let (_, amdar) = AmdarReport::parse(AMDAR).unwrap();
+        let (_, amdar) = AmdarReport::parse(AMDAR).unwrap_or_else(|e| match e {
+            nom::Err::Failure(e) | nom::Err::Error(e) => panic!("{}", e),
+            _ => panic!("{}", e),
+        });
         assert_eq!(amdar.items.len(), 8);
     }
 }

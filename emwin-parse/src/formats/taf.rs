@@ -555,7 +555,10 @@ mod test {
 
     #[test]
     pub fn test_taf() {
-        let (_, taf) = TAFReport::parse(TAF).unwrap();
+        let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
+            nom::Err::Error(e) | nom::Err::Failure(e) => panic!("{}", e),
+            e => panic!("{}", e),
+        });
     }
 
     #[test]
