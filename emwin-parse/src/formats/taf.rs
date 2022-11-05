@@ -470,17 +470,16 @@ mod test {
 
     #[test]
     pub fn test_taf() {
-        let (_, _) =
+        let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
-        let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
+        assert_eq!(item.unwrap().groups.len(), 3);
+        let (_, _) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
                 "{}",
                 e.map_locations(|s| &s[0..s.find('\n').unwrap_or(s.len())])
             ),
             e => panic!("{}", e),
         });
-
-        panic!("{:#?}", taf);
     }
 
     #[test]

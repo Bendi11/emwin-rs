@@ -71,7 +71,7 @@ impl ReferenceTimeDesignator {
             'U' => Self::from_days(15),
             'V' => Self::from_days(30),
             'W' | 'X' | 'Y' | 'Z' => Self::from_hours(0),
-            other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
+            other => return Err(ReferenceTimeDesignatorParseError(other)),
         })
     }
 
@@ -95,7 +95,7 @@ impl ReferenceTimeDesignator {
             'O' => 42,
             'P' => 45,
             'Q' => 48,
-            other => return Err(ReferenceTimeDesignatorParseError::Invalid(other)),
+            other => return Err(ReferenceTimeDesignatorParseError(other)),
         }))
     }
 }
@@ -145,16 +145,14 @@ impl TryFrom<char> for GeographicalAreaDesignator {
             'S' => Self::Hemisphere(GeographicalAreaDesignatorHemisphere::SouthernHemisphere),
             'T' => Self::FortyFiveToOneEightyWestNorthernHemisphere,
             'X' => Self::Global,
-            other => return Err(GeographicalAreaDesignatorParseError::Invalid(other)),
+            other => return Err(GeographicalAreaDesignatorParseError(other)),
         })
     }
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
-pub enum GeographicalAreaDesignatorParseError {
-    #[error("Unrecognized geographical area designator {0}")]
-    Invalid(char),
-}
+#[error("Unrecognized geographical area designator {0}")]
+pub struct GeographicalAreaDesignatorParseError(char);
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum AreaCodeParseError {
@@ -165,7 +163,5 @@ pub enum AreaCodeParseError {
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
-pub enum ReferenceTimeDesignatorParseError {
-    #[error("Unrecognized reference time designator {0}")]
-    Invalid(char),
-}
+#[error("Unrecognized reference time designator {0}")]
+pub struct ReferenceTimeDesignatorParseError(char);
