@@ -26,6 +26,8 @@ use crate::{
     parse::time::{yygg, yygggg}, ParseResult,
 };
 
+use super::codes::wind::ddd;
+
 /// Aerodome forecast report in AM 51 TAF format
 #[derive(Clone, Debug)]
 pub struct TAFReport {
@@ -361,16 +363,7 @@ impl TAFReportItemGroup {
 }
 
 fn parse_wind(input: &str) -> ParseResult<&str, TAFWind> {
-    let (input, direction) = context(
-        "wind direction",
-        preceded(
-            space1,
-            map_res(take(3usize), |s: &str| match s {
-                "VRB" => Ok::<_, ParseFloatError>(Angle::new::<degree>(0f32)),
-                _ => Ok(Angle::new::<degree>(s.parse::<f32>()?)),
-            }),
-        ),
-    )(input)?;
+    let (input, direction) = ddd(input)?;
 
     let (input, speed) = context(
         "wind speed",
