@@ -12,10 +12,12 @@ mod util;
 
 fn display_error(e: nom::Err<ParseError<&str>>) -> String {
     match e {
-        nom::Err::Error(e) | nom::Err::Failure(e) => e.map_locations(|s| match s.find('\n') {
-            Some(idx) => &s[..idx],
-            None => s,
-        }).to_string(),
+        nom::Err::Error(e) | nom::Err::Failure(e) => e
+            .map_locations(|s| match s.find('\n') {
+                Some(idx) => &s[..idx],
+                None => s,
+            })
+            .to_string(),
         e => e.to_string(),
     }
 }

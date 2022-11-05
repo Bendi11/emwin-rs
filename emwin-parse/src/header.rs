@@ -10,7 +10,8 @@ use nom::{
 
 use crate::{
     dt::{DataTypeDesignator, DataTypeDesignatorParseError},
-    util::TIME_YYGGGG, ParseResult,
+    util::TIME_YYGGGG,
+    ParseResult,
 };
 
 /// A full WMO product identifier with data type designator, country code, and time

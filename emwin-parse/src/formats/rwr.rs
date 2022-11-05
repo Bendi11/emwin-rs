@@ -11,7 +11,7 @@ use nom::{
     sequence::{preceded, terminated},
 };
 
-use crate::{dt::area::AreaCode, header::WMOProductIdentifier, ParseResult, ParseError};
+use crate::{dt::area::AreaCode, header::WMOProductIdentifier, ParseError, ParseResult};
 
 #[derive(Clone, Debug)]
 pub struct RegionalWeatherRoundup {
@@ -126,15 +126,10 @@ impl RegionalWeatherRoundupItem {
 
 impl RegionalWeatherSkyCondition {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (rest, designator) = map_res(
-            take_while(|c: char| !c.is_whitespace()),
-            Self::from_str,
-        )(input)?;
+        let (rest, designator) =
+            map_res(take_while(|c: char| !c.is_whitespace()), Self::from_str)(input)?;
 
-        Ok((
-            rest,
-            designator, 
-        ))
+        Ok((rest, designator))
     }
 }
 

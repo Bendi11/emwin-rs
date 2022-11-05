@@ -11,8 +11,10 @@ use nom::{
         streaming::char,
     },
     combinator::{map_res, opt},
+    error::{context, ErrorKind, FromExternalError},
     multi::separated_list1,
-    sequence::{preceded, terminated, tuple}, error::{FromExternalError, context, ErrorKind}, Parser,
+    sequence::{preceded, terminated, tuple},
+    Parser,
 };
 use nom_supreme::ParserExt;
 use uom::si::{
@@ -23,7 +25,7 @@ use uom::si::{
     velocity::knot,
 };
 
-use crate::{header::WMOProductIdentifier, util::TIME_YYGGGG, ParseResult, ParseError};
+use crate::{header::WMOProductIdentifier, util::TIME_YYGGGG, ParseError, ParseResult};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 
@@ -117,13 +119,7 @@ pub enum FlightPhase {
 impl AmdarReport {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, header) = WMOProductIdentifier::parse(input)?;
-        let (input, _) = preceded(
-            multispace1,
-            preceded(
-                tag("AMDAR "),
-                take(4usize)
-            )
-        )(input)?;
+        let (input, _) = preceded(multispace1, preceded(tag("AMDAR "), take(4usize)))(input)?;
 
         let (input, items) =
             separated_list1(multispace1, preceded(multispace0, AmdarReportItem::parse))(input)?;
@@ -134,130 +130,173 @@ impl AmdarReport {
 
 impl AmdarReportItem {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, phase) = context("flight phase", map_res(take(3usize), |s: &str| s.parse::<FlightPhase>()))(input)?;
+        let (input, phase) = context(
+            "flight phase",
+            map_res(take(3usize), |s: &str| s.parse::<FlightPhase>()),
+        )(input)?;
 
-        let (input, aircraft_identifier) = context("aircraft identifier", preceded(space1, take_till(char::is_whitespace)))(input)?;
-        let (input, (angle, dir)) = context("latitude", preceded(
-            space1,
-            tuple((
-                parse_degreesminutes::<2>,
-                map_res(take(1usize), |c: &str| c.parse::<LatitudeDir>()),
-            )),
-        ))(input)?;
+        let (input, aircraft_identifier) = context(
+            "aircraft identifier",
+            preceded(space1, take_till(char::is_whitespace)),
+        )(input)?;
+        let (input, (angle, dir)) = context(
+            "latitude",
+            preceded(
+                space1,
+                tuple((
+                    parse_degreesminutes::<2>,
+                    map_res(take(1usize), |c: &str| c.parse::<LatitudeDir>()),
+                )),
+            ),
+        )(input)?;
 
         let lat = Angle::new::<degree>(dir.to_north(angle));
 
-        let (input, (angle, dir)) = context("longitude", preceded(
-            space1,
-            tuple((
-                parse_degreesminutes::<3>,
-                map_res(take(1usize), |c: &str| c.parse::<LongitudeDir>()),
-            )),
-        ))(input)?;
+        let (input, (angle, dir)) = context(
+            "longitude",
+            preceded(
+                space1,
+                tuple((
+                    parse_degreesminutes::<3>,
+                    map_res(take(1usize), |c: &str| c.parse::<LongitudeDir>()),
+                )),
+            ),
+        )(input)?;
 
         let lon = Angle::new::<degree>(dir.to_east(angle));
 
-        let (input, time) = context("aircraft report time", preceded(
-            space1,
-            map_res(take(6usize), |s: &str| {
-                NaiveTime::parse_from_str(s, TIME_YYGGGG)
-            }),
-        ))(input)?;
+        let (input, time) = context(
+            "aircraft report time",
+            preceded(
+                space1,
+                map_res(take(6usize), |s: &str| {
+                    NaiveTime::parse_from_str(s, TIME_YYGGGG)
+                }),
+            ),
+        )(input)?;
 
-        let (input, alt_sign) = context("altimiter sign character", preceded(
-            space1,
-            map_res(anychar, |c: char| {
-                Ok(match c {
-                    'F' => 1f32,
-                    'A' => -1f32,
-                    _ => return Err("Unknown pressure altimiter sign character"),
-                })
-            }),
-        ))(input)?;
+        let (input, alt_sign) = context(
+            "altimiter sign character",
+            preceded(
+                space1,
+                map_res(anychar, |c: char| {
+                    Ok(match c {
+                        'F' => 1f32,
+                        'A' => -1f32,
+                        _ => return Err("Unknown pressure altimiter sign character"),
+                    })
+                }),
+            ),
+        )(input)?;
 
-        let (input, pressure_altitude) = context("pressure altimiter reading", map_res(take(3usize), |s: &str| s.parse::<f32>()))(input)?;
+        let (input, pressure_altitude) = context(
+            "pressure altimiter reading",
+            map_res(take(3usize), |s: &str| s.parse::<f32>()),
+        )(input)?;
 
         let pressure_altitude = Length::new::<foot>(alt_sign * pressure_altitude);
 
-        let (input, air_temperature) = context("air temperature", preceded(space1, Self::parse_temp))(input)?;
+        let (input, air_temperature) =
+            context("air temperature", preceded(space1, Self::parse_temp))(input)?;
 
-        let (input, humidity_or_dew_point) = context("humidity / dew point", preceded(
-            space1,
-            opt(alt((
-                Self::parse_temp
-                    .map(|v| HumidityOrDewPoint::DewPoint(v)),
-                map_res(
-                    terminated(take(3usize), space1),
-                    |s: &str| s.parse::<f32>())
-                        .map(|v| HumidityOrDewPoint::RelativeHumidity(v))
-            )))
-        ))(input)?;
+        let (input, humidity_or_dew_point) = context(
+            "humidity / dew point",
+            preceded(
+                space1,
+                opt(alt((
+                    Self::parse_temp.map(|v| HumidityOrDewPoint::DewPoint(v)),
+                    map_res(terminated(take(3usize), space1), |s: &str| s.parse::<f32>())
+                        .map(|v| HumidityOrDewPoint::RelativeHumidity(v)),
+                ))),
+            ),
+        )(input)?;
 
-        let (input, true_wind_direction) = context("wind direction", preceded(
-            space0,
-            terminated(map_res(take(3usize), |s: &str| s.parse::<f32>()), char('/')),
-        ))(input)?;
+        let (input, true_wind_direction) = context(
+            "wind direction",
+            preceded(
+                space0,
+                terminated(map_res(take(3usize), |s: &str| s.parse::<f32>()), char('/')),
+            ),
+        )(input)?;
 
         let true_wind_direction = Angle::new::<degree>(true_wind_direction);
 
-        let (input, wind_speed) = context("windspeed", map_res(take(3usize), |s: &str| s.parse::<f32>()))(input)?;
+        let (input, wind_speed) = context(
+            "windspeed",
+            map_res(take(3usize), |s: &str| s.parse::<f32>()),
+        )(input)?;
 
         let wind_speed = Velocity::new::<knot>(wind_speed);
 
-        let (input, turbulence) = context("turbulence level", preceded(
-            space1,
+        let (input, turbulence) = context(
+            "turbulence level",
             preceded(
-                tag("TB"),
-                map_res(anychar, |c: char| {
-                    Ok(Some(match c {
-                        '0' => Turbulence::None,
-                        '1' => Turbulence::Light,
-                        '2' => Turbulence::Moderate,
-                        '3' => Turbulence::Severe,
-                        '/' => return Ok(None),
-                        _ => return Err("invalid turbulence value"),
-                    }))
-                }),
+                space1,
+                preceded(
+                    tag("TB"),
+                    map_res(anychar, |c: char| {
+                        Ok(Some(match c {
+                            '0' => Turbulence::None,
+                            '1' => Turbulence::Light,
+                            '2' => Turbulence::Moderate,
+                            '3' => Turbulence::Severe,
+                            '/' => return Ok(None),
+                            _ => return Err("invalid turbulence value"),
+                        }))
+                    }),
+                ),
             ),
-        ))(input)?;
+        )(input)?;
 
         let (input, (navigation_system, transmission_system, precision)) = preceded(
             tuple((space1, char('S'))),
             tuple((
-                context("navigation system code", map_res(anychar, |c: char| {
-                    Ok(Some(match c {
-                        '0' => NavigationSystem::Intertial,
-                        '1' => NavigationSystem::OMEGA,
-                        '/' => return Ok(None),
-                        _ => return Err("invalid navigation system character"),
-                    }))
-                })),
-                context("AMDAR report transmission system code", map_res(anychar, |c: char| {
-                    Ok(Some(match c {
-                        '0' => TransmissionSystem::ASDAR,
-                        '1' => TransmissionSystem::ASDARWithACARS(false),
-                        '2' => TransmissionSystem::ASDARWithACARS(true),
-                        '3' => TransmissionSystem::ACARS,
-                        '4' => TransmissionSystem::ACARSWithASDAR(false),
-                        '5' => TransmissionSystem::ACARSWithASDAR(true),
-                        '/' => return Ok(None),
-                        _ => return Err("invalid transmission system character"),
-                    }))
-                })),
-                context("temperature precision code", map_res(anychar, |c: char| {
-                    Ok(Some(match c {
-                        '1' => TemperaturePrecision::Low,
-                        '0' => TemperaturePrecision::High,
-                        '/' => return Ok(None),
-                        _ => return Err("invalid temperature precision character"),
-                    }))
-                })),
+                context(
+                    "navigation system code",
+                    map_res(anychar, |c: char| {
+                        Ok(Some(match c {
+                            '0' => NavigationSystem::Intertial,
+                            '1' => NavigationSystem::OMEGA,
+                            '/' => return Ok(None),
+                            _ => return Err("invalid navigation system character"),
+                        }))
+                    }),
+                ),
+                context(
+                    "AMDAR report transmission system code",
+                    map_res(anychar, |c: char| {
+                        Ok(Some(match c {
+                            '0' => TransmissionSystem::ASDAR,
+                            '1' => TransmissionSystem::ASDARWithACARS(false),
+                            '2' => TransmissionSystem::ASDARWithACARS(true),
+                            '3' => TransmissionSystem::ACARS,
+                            '4' => TransmissionSystem::ACARSWithASDAR(false),
+                            '5' => TransmissionSystem::ACARSWithASDAR(true),
+                            '/' => return Ok(None),
+                            _ => return Err("invalid transmission system character"),
+                        }))
+                    }),
+                ),
+                context(
+                    "temperature precision code",
+                    map_res(anychar, |c: char| {
+                        Ok(Some(match c {
+                            '1' => TemperaturePrecision::Low,
+                            '0' => TemperaturePrecision::High,
+                            '/' => return Ok(None),
+                            _ => return Err("invalid temperature precision character"),
+                        }))
+                    }),
+                ),
             )),
         )(input)?;
 
         let (input, _) = alt((
             context("end of AMDAR report", tag("=")),
-            context("rest of AMDAR item", terminated(take_till(|c: char| c == '=' || c == '\n'), char('='))),
+            context(
+                "rest of AMDAR item",
+                terminated(take_till(|c: char| c == '=' || c == '\n'), char('=')),
+            ),
         ))(input)?;
 
         Ok((
