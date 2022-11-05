@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use chrono::NaiveTime;
+use chrono::{NaiveTime, Duration};
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till},
@@ -42,7 +42,7 @@ pub struct AmdarReportItem {
     pub aircraft_identifier: String,
     pub lat: Angle,
     pub lon: Angle,
-    pub time: NaiveTime,
+    pub time: Duration,
     /// Measure in hundreds of feet above the standard datum plane of 1013.2 hPa
     pub pressure_altitude: Length,
     /// Measure of temperature at the given altitude

@@ -1,6 +1,6 @@
 use std::{num::ParseIntError, str::FromStr};
 
-use chrono::{NaiveDateTime, NaiveTime};
+use chrono::{NaiveDateTime, NaiveTime, Duration};
 use nom::{
     bytes::complete::take,
     character::{complete::space1, streaming::char},
@@ -19,7 +19,7 @@ use crate::{
 pub struct WMOProductIdentifier {
     pub datatype: DataTypeDesignator,
     pub country: CCCC,
-    pub creation_time: NaiveTime,
+    pub creation_time: Duration,
 }
 
 /// A full AWIPS product identifier containing a WMO abbreviated heading and AFOS PIL
