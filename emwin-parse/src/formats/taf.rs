@@ -217,18 +217,22 @@ impl TAFReportItem {
         let mut groups = vec![];
 
         loop {
+            let (new_input, end) = opt(preceded(multispace0, char('=')))(input)?;
+            if end.is_some() {
+                break
+            }
+            
+            input = new_input;
+
             let (new_input, group) = preceded(
                 multispace0,
-                alt((
-                    recover(TAFReportItemGroup::parse, take_till(|c| c == '\n')),
-                    char('=').map(|_| None),
-                )),
+                recover(TAFReportItemGroup::parse, take_till(|c| c == '\n')),
             )(input)?;
 
             input = new_input;
             match group {
                 Some(group) => groups.push(group),
-                None => break,
+                None => continue,
             }
         }
 
@@ -472,7 +476,7 @@ mod test {
     pub fn test_taf() {
         let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
-        assert_eq!(item.unwrap().groups.len(), 3);
+        assert_eq!(item.unwrap().groups.len(), 4);
         let (_, _) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
                 "{}",
