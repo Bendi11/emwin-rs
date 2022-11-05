@@ -5,7 +5,7 @@ use crate::{ParseResult, parse::fromstr};
 
 /// Parse altitude levels using code table 1690
 pub fn parse_1690(input: &str) -> ParseResult<&str, Length> {
-    context("altitude (code table 1690)", fromstr(2))
+    context("altitude (code table 1690)", fromstr(3))
         .map(|v: f32| Length::new::<meter>(v * 30f32))
         .parse(input)
 }

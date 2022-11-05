@@ -3,7 +3,7 @@ use std::num::ParseFloatError;
 use chrono::NaiveTime;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take},
+    bytes::complete::{tag, take, take_until},
     character::{
         complete::{anychar, digit1, multispace0, multispace1, space0, space1},
         streaming::char,
@@ -11,7 +11,7 @@ use nom::{
     combinator::{map_opt, map_res, opt},
     error::context,
     sequence::{preceded, separated_pair, terminated, tuple},
-    Parser,
+    Parser, multi::many_till,
 };
 use uom::si::{
     angle::degree,
@@ -253,7 +253,7 @@ impl TAFReportItem {
 
         let (input, wind) = context(
             "wind levels",
-            alt((parse_wind.map(Some), tag("CNL").map(|_| None))),
+            preceded(space0, alt((parse_wind.map(Some), tag("CNL").map(|_| None)))),
         )(input)?;
 
         let (input, (horizontal_vis, significant_weather, clouds)) =
@@ -302,9 +302,9 @@ impl TAFReportItemGroup {
         }
 
         fn parse_prob(input: &str) -> ParseResult<&str, TAFReportItemGroupKind> {
-            let (input, probability) = map_res(take(2usize), |s: &str| s.parse::<f32>())(input)?;
+            let (input, probability) = context("item group probability", fromstr(2))(input)?;
 
-            preceded(
+            context("item following probability estimate", preceded(
                 space1,
                 alt((
                     preceded(tuple((tag("TEMPO"), space1)), parse_from_to).map(
@@ -320,18 +320,18 @@ impl TAFReportItemGroup {
                         to,
                     }),
                 )),
-            )(input)
+            ))(input)
         }
 
         let (input, kind) = context(
             "item group",
             alt((
-                preceded(
+                context("BECMG group", preceded(
                     tuple((tag("BECMG"), space1)),
                     parse_from_to
                         .map(|(from, to)| TAFReportItemGroupKind::Change(from, to)),
-                ),
-                preceded(
+                )),
+                context("TEMPO group", preceded(
                     tuple((tag("TEMPO"), space1)),
                     parse_from_to
                         .map(|(from, to)| TAFReportItemGroupKind::TemporaryChange {
@@ -339,17 +339,33 @@ impl TAFReportItemGroup {
                             from,
                             to,
                         }),
-                ),
-                preceded(
+                )),
+                context("FM group", preceded(
                     tag("FM"),
                     yygggg.map(TAFReportItemGroupKind::TimeIndicator),
-                ),
-                preceded(tag("PROB"), parse_prob),
+                )),
+                context("PROB group", preceded(tag("PROB"), parse_prob)),
             )),
         )(input)?;
 
-        let (input, wind) = opt(parse_wind)(input)?;
+        let (input, wind) = opt(preceded(space0, parse_wind))(input)?;
         let (input, (visibility, weather, clouds)) = parse_vis_weather_clouds(input)?;
+
+        let (input, _) = opt(
+            preceded(
+                space0,
+                preceded(
+                    tag("WS"),
+                    many_till(
+                        anychar,
+                        alt((
+                            tag("KT"),
+                            tag("MPS")
+                        ))
+                    )
+                )
+            )
+        )(input)?;
 
         Ok((
             input,
@@ -637,11 +653,17 @@ mod test {
     use super::*;
 
     const TAF: &str = include_str!("./test/taf.txt");
-    const ITEM: &str = r#"TEMPO 2200/2204 VRB06KT BKN025"#;
+    const ITEM: &str = 
+r#"KIAD 052059Z 0521/0624 18015G24KT P6SM FEW050 BKN250
+  FM052200 16010G18KT P6SM SCT050 BKN250
+  FM060300 17008G16KT P6SM SCT030 BKN100
+  FM060900 18006KT P6SM VCSH SCT015 BKN030 WS020/20030KT
+  FM061400 18008G16KT P6SM VCSH SCT015 BKN030
+  FM062000 19010G17KT P6SM SCT025 BKN050="#;
 
     #[test]
     pub fn test_taf() {
-        let (_, item) = TAFReportItemGroup::parse(ITEM)
+        let (_, item) = TAFReportItem::parse(ITEM)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         let (_, taf) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
