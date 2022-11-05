@@ -119,19 +119,20 @@ impl TAFReport {
                     multispace0,
                     recover(
                         TAFReportItem::parse,
-                        take_until("="),
+                        terminated(take_until("="), char('=')).or(nom::combinator::rest),
                     ),
                 ),
             )(input)
             {
                 Ok((i, Some(Some(r)))) => (i, r),
-                Ok((_, _)) => continue,
+                Ok((i, _)) => { input = i; continue },
                 Err(e) => {
                     log::error!(
                         "Failed to parse a TAF report item: {}",
                         crate::display_error(e)
                     );
-                    continue;
+
+                    break;
                 }
             };
 
