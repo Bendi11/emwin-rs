@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use config::{CONFIG_FOLDER, CONFIG_FILE};
 use emwin_parse::{
     dt::{
         code::CodeForm,
@@ -17,39 +18,16 @@ use emwin_parse::{
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use sqlx::MySqlPool;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::mpsc::{channel, Receiver},
 };
 
-/// Action to take when an unrecognized file appears in the input directory
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "on", content = "path")]
-pub enum UnrecognizedFileOpt {
-    #[serde(rename = "delete")]
-    Delete,
-    #[serde(rename = "leave")]
-    None,
-    #[serde(rename = "move")]
-    Move(PathBuf),
-}
+use crate::config::{CONFIG, Config};
 
-#[derive(Deserialize, Serialize)]
-pub struct Config {
-    /// Folder that contains all GOES output files
-    #[serde(rename = "goes-dir")]
-    pub goes_dir: PathBuf,
-    #[serde(rename = "db-url")]
-    pub db_url: String,
-    /// What to do when we get an unrecognized file in the input directory
-    pub unrecognized: UnrecognizedFileOpt,
-    pub failure: UnrecognizedFileOpt,
-}
-
-pub const CONFIG: OnceCell<Config> = OnceCell::new();
-
-pub const CONFIG_FOLDER: &str = "emwind/";
-pub const CONFIG_FILE: &str = "config.toml";
+pub mod db;
+pub mod config;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -130,7 +108,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
                         e,
                     );
                 } else {
-                    write_config(&config_path, &config).await;
+                    config::write_config(&config_path, &config).await;
                 }
                 config
             }
@@ -151,6 +129,18 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         );
         return ExitCode::FAILURE;
     }
+
+    let pool = match MySqlPool::connect(&CONFIG.wait().db_url).await {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!(
+                "Failed to connect to database at {}: {}",
+                CONFIG.wait().db_url,
+                e,
+            );
+            return ExitCode::FAILURE;
+        }
+    };
 
 
     while let Some(event) = rx.recv().await {
@@ -247,81 +237,6 @@ pub async fn on_create(event: Event) {
                 );
                 CONFIG.wait().unrecognized.do_for(&path).await;
             }
-        }
-    }
-}
-
-impl UnrecognizedFileOpt {
-    /// Attempt to execute the given action for a file at `path`
-    pub async fn do_for(&self, path: impl AsRef<Path>) {
-        match self {
-            Self::Delete => {
-                if let Err(e) = tokio::fs::remove_file(&path).await {
-                    log::error!("Failed to delete file {}: {}", path.as_ref().display(), e);
-                }
-            }
-            Self::Move(to) => {
-                if let Err(e) = tokio::fs::copy(
-                    &path,
-                    to.join(
-                        path.as_ref()
-                            .file_name()
-                            .unwrap_or(path.as_ref().as_os_str()),
-                    ),
-                )
-                .await
-                {
-                    log::error!(
-                        "Failed to move file {} to {}: {}",
-                        path.as_ref().display(),
-                        to.display(),
-                        e
-                    );
-                }
-            }
-            Self::None => (),
-        }
-    }
-}
-
-async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
-    match tokio::fs::File::create(&path).await {
-        Ok(mut file) => {
-            let buf = match toml::to_vec(&config) {
-                Ok(buf) => buf,
-                Err(e) => {
-                    log::error!("Failed to serialize default configuration: {}", e);
-                    return;
-                }
-            };
-
-            if let Err(e) = file.write_all(&buf).await {
-                log::error!(
-                    "Failed to write default configuration file {}: {}",
-                    path.as_ref().display(),
-                    e
-                );
-            }
-        }
-        Err(e) => {
-            log::warn!(
-                "Failed to create configuration file {}: {}, using default configuration",
-                path.as_ref().display(),
-                e,
-            );
-        }
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            goes_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/"),
-            unrecognized: UnrecognizedFileOpt::Delete,
-            failure: UnrecognizedFileOpt::Move(
-                dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),
-            ),
-            db_url: "mysql://root:@localhost/weather".to_owned(),
         }
     }
 }
