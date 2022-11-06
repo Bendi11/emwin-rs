@@ -39,11 +39,11 @@ pub struct Config {
     /// Folder that contains all GOES output files
     #[serde(rename = "goes-dir")]
     pub goes_dir: PathBuf,
+    #[serde(rename = "db-url")]
+    pub db_url: String,
     /// What to do when we get an unrecognized file in the input directory
     pub unrecognized: UnrecognizedFileOpt,
     pub failure: UnrecognizedFileOpt,
-    #[serde(rename = "db-url")]
-    pub db_url: String,
 }
 
 pub const CONFIG: OnceCell<Config> = OnceCell::new();
