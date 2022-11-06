@@ -42,6 +42,8 @@ pub struct Config {
     /// What to do when we get an unrecognized file in the input directory
     pub unrecognized: UnrecognizedFileOpt,
     pub failure: UnrecognizedFileOpt,
+    #[serde(rename = "db-url")]
+    pub db_url: String,
 }
 
 pub const CONFIG: OnceCell<Config> = OnceCell::new();
@@ -149,6 +151,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         );
         return ExitCode::FAILURE;
     }
+
 
     while let Some(event) = rx.recv().await {
         match event.kind {
@@ -318,6 +321,7 @@ impl Default for Config {
             failure: UnrecognizedFileOpt::Move(
                 dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),
             ),
+            db_url: "mysql://root:@localhost/weather".to_owned(),
         }
     }
 }

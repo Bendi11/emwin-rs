@@ -11,6 +11,9 @@ PrivateTmp=true
 NoNewPrivileges=true
 User=goesguy
 Group=goesguy
+StandardError=journal
+StandardOutput=journal
+StandardInput=null
 
 [Install]
 WantedBy=default.target
