@@ -33,7 +33,7 @@ use crate::{
 
 use super::codes::{
     weather::SignificantWeather,
-    wind::{ddd, ff},
+    wind::{ddd, ff, WindSummary},
 };
 
 /// Aerodome forecast report in AM 51 TAF format
@@ -51,7 +51,7 @@ pub struct TAFReportItem {
     /// Offset from the current month to the time this was reported
     pub origin_date: Duration,
     pub time_range: (Duration, Duration),
-    pub wind: Option<TAFWind>,
+    pub wind: Option<WindSummary>,
     pub horizontal_vis: Option<Length>,
     pub significant_weather: Option<SignificantWeather>,
     pub clouds: Vec<TAFSignificantWeatherReportClouds>,
@@ -71,12 +71,6 @@ pub struct TAFSignificantWeatherReportClouds {
     pub altitude: Length,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct TAFWind {
-    pub direction: Angle,
-    pub speed: Velocity,
-    pub max_speed: Option<Velocity>,
-}
 
 /// Cloud amount NsNsNs
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,7 +84,7 @@ pub enum CloudAmount {
 #[derive(Clone, Debug)]
 pub struct TAFReportItemGroup {
     pub kind: TAFReportItemGroupKind,
-    pub wind: Option<TAFWind>,
+    pub wind: Option<WindSummary>,
     pub visibility: Option<Length>,
     pub weather: Option<SignificantWeather>,
     pub clouds: Vec<TAFSignificantWeatherReportClouds>,
@@ -208,7 +202,7 @@ impl TAFReportItem {
             "wind levels",
             preceded(
                 space0,
-                alt((TAFWind::parse.map(Some), tag("CNL").map(|_| None))),
+                alt((WindSummary::parse.map(Some), tag("CNL").map(|_| None))),
             ),
         )(input)?;
 
@@ -321,7 +315,7 @@ impl TAFReportItemGroup {
         let (input, wind) = preceded(
             space0,
             recover(
-                TAFWind::parse,
+                WindSummary::parse,
                 take_till(|c: char| c.is_whitespace()),
             )
         )(input)?;
@@ -345,41 +339,6 @@ impl TAFReportItemGroup {
     }
 }
 
-impl TAFWind {
-    pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, direction) = ddd(input)?;
-        let (input, speed) = ff(input)?;
-
-        let (input, max_speed) = opt(preceded(char('G'), fromstr(2)))(input)?;
-
-        let (input, (speed, max_speed)) = context(
-            "wind speed units",
-            alt((
-                map_res(tag("KT"), |_| {
-                    Ok::<_, &str>((
-                        Velocity::new::<knot>(speed),
-                        max_speed.map(Velocity::new::<knot>),
-                    ))
-                }),
-                map_res(tag("MPS"), |_| {
-                    Ok::<_, &str>((
-                        Velocity::new::<meter_per_second>(speed),
-                        max_speed.map(Velocity::new::<meter_per_second>),
-                    ))
-                }),
-            )),
-        )(input)?;
-
-        Ok((
-            input,
-            Self {
-                direction,
-                speed,
-                max_speed,
-            },
-        ))
-    }
-}
 
 fn parse_vis_weather_clouds(
     input: &str,
@@ -396,7 +355,7 @@ fn parse_vis_weather_clouds(
     Ok(match cavok.is_some() {
         true => (input, (None, None, vec![])),
         false => {
-            let (input, visibility) = vvvv(input)?;
+            let (input, visibility) = opt(vvvv)(input)?;
 
             let (input, weather) = opt(preceded(
                 space1,

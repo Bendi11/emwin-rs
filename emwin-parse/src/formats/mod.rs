@@ -9,6 +9,7 @@ pub mod codes;
 pub mod codetbl;
 pub mod rwr;
 pub mod taf;
+pub mod metar;
 
 /// Parse an angle in degrees minutes ({D}MM) format
 pub fn parse_degreesminutes<const D: usize>(input: &str) -> ParseResult<&str, f32> {

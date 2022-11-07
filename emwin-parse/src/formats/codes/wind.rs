@@ -1,7 +1,16 @@
-use nom::{bytes::complete::take, combinator::map_res, error::context, Parser};
-use uom::si::{angle::degree, f32::Angle};
+use nom::{bytes::complete::take, combinator::{map_res, opt}, error::context, Parser, sequence::preceded, character::streaming::char, branch::alt};
+use nom_supreme::tag::complete::tag;
+use uom::si::{angle::degree, f32::{Angle, Velocity}, velocity::{knot, meter_per_second}};
 
 use crate::{parse::fromstr, ParseResult};
+
+/// Wind report on direction and speed parsed from dddff**G**f*m*f*m* format
+#[derive(Clone, Copy, Debug)]
+pub struct WindSummary {
+    pub direction: Angle,
+    pub speed: Velocity,
+    pub max_speed: Option<Velocity>,
+}
 
 /// Parse the direction that wind is blowing in `dd` format (code table 0878)
 pub fn dd(input: &str) -> ParseResult<&str, Angle> {
@@ -27,3 +36,40 @@ pub fn ddd(input: &str) -> ParseResult<&str, Angle> {
 pub fn ff(input: &str) -> ParseResult<&str, f32> {
     context("wind speed without units 'ff'", fromstr(2))(input)
 }
+
+impl WindSummary {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        let (input, direction) = ddd(input)?;
+        let (input, speed) = ff(input)?;
+
+        let (input, max_speed) = opt(preceded(char('G'), fromstr(2)))(input)?;
+
+        let (input, (speed, max_speed)) = context(
+            "wind speed units",
+            alt((
+                map_res(tag("KT"), |_| {
+                    Ok::<_, &str>((
+                        Velocity::new::<knot>(speed),
+                        max_speed.map(Velocity::new::<knot>),
+                    ))
+                }),
+                map_res(tag("MPS"), |_| {
+                    Ok::<_, &str>((
+                        Velocity::new::<meter_per_second>(speed),
+                        max_speed.map(Velocity::new::<meter_per_second>),
+                    ))
+                }),
+            )),
+        )(input)?;
+
+        Ok((
+            input,
+            Self {
+                direction,
+                speed,
+                max_speed,
+            },
+        ))
+    }
+}
+

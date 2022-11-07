@@ -19,7 +19,7 @@ use uom::si::{
 use crate::ParseResult;
 
 /// Parse a surface horizontal visibility in `VVVV` format (pg. 227)
-pub fn vvvv(input: &str) -> ParseResult<&str, Option<Length>> {
+pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     let mut vis_sm = context(
         "horizontal visibility",
         terminated(
@@ -39,7 +39,7 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Option<Length>> {
         SM(f32),
     }
 
-    let (input, vis_first) = opt(context(
+    let (input, vis_first) = context(
         "cloud visibility",
         preceded(
             space1,
@@ -58,22 +58,19 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Option<Length>> {
                 }),
             )),
         ),
-    ))(input)?;
+    )(input)?;
 
     Ok(match vis_first {
-        Some(vis_first) => match vis_first {
             VisFirst::Number(whole) => match opt(vis_sm)(input)? {
                 (input, Some((numerator, Some(denominator)))) => (
                     input,
-                    Some(Length::new::<mile>(whole + numerator / denominator)),
+                    Length::new::<mile>(whole + numerator / denominator),
                 ),
                 (input, Some((numerator, None))) => {
-                    (input, Some(Length::new::<mile>(whole + numerator)))
+                    (input, Length::new::<mile>(whole + numerator))
                 }
-                (input, None) => (input, Some(Length::new::<meter>(whole))),
+                (input, None) => (input, Length::new::<meter>(whole)),
             },
-            VisFirst::SM(vis) => (input, Some(Length::new::<mile>(vis))),
-        },
-        None => (input, None),
+            VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
     })
 }
