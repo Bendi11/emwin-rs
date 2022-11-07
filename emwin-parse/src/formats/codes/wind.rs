@@ -16,7 +16,11 @@ pub struct WindSummary {
 pub fn dd(input: &str) -> ParseResult<&str, Angle> {
     context(
         "wind direction 'dd'",
-        fromstr(2).map(|d: f32| Angle::new::<degree>(d * 10f32)),
+        alt((
+            fromstr(2)
+                .map(|d: f32| Angle::new::<degree>(d * 10f32)),
+            tag("//").map(|_| Angle::new::<degree>(0f32))
+        )),
     )(input)
 }
 
@@ -26,6 +30,7 @@ pub fn ddd(input: &str) -> ParseResult<&str, Angle> {
         "wind direction 'ddd'",
         map_res(take(3usize), |s: &str| match s {
             "VRB" => Ok(0f32),
+            "///" => Ok(0f32),
             _ => s.parse(),
         })
         .map(|v| Angle::new::<degree>(v)),
