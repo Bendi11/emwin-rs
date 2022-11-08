@@ -1,4 +1,4 @@
-use nom::{Parser, sequence::{preceded, tuple}, combinator::opt, character::streaming::char};
+use nom::{Parser, sequence::tuple, combinator::opt, character::streaming::char};
 use uom::si::{f32::ThermodynamicTemperature, thermodynamic_temperature::degree_celsius};
 
 use crate::{ParseError, parse::fromstr};

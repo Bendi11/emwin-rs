@@ -1,12 +1,18 @@
 use chrono::Duration;
-use nom::{character::{streaming::char, complete::{space1, anychar}}, combinator::{opt, map_res}, branch::alt, sequence::{preceded, terminated, tuple, separated_pair}, Parser, multi::many0};
+use nom::{character::{streaming::char, complete::{space1, anychar, multispace1}}, combinator::{opt, map_res}, branch::alt, sequence::{preceded, terminated, tuple, separated_pair}, Parser, multi::many0};
 use nom_supreme::tag::complete::tag;
-use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::{meter, decimeter}, thermodynamic_temperature::degree_celsius, pressure::hectopascal};
+use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::{meter, decimeter}, pressure::hectopascal};
 
-use crate::{header::CCCC, ParseResult, parse::{time::yygggg, fromstr}};
+use crate::{header::{CCCC, WMOProductIdentifier}, ParseResult, parse::{time::yygggg, fromstr}};
 
 use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::{RunwayDeposits, RunwayContaminationLevel, RunwaySurfaceFriction, RunwayDepositDepth}}, Compass, RunwayDesignator};
 
+/// A METAR report parsed from EMWIN files, with additional header line
+#[derive(Clone, Debug)]
+pub struct EmwinMetarReport {
+    pub header: WMOProductIdentifier,
+    pub metar: MetarReport,
+}
 
 /// A single METAR weather report parsed from a FM 15/16 report
 #[derive(Clone, Debug, )]
@@ -85,6 +91,24 @@ pub struct RunwayState {
     pub level: RunwayContaminationLevel,
     pub depth: RunwayDepositDepth,
     pub friction: RunwaySurfaceFriction,
+}
+
+impl EmwinMetarReport {
+    pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
+        let (input, header) = WMOProductIdentifier::parse(input)?;
+        let (input, Some(metar)) = preceded(
+            multispace1,
+            MetarReport::parse,
+        )(input)? else { return Ok((input, None)) };
+
+        Ok((
+            input,
+            Some(Self {
+                header,
+                metar,
+            })
+        ))
+    }
 }
 
 impl MetarReport {
@@ -310,5 +334,18 @@ impl MetarVariableWindDir {
                 extreme_cw,
             }
         ))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const METAR: &str = include_str!("test/metar.txt");
+
+    #[test]
+    pub fn test_metar() {
+        let (_, metar) = EmwinMetarReport::parse(METAR).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        panic!("{:#?}", metar);
     }
 }

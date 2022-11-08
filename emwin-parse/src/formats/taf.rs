@@ -1,6 +1,4 @@
-use std::convert::identity;
-
-use chrono::{NaiveTime, Duration};
+use chrono::Duration;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till, take_until},
@@ -8,20 +6,17 @@ use nom::{
         complete::{anychar, multispace0, multispace1, space0, space1},
         streaming::char,
     },
-    combinator::{map_opt, map_res, opt, rest},
+    combinator::{map_opt, map_res, opt},
     error::context,
     multi::many_till,
     sequence::{preceded, separated_pair, terminated, tuple},
     Parser,
 };
 use nom_supreme::tag::complete::tag;
-use uom::si::{
-    f32::{Angle, Length, Velocity},
-    velocity::{knot, meter_per_second},
-};
+use uom::si::f32::Length;
 
 use crate::{
-    formats::{codes::visibility::vvvv, codetbl::parse_1690},
+    formats::codes::visibility::vvvv,
     header::{WMOProductIdentifier, CCCC},
     parse::{
         fromstr,
@@ -33,7 +28,7 @@ use crate::{
 
 use super::codes::{
     weather::SignificantWeather,
-    wind::{ddd, ff, WindSummary}, clouds::CloudReport,
+    wind::WindSummary, clouds::CloudReport,
 };
 
 /// Aerodome forecast report in AM 51 TAF format
@@ -398,7 +393,6 @@ mod test {
     pub fn test_taf() {
         let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
-        panic!("{:#?}", item);
         assert_eq!(item.unwrap().groups.len(), 4);
         let (_, _) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(

@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use chrono::{NaiveTime, Duration};
+use chrono::Duration;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till},

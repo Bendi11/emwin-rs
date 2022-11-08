@@ -5,8 +5,6 @@ use crate::ParseResult;
 
 use super::fromstr;
 
-/// chrono format string for dates in YYGGgg format
-const TIME_YYGGGG: &str = "%d%H%M";
 
 /// Parse a time in DDHHMM format
 pub fn yygggg(input: &str) -> ParseResult<&str, Duration> {
