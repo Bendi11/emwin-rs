@@ -5,7 +5,7 @@ use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::
 
 use crate::{header::CCCC, ParseResult, parse::{time::yygggg, fromstr}};
 
-use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::RunwayDeposits}, Compass, RunwayDesignator};
+use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::{RunwayDeposits, RunwayContaminationLevel}}, Compass, RunwayDesignator};
 
 
 /// A single METAR weather report parsed from a FM 15/16 report
@@ -81,6 +81,8 @@ pub enum MetarReportKind {
 pub struct RunwayState {
     pub runway: RunwayDesignator,
     pub deposits: RunwayDeposits,
+    pub level: RunwayContaminationLevel,
+    pub depth: Length,
 
 }
 
