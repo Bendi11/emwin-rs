@@ -1,10 +1,11 @@
 use std::{
     path::{Path, PathBuf},
     process::ExitCode,
-    time::Duration,
+    time::Duration, sync::Arc,
 };
 
 use config::{CONFIG_FILE, CONFIG_FOLDER};
+use dispatch::on_create;
 use emwin_parse::{
     dt::{
         code::CodeForm,
@@ -28,6 +29,7 @@ use crate::config::{Config, CONFIG};
 
 pub mod config;
 pub mod db;
+pub mod dispatch;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -131,7 +133,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     }
 
     let pool = match MySqlPool::connect(&CONFIG.wait().db_url).await {
-        Ok(p) => p,
+        Ok(p) => Arc::new(p),
         Err(e) => {
             log::error!(
                 "Failed to connect to database at {}: {}",
@@ -141,11 +143,13 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             return ExitCode::FAILURE;
         }
     };
+    
 
     while let Some(event) = rx.recv().await {
         match event.kind {
             EventKind::Create(CreateKind::File) => {
-                if let Err(e) = tokio::spawn(async move { on_create(event).await }).await {
+                let npool = Arc::clone(&pool);
+                if let Err(e) = tokio::spawn(async move { on_create(event, npool).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
                 }
             }
@@ -154,88 +158,4 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     }
 
     ExitCode::SUCCESS
-}
-
-pub async fn on_create(event: Event) {
-    for path in event.paths {
-        match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
-            Some(filename) => {
-                let filename: GoesFileName = match filename.parse() {
-                    Ok(f) => f,
-                    Err(e) => {
-                        log::error!("Failed to parse newly created filename {}: {}", filename, e);
-                        CONFIG.wait().failure.do_for(&path).await;
-                        return;
-                    }
-                };
-
-                let read = async {
-                    match tokio::fs::read_to_string(&path).await {
-                        Ok(src) => Some(src),
-                        Err(e) => {
-                            log::error!("Failed to read file {}: {}", path.display(), e);
-                            CONFIG.wait().failure.do_for(&path).await;
-                            None
-                        }
-                    }
-                };
-
-                match filename.wmo_product_id {
-                    DataTypeDesignator::Analysis(Analysis {
-                        subtype: AnalysisSubType::Surface,
-                        ..
-                    }) => {
-                        let Some(src) = read.await else { return };
-                        let _ = match RegionalWeatherRoundup::parse(&src) {
-                            Ok((_, rwr)) => rwr,
-                            Err(e) => {
-                                log::error!("Failed to parse regional weather roundup: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
-                                return;
-                            }
-                        };
-                    }
-                    DataTypeDesignator::UpperAirData(UpperAirData {
-                        subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
-                        ..
-                    }) => {
-                        let Some(src) = read.await else { return };
-                        let report = match AmdarReport::parse(&src) {
-                            Ok((_, report)) => report,
-                            Err(e) => {
-                                log::error!("Failed to parse AMDAR upper air report: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
-                                return;
-                            }
-                        };
-                    }
-                    DataTypeDesignator::Forecast(Forecast {
-                        subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
-                        ..
-                    }) => {
-                        let Some(src) = read.await else { return };
-                        let forecast = match TAFReport::parse(&src) {
-                            Ok((_, forecast)) => forecast,
-                            Err(e) => {
-                                log::error!("Failed to parse TAF report: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
-                                return;
-                            }
-                        };
-                    }
-                    _ => {
-                        log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
-                        CONFIG.wait().unrecognized.do_for(&path).await;
-                    }
-                }
-            }
-            None => {
-                log::error!(
-                    "Newly created file {} contains invalid unicode characters",
-                    path.display()
-                );
-                CONFIG.wait().unrecognized.do_for(&path).await;
-            }
-        }
-    }
 }
