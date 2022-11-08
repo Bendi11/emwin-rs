@@ -393,7 +393,7 @@ mod test {
     pub fn test_taf() {
         let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
-        assert_eq!(item.unwrap().groups.len(), 4);
+        assert_eq!(item.unwrap().groups.len(), 5);
         let (_, _) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
                 "{}",

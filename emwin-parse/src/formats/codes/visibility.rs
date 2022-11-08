@@ -3,7 +3,7 @@ use std::num::ParseFloatError;
 use nom::{
     branch::alt,
     character::{
-        complete::{digit1, space1},
+        complete::{digit1, space1, space0},
         streaming::char,
     },
     combinator::{map_res, opt},
@@ -42,7 +42,7 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     let (input, vis_first) = context(
         "cloud visibility",
         preceded(
-            space1,
+            space0,
             alt((
                 map_res(&mut vis_sm, |(first, denominator)| {
                     Ok::<VisFirst, ParseFloatError>(match denominator {
@@ -73,4 +73,17 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
             },
             VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
     })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    pub fn test_vvvv() {
+        assert_eq!(
+            vvvv("15SM").unwrap().1,
+            Length::new::<mile>(15f32),
+        )
+    }
 }

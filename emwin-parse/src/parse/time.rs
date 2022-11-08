@@ -11,9 +11,9 @@ pub fn yygggg(input: &str) -> ParseResult<&str, Duration> {
     context(
         "time in YYGGgg format",
         tuple((
-            fromstr(2),
-            fromstr(2),
-            fromstr(2)
+            context("YY", fromstr(2)),
+            context("GG", fromstr(2)),
+            context("gg", fromstr(2))
         ))
         .map(|(d, h, m)| 
             Duration::days(d) +

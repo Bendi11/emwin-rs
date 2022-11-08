@@ -1,5 +1,5 @@
 use chrono::Duration;
-use nom::{character::{streaming::char, complete::{space1, anychar, multispace1}}, combinator::{opt, map_res}, branch::alt, sequence::{preceded, terminated, tuple, separated_pair}, Parser, multi::many0};
+use nom::{character::{streaming::char, complete::{space1, anychar, multispace1, space0}}, combinator::{opt, map_res}, branch::alt, sequence::{preceded, terminated, tuple, separated_pair}, Parser, multi::{many0, fold_many0}};
 use nom_supreme::tag::complete::tag;
 use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::{meter, decimeter}, pressure::hectopascal};
 
@@ -26,7 +26,7 @@ pub struct MetarReport {
     pub minimum_visibility: Option<MetarMinimumVisibility>,
     pub runway_range: Vec<(RunwayDesignator, Length, RunwayTrend)>,
     pub weather: Option<SignificantWeather>,
-    pub clouds: Option<CloudReport>,
+    pub clouds: Vec<CloudReport>,
     pub air_dewpoint_temperature: Option<(ThermodynamicTemperature, ThermodynamicTemperature)>,
     pub qnh: Option<Pressure>,
     pub recent_weather: Option<SignificantWeather>,
@@ -121,38 +121,39 @@ impl MetarReport {
 
         let (input, kind) = opt(
             preceded(
-                space1,
+                space0,
                 tag("COR").map(|_| MetarReportKind::Cor),
             )
         )(input)?;
         
-        let (input, country): (_, CCCC) = preceded(space1, fromstr(4))(input)?;
-        let (input, origin) = terminated(yygggg, char('Z'))(input)?;
+        let (input, country): (_, CCCC) = preceded(space0, fromstr(4))(input)?;
+        let (input, origin) = preceded(space0, terminated(yygggg, char('Z')))(input)?;
 
         let (input, kind) = match kind {
             Some(kind) => (input, kind),
-            None => match preceded(space1, alt((
+            None => match opt(preceded(space1, alt((
                 tag("NIL").map(|_| None),
                 tag("AUTO").map(|_| Some(MetarReportKind::Auto)),
-            )))(input)? {
-                (input, Some(k)) => (input, k),
-                (input, None) => return Ok((input, None)),
+            ))))(input)? {
+                (input, Some(Some(k))) => (input, k),
+                (input, None) => (input, MetarReportKind::Auto),
+                (input, Some(None)) => return Ok((input, None)),
             }
         };
 
         let (input, wind) = preceded(space1, WindSummary::parse)(input)?;
         let (input, variable_wind_dir) = opt(
             preceded(
-                space1,
+                space0,
                 MetarVariableWindDir::parse,
             )
         )(input)?;
 
-        let (input, visibility) = opt(preceded(space1, vvvv))(input)?;
+        let (input, visibility) = opt(preceded(space0, vvvv))(input)?;
         
         let (input, minimum_visibility) = opt(
             preceded(
-                space1,
+                space0,
                 tuple((
                     fromstr::<'_, f32>(4),
                     alt((
@@ -169,36 +170,53 @@ impl MetarReport {
             )
         )(input)?;
 
-        let (input, runway_range) = many0(preceded(
-            space1,
-            preceded(
-                char('R'),
-                separated_pair(
-                    RunwayDesignator::parse,
-                    char('/'),
-                    tuple((
-                        fromstr(4).map(|v: f32| Length::new::<meter>(v)),
-                        map_res(
-                            anychar,
-                            |c: char| Ok(match c {
-                                'U' => RunwayTrend::Farther,
-                                'D' => RunwayTrend::Closer,
-                                'N' => RunwayTrend::NoChange,
-                                _ => return Err("Unknown runway trend code")
-                            })
-                        )
-                    ))
-                )
-                .map(|(designator, (distance, trend))| (designator, distance, trend)),
-            )
-        ))(input)?;
+        let mut input = input;
+        let mut runway_range = vec![];
 
-        let (input, weather) = opt(preceded(space1, SignificantWeather::parse))(input)?;
-        let (input, clouds) = opt(preceded(space1, CloudReport::parse)).map(Option::flatten).parse(input)?;
+        loop {
+            let Ok((new_input, rr)) = preceded(
+                space0,
+                preceded(
+                    char('R'),
+                    separated_pair(
+                        RunwayDesignator::parse,
+                        char('/'),
+                        tuple((
+                            fromstr(4).map(|v: f32| Length::new::<meter>(v)),
+                            map_res(
+                                anychar,
+                                |c: char| Ok(match c {
+                                    'U' => RunwayTrend::Farther,
+                                    'D' => RunwayTrend::Closer,
+                                    'N' => RunwayTrend::NoChange,
+                                    _ => return Err("Unknown runway trend code")
+                                })
+                            )
+                        ))
+                    )
+                    .map(|(designator, (distance, trend))| (designator, distance, trend)),
+                )
+            )(input) else { break };
+            
+            input = new_input;
+            runway_range.push(rr);
+        }
+
+        
+        let (input, weather) = opt(preceded(space0, SignificantWeather::parse))(input)?;
+        let mut input = input;
+        let mut clouds = vec![];
+        
+        loop {
+            let Ok((new_input, cloud)) = preceded(space0, CloudReport::parse)(input) else { break };
+            input = new_input;
+            let Some(cloud) = cloud else { break; };
+            clouds.push(cloud);
+        }
         
         let (input, air_dewpoint_temperature) = opt(
             preceded(
-                space1,
+                space0,
                 separated_pair(
                     temperature(2),
                     char('/'),
@@ -209,7 +227,7 @@ impl MetarReport {
 
         let (input, qnh) = opt(
             preceded(
-                space1,
+                space0,
                 preceded(
                     char('Q'),
                     fromstr(4).map(|v| Pressure::new::<hectopascal>(v))
@@ -219,7 +237,7 @@ impl MetarReport {
 
         let (input, recent_weather) = opt(
             preceded(
-                space1,
+                space0,
                 preceded(
                     tag("RE"),
                     SignificantWeather::parse,
@@ -227,10 +245,10 @@ impl MetarReport {
             )
         )(input)?;
 
-        let (input, runway_wind_shear) = opt(preceded(space1, RunwayWindShear::parse))(input)?;
-        let (input, sea) = many0(preceded(space1, MetarSeaSurfaceReport::parse))(input)?;
+        let (input, runway_wind_shear) = opt(preceded(space0, RunwayWindShear::parse))(input)?;
+        let (input, sea) = many0(preceded(space0, MetarSeaSurfaceReport::parse))(input)?;
         
-        let (input, runway_status) = many0(preceded(space1, RunwayState::parse))(input)?;
+        let (input, runway_status) = many0(preceded(space0, RunwayState::parse))(input)?;
 
         Ok((
             input,
