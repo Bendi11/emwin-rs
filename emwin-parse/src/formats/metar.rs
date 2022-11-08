@@ -6,7 +6,6 @@ use nom::{
         streaming::char,
     },
     combinator::{map_res, opt},
-    multi::many0,
     sequence::{preceded, separated_pair, terminated, tuple},
     Parser,
 };
@@ -19,7 +18,7 @@ use uom::si::{
 
 use crate::{
     header::{WMOProductIdentifier, CCCC},
-    parse::{fromstr, time::yygggg},
+    parse::{fromstr, time::yygggg, multi, multi_opt},
     ParseResult,
 };
 
@@ -187,12 +186,9 @@ impl MetarReport {
                 direction,
             }),
         ))(input)?;
-
-        let mut input = input;
-        let mut runway_range = vec![];
-
-        loop {
-            let Ok((new_input, rr)) = preceded(
+        
+        let (input, runway_range) = multi(
+            preceded(
                 space0,
                 preceded(
                     char('R'),
@@ -214,22 +210,12 @@ impl MetarReport {
                     )
                     .map(|(designator, (distance, trend))| (designator, distance, trend)),
                 )
-            )(input) else { break };
-
-            input = new_input;
-            runway_range.push(rr);
-        }
+            ) 
+        ).parse(input)?;
 
         let (input, weather) = opt(preceded(space0, SignificantWeather::parse))(input)?;
-        let mut input = input;
-        let mut clouds = vec![];
-
-        loop {
-            let Ok((new_input, cloud)) = preceded(space0, CloudReport::parse)(input) else { break };
-            input = new_input;
-            let Some(cloud) = cloud else { break; };
-            clouds.push(cloud);
-        }
+        
+        let (input, clouds) = multi_opt(preceded(space0, CloudReport::parse)).parse(input)?; 
 
         let (input, air_dewpoint_temperature) = opt(preceded(
             space0,
@@ -250,24 +236,11 @@ impl MetarReport {
         ))(input)?;
 
         let (input, runway_wind_shear) = opt(preceded(space0, RunwayWindShear::parse))(input)?;
+        
+        let (input, sea) = multi(preceded(space0, MetarSeaSurfaceReport::parse)).parse(input)?;        
 
-        let mut input = input;
-        let mut sea = vec![];
-
-        loop {
-            let Ok((new_input, sea_report)) = preceded(space0, MetarSeaSurfaceReport::parse)(input) else { break };
-            input = new_input;
-
-            sea.push(sea_report);
-        }
-
-        let mut input = input;
-        let mut runway_status = vec![];
-        loop {
-            let Ok((new_input, rr)) = preceded(space0, RunwayState::parse)(input) else { break };
-            input = new_input;
-            runway_status.push(rr);
-        }
+        let (input, runway_status) = multi(preceded(space0, RunwayState::parse))
+            .parse(input)?;
 
         Ok((
             input,

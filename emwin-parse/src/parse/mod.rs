@@ -2,12 +2,57 @@
 
 use std::str::FromStr;
 
-use nom::{bytes::complete::take, combinator::map_res, error::FromExternalError};
+use nom::{bytes::complete::take, combinator::map_res, error::FromExternalError, Parser};
 
 use crate::ParseResult;
 
 pub mod recover;
 pub mod time;
+
+/// Parse 0 or more elements of `parser` 
+pub fn multi<T, I, E, P>(mut parser: P) -> impl Parser<I, Vec<T>, E>
+where
+    P: Parser<I, T, E>,
+    I: Copy,
+{
+    move |mut input: I| {
+        let mut vec = Vec::new();
+        loop {
+            match parser.parse(input) {
+                Ok((new_input, o)) => {
+                    input = new_input;
+                    vec.push(o);
+                },
+                Err(nom::Err::Failure(e)) => break Err(nom::Err::Failure(e)),
+                Err(_) => break Ok((input, vec))
+            }
+        }
+    }
+}
+
+    /// Attempt to use the given parser returning an `Option<T>` to build a vector of `T`
+pub fn multi_opt<T, I, E, P>(mut parser: P) -> impl Parser<I, Vec<T>, E>
+where 
+    P: Parser<I, Option<T>, E>,
+    I: Copy,
+{
+    move |mut input: I| {
+        let mut vec = Vec::new();
+        loop {
+            match parser.parse(input) {
+                Ok((new_input, o)) => {
+                    input = new_input;
+                    match o {
+                        Some(o) => vec.push(o),
+                        None => (),
+                    }
+                },
+                Err(nom::Err::Failure(e)) => break Err(nom::Err::Failure(e)),
+                Err(_) => break Ok((input, vec)),
+            }
+        }
+    }
+}
 
 /// Parse a value of type `T` using `T`'s [FromStr] implementation by taking `n` characters from
 /// the input string
