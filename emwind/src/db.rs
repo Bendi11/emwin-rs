@@ -2,7 +2,7 @@ use sqlx::Connection;
 
 
 /// Setup all data tables needed to record weather data
-pub async fn setup_tables(conn: Connection) -> Result<(), sqlx::Error> {
+pub async fn setup_tables(conn: impl Connection) -> Result<(), sqlx::Error> {
     let taf_tbl = sqlx::query("
     CREATE TABLE IF NOT EXISTS taf-item (
         item-id int NOT NULL PRIMARY KEY AUTO_INCREMENT,

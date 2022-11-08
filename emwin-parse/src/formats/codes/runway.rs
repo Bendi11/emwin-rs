@@ -131,6 +131,7 @@ impl RunwaySurfaceFriction {
                             93 => RunwaySurfaceBrakingAction::Medium,
                             94 => RunwaySurfaceBrakingAction::MediumGood,
                             95 => RunwaySurfaceBrakingAction::Good,
+                            _ => unreachable!(),
                         })
                     } else if (96..=98).contains(&val) {
                         Self::NotReported

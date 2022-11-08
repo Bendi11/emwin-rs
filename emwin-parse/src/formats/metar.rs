@@ -5,7 +5,7 @@ use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::
 
 use crate::{header::CCCC, ParseResult, parse::{time::yygggg, fromstr}};
 
-use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::{RunwayDeposits, RunwayContaminationLevel}}, Compass, RunwayDesignator};
+use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::{RunwayDeposits, RunwayContaminationLevel, RunwaySurfaceFriction, RunwayDepositDepth}}, Compass, RunwayDesignator};
 
 
 /// A single METAR weather report parsed from a FM 15/16 report
@@ -19,13 +19,14 @@ pub struct MetarReport {
     pub visibility: Option<Length>,
     pub minimum_visibility: Option<MetarMinimumVisibility>,
     pub runway_range: Vec<(RunwayDesignator, Length, RunwayTrend)>,
-    pub weather: SignificantWeather,
+    pub weather: Option<SignificantWeather>,
     pub clouds: Option<CloudReport>,
     pub air_dewpoint_temperature: Option<(ThermodynamicTemperature, ThermodynamicTemperature)>,
     pub qnh: Option<Pressure>,
     pub recent_weather: Option<SignificantWeather>,
     pub runway_wind_shear: Option<RunwayWindShear>,
-    pub sea: Option<MetarSeaSurfaceReport>,
+    pub sea: Vec<MetarSeaSurfaceReport>,
+    pub runway_status: Vec<RunwayState>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -77,13 +78,13 @@ pub enum MetarReportKind {
 }
 
 /// Reported runway contamination status
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug,)]
 pub struct RunwayState {
     pub runway: RunwayDesignator,
     pub deposits: RunwayDeposits,
     pub level: RunwayContaminationLevel,
-    pub depth: Length,
-
+    pub depth: RunwayDepositDepth,
+    pub friction: RunwaySurfaceFriction,
 }
 
 impl MetarReport {
@@ -171,7 +172,7 @@ impl MetarReport {
         let (input, weather) = opt(preceded(space1, SignificantWeather::parse))(input)?;
         let (input, clouds) = opt(preceded(space1, CloudReport::parse)).map(Option::flatten).parse(input)?;
         
-        let (input, air_temperature) = opt(
+        let (input, air_dewpoint_temperature) = opt(
             preceded(
                 space1,
                 separated_pair(
@@ -192,9 +193,71 @@ impl MetarReport {
             )
         )(input)?;
 
+        let (input, recent_weather) = opt(
+            preceded(
+                space1,
+                preceded(
+                    tag("RE"),
+                    SignificantWeather::parse,
+                )
+            )
+        )(input)?;
+
         let (input, runway_wind_shear) = opt(preceded(space1, RunwayWindShear::parse))(input)?;
-        let (input, sea) = many0(preceded(space1, StateOfTheSea::parse))(input)?;
+        let (input, sea) = many0(preceded(space1, MetarSeaSurfaceReport::parse))(input)?;
         
+        let (input, runway_status) = many0(preceded(space1, RunwayState::parse))(input)?;
+
+        Ok((
+            input,
+            Some(Self {
+                country,
+                origin,
+                kind,
+                wind,
+                variable_wind_dir,
+                visibility,
+                minimum_visibility,
+                runway_range,
+                weather,
+                clouds,
+                air_dewpoint_temperature,
+                qnh,
+                recent_weather,
+                runway_wind_shear,
+                sea,
+                runway_status,
+            })
+        ))
+    }
+}
+
+impl RunwayState {
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        let (input, (runway, deposits, level, depth, friction)) = preceded(
+            char('R'),
+            tuple((
+                terminated(
+                    RunwayDesignator::parse,
+                    char('/')
+                ),
+                RunwayDeposits::parse,
+                RunwayContaminationLevel::parse,
+                RunwayDepositDepth::parse,
+                RunwaySurfaceFriction::parse,
+            ))
+        )(input)?;
+
+        Ok((
+            input,
+            Self {
+                runway,
+                deposits,
+                level,
+                depth,
+                friction,
+            }
+        ))
     }
 }
 
@@ -224,12 +287,12 @@ impl MetarSeaSurfaceReport {
             preceded(
                 char('S'),
                 StateOfTheSea::parse,
-            ).map(|state| Self::StateOfSea { temp, state }),
+            ).map(move |state| Self::StateOfSea { temp, state }),
             preceded(
                 char('H'),
                 fromstr(3)
                     .map(|v: f32| Length::new::<decimeter>(v))
-            ).map(|height| Self::WaveHeight { temp, height })
+            ).map(move |height| Self::WaveHeight { temp, height })
         ))(input)
     }
 }
