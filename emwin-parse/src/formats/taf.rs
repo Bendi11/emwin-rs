@@ -33,7 +33,7 @@ use crate::{
 
 use super::codes::{
     weather::SignificantWeather,
-    wind::{ddd, ff, WindSummary},
+    wind::{ddd, ff, WindSummary}, clouds::CloudReport,
 };
 
 /// Aerodome forecast report in AM 51 TAF format
@@ -54,7 +54,7 @@ pub struct TAFReportItem {
     pub wind: Option<WindSummary>,
     pub horizontal_vis: Option<Length>,
     pub significant_weather: Option<SignificantWeather>,
-    pub clouds: Vec<TAFSignificantWeatherReportClouds>,
+    pub clouds: Vec<CloudReport>,
     pub groups: Vec<TAFReportItemGroup>,
 }
 
@@ -65,21 +65,6 @@ pub enum TAFReportKind {
     Correction,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct TAFSignificantWeatherReportClouds {
-    pub amount: Option<CloudAmount>,
-    pub altitude: Length,
-}
-
-
-/// Cloud amount NsNsNs
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CloudAmount {
-    Few,
-    Scattered,
-    Broken,
-    Overcast,
-}
 
 #[derive(Clone, Debug)]
 pub struct TAFReportItemGroup {
@@ -87,7 +72,7 @@ pub struct TAFReportItemGroup {
     pub wind: Option<WindSummary>,
     pub visibility: Option<Length>,
     pub weather: Option<SignificantWeather>,
-    pub clouds: Vec<TAFSignificantWeatherReportClouds>,
+    pub clouds: Vec<CloudReport>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -347,7 +332,7 @@ fn parse_vis_weather_clouds(
     (
         Option<Length>,
         Option<SignificantWeather>,
-        Vec<TAFSignificantWeatherReportClouds>,
+        Vec<CloudReport>,
     ),
 > {
     let (input, cavok) = opt(preceded(space1, tag("CAVOK")))(input)?;
@@ -377,7 +362,7 @@ fn parse_vis_weather_clouds(
             let mut clouds = vec![];
             loop {
                 let (new_input, cloud) = preceded(space0, opt(
-                    TAFSignificantWeatherReportClouds::parse,
+                    CloudReport::parse,
                 ))(input)?;
                 input = new_input;
                 match cloud {
@@ -391,36 +376,7 @@ fn parse_vis_weather_clouds(
     })
 }
 
-impl TAFSignificantWeatherReportClouds {
-    pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, val) = opt(alt((tag("NSC"), tag("SKC"))))(input)?;
-        
-        if val.is_some() {
-            return Ok((input, None));
-        }
 
-        let (input, amount) = context("cloud amount code", alt((
-                tag("VV").map(|_| None),
-                map_res(take(3usize), |s: &str| {
-                    Ok(match s {
-                        "FEW" => Some(CloudAmount::Few),
-                        "SCT" => Some(CloudAmount::Scattered),
-                        "BKN" => Some(CloudAmount::Broken),
-                        "OVC" => Some(CloudAmount::Overcast),
-                        _ => return Err("invalid cloud amount code"),
-                    })
-                }),
-            )),
-        )(input)?;
-
-        
-        let (input, altitude) = parse_1690(input)?;
-        Ok((
-            input,
-            Some(TAFSignificantWeatherReportClouds { amount, altitude }),
-        ))
-    }
-}
 
 #[cfg(test)]
 mod test {

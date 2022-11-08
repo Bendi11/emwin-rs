@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use nom::{bytes::complete::take, combinator::map_res};
+use nom::{bytes::complete::take, combinator::{map_res, opt}, character::streaming::char, branch::alt, Parser};
 
-use crate::ParseResult;
+use crate::{ParseResult, parse::fromstr};
 
 pub mod amdar;
 pub mod codes;
@@ -10,7 +10,35 @@ pub mod codetbl;
 pub mod rwr;
 pub mod taf;
 pub mod metar;
-pub mod recoverer;
+
+/// A runway designator containing runway number and approach direction
+#[derive(Clone, Copy, Debug,)]
+pub struct RunwayDesignator {
+    pub num: u8,
+    pub dir: Option<RunwayDesignatorDirection>,
+}
+
+/// Letter appended to a two-digit runway designator indicating direction of approach for parallel
+/// runways
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RunwayDesignatorDirection {
+    Left,
+    Center,
+    Right,
+}
+
+/// Eight directions of a compass needle used for rough geographic angles
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Compass {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
 
 /// Parse an angle in degrees minutes ({D}MM) format
 pub fn parse_degreesminutes<const D: usize>(input: &str) -> ParseResult<&str, f32> {
@@ -76,5 +104,22 @@ impl LongitudeDir {
         } else {
             ang
         }
+    }
+}
+
+impl RunwayDesignator {
+    /// Parse a runway designator from the DrDr{L,C,R} format
+    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+        let (input, num) = fromstr(2)(input)?;
+        let (input, dir) = opt(alt((
+            char('L').map(|_| RunwayDesignatorDirection::Left),
+            char('C').map(|_| RunwayDesignatorDirection::Center),
+            char('R').map(|_| RunwayDesignatorDirection::Right),
+        )))(input)?;
+
+        Ok((
+            input,
+            Self { num, dir }
+        ))
     }
 }
