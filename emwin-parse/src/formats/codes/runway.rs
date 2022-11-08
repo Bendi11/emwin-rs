@@ -1,10 +1,14 @@
 use std::num::ParseIntError;
 
-use nom::{character::complete::anychar, combinator::map_res, bytes::complete::take, error::context};
-use uom::si::{f32::Length, length::{millimeter, centimeter}};
+use nom::{
+    bytes::complete::take, character::complete::anychar, combinator::map_res, error::context,
+};
+use uom::si::{
+    f32::Length,
+    length::{centimeter, millimeter},
+};
 
 use crate::ParseResult;
-
 
 /// Runway deposits as specified in code table 0919
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -23,7 +27,7 @@ pub enum RunwayDeposits {
 }
 
 /// Runway contamination level as specified in code table 0519
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub enum RunwayContaminationLevel {
     Percent { from: f32, to: f32 },
     NotReported,
@@ -57,9 +61,8 @@ pub enum RunwaySurfaceBrakingAction {
 
 impl RunwayDeposits {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        map_res(
-            anychar,
-            |c: char| Ok(match c {
+        map_res(anychar, |c: char| {
+            Ok(match c {
                 '0' => Self::Clear,
                 '1' => Self::Damp,
                 '2' => Self::Wet,
@@ -73,31 +76,41 @@ impl RunwayDeposits {
                 '/' => Self::NotReported,
                 _ => return Err("Unknown runway deposit code"),
             })
-        )(input)
+        })(input)
     }
 }
 
 impl RunwayContaminationLevel {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        map_res(
-            anychar,
-            |c: char| Ok(match c {
-                '1' => Self::Percent { from: 0.0f32, to:  0.10f32 },
-                '2' => Self::Percent { from: 0.11f32, to: 0.25f32 },
-                '5' => Self::Percent { from: 0.26f32, to: 0.50f32 },
-                '9' => Self::Percent { from: 0.51f32, to: 0.100f32, },
+        map_res(anychar, |c: char| {
+            Ok(match c {
+                '1' => Self::Percent {
+                    from: 0.0f32,
+                    to: 0.10f32,
+                },
+                '2' => Self::Percent {
+                    from: 0.11f32,
+                    to: 0.25f32,
+                },
+                '5' => Self::Percent {
+                    from: 0.26f32,
+                    to: 0.50f32,
+                },
+                '9' => Self::Percent {
+                    from: 0.51f32,
+                    to: 0.100f32,
+                },
                 '3' | '4' | '6' | '8' | '/' => Self::NotReported,
-                _ => return Err("Unknown runway contamination level")
+                _ => return Err("Unknown runway contamination level"),
             })
-        )(input)
+        })(input)
     }
 }
 
 impl RunwayDepositDepth {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        map_res(
-            take(2usize),
-            |s: &str| Ok::<_, ParseIntError>(match s {
+        map_res(take(2usize), |s: &str| {
+            Ok::<_, ParseIntError>(match s {
                 "//" => Self::NotReported,
                 _ => {
                     let val = s.parse::<u8>()?;
@@ -108,38 +121,40 @@ impl RunwayDepositDepth {
                     } else {
                         Self::Depth(Length::new::<centimeter>((val as f32 - 90f32) * 5f32))
                     }
-                },
+                }
             })
-        )(input)
+        })(input)
     }
 }
 
 impl RunwaySurfaceFriction {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        context("Runway surface friction codes", map_res(
-            take(2usize),
-            |s: &str| Ok::<_, ParseIntError>(match s {
-                "//" => Self::NotReported,
-                _ => {
-                    let val = s.parse::<u8>()?;
-                    if (0..=90).contains(&val) {
-                        Self::Coefficient(val as f32 / 100f32)
-                    } else if (91..=95).contains(&val) {
-                        Self::BrakingAction(match val {
-                            91 => RunwaySurfaceBrakingAction::Poor,
-                            92 => RunwaySurfaceBrakingAction::MediumPoor,
-                            93 => RunwaySurfaceBrakingAction::Medium,
-                            94 => RunwaySurfaceBrakingAction::MediumGood,
-                            95 => RunwaySurfaceBrakingAction::Good,
-                            _ => unreachable!(),
-                        })
-                    } else if (96..=98).contains(&val) {
-                        Self::NotReported
-                    } else {
-                        Self::Unreliable
+        context(
+            "Runway surface friction codes",
+            map_res(take(2usize), |s: &str| {
+                Ok::<_, ParseIntError>(match s {
+                    "//" => Self::NotReported,
+                    _ => {
+                        let val = s.parse::<u8>()?;
+                        if (0..=90).contains(&val) {
+                            Self::Coefficient(val as f32 / 100f32)
+                        } else if (91..=95).contains(&val) {
+                            Self::BrakingAction(match val {
+                                91 => RunwaySurfaceBrakingAction::Poor,
+                                92 => RunwaySurfaceBrakingAction::MediumPoor,
+                                93 => RunwaySurfaceBrakingAction::Medium,
+                                94 => RunwaySurfaceBrakingAction::MediumGood,
+                                95 => RunwaySurfaceBrakingAction::Good,
+                                _ => unreachable!(),
+                            })
+                        } else if (96..=98).contains(&val) {
+                            Self::NotReported
+                        } else {
+                            Self::Unreliable
+                        }
                     }
-                }
-            })
-        ))(input)
+                })
+            }),
+        )(input)
     }
 }

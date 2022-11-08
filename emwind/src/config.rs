@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use once_cell::sync::OnceCell;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 
 /// Action to take when an unrecognized file appears in the input directory

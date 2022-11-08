@@ -3,7 +3,7 @@ use std::num::ParseFloatError;
 use nom::{
     branch::alt,
     character::{
-        complete::{digit1, space1, space0},
+        complete::{digit1, space0},
         streaming::char,
     },
     combinator::{map_res, opt},
@@ -61,17 +61,14 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     )(input)?;
 
     Ok(match vis_first {
-            VisFirst::Number(whole) => match opt(vis_sm)(input)? {
-                (input, Some((numerator, Some(denominator)))) => (
-                    input,
-                    Length::new::<mile>(whole + numerator / denominator),
-                ),
-                (input, Some((numerator, None))) => {
-                    (input, Length::new::<mile>(whole + numerator))
-                }
-                (input, None) => (input, Length::new::<meter>(whole)),
-            },
-            VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
+        VisFirst::Number(whole) => match opt(vis_sm)(input)? {
+            (input, Some((numerator, Some(denominator)))) => {
+                (input, Length::new::<mile>(whole + numerator / denominator))
+            }
+            (input, Some((numerator, None))) => (input, Length::new::<mile>(whole + numerator)),
+            (input, None) => (input, Length::new::<meter>(whole)),
+        },
+        VisFirst::SM(vis) => (input, Length::new::<mile>(vis)),
     })
 }
 
@@ -81,9 +78,6 @@ mod test {
 
     #[test]
     pub fn test_vvvv() {
-        assert_eq!(
-            vvvv("15SM").unwrap().1,
-            Length::new::<mile>(15f32),
-        )
+        assert_eq!(vvvv("15SM").unwrap().1, Length::new::<mile>(15f32),)
     }
 }

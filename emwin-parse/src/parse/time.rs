@@ -5,7 +5,6 @@ use crate::ParseResult;
 
 use super::fromstr;
 
-
 /// Parse a time in DDHHMM format
 pub fn yygggg(input: &str) -> ParseResult<&str, Duration> {
     context(
@@ -13,13 +12,9 @@ pub fn yygggg(input: &str) -> ParseResult<&str, Duration> {
         tuple((
             context("YY", fromstr(2)),
             context("GG", fromstr(2)),
-            context("gg", fromstr(2))
+            context("gg", fromstr(2)),
         ))
-        .map(|(d, h, m)| 
-            Duration::days(d) +
-            Duration::hours(h) +
-            Duration::minutes(m)
-        )
+        .map(|(d, h, m)| Duration::days(d) + Duration::hours(h) + Duration::minutes(m)),
     )(input)
 }
 
@@ -31,8 +26,5 @@ pub fn yygg(input: &str) -> ParseResult<&str, Duration> {
 
     let (input, (days, hours)) = tuple((parsenum, parsenum))(input)?;
 
-    Ok((
-        input,
-        Duration::days(days) + Duration::hours(hours),
-    ))
+    Ok((input, Duration::days(days) + Duration::hours(hours)))
 }

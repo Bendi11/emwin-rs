@@ -1,18 +1,24 @@
 use std::str::FromStr;
 
-use nom::{bytes::complete::take, combinator::{map_res, opt}, character::streaming::char, branch::alt, Parser};
+use nom::{
+    branch::alt,
+    bytes::complete::take,
+    character::streaming::char,
+    combinator::{map_res, opt},
+    Parser,
+};
 
-use crate::{ParseResult, parse::fromstr};
+use crate::{parse::fromstr, ParseResult};
 
 pub mod amdar;
 pub mod codes;
 pub mod codetbl;
+pub mod metar;
 pub mod rwr;
 pub mod taf;
-pub mod metar;
 
 /// A runway designator containing runway number and approach direction
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub struct RunwayDesignator {
     pub num: u8,
     pub dir: Option<RunwayDesignatorDirection>,
@@ -117,9 +123,6 @@ impl RunwayDesignator {
             char('R').map(|_| RunwayDesignatorDirection::Right),
         )))(input)?;
 
-        Ok((
-            input,
-            Self { num, dir }
-        ))
+        Ok((input, Self { num, dir }))
     }
 }

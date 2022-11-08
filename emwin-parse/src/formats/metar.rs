@@ -1,11 +1,42 @@
 use chrono::Duration;
-use nom::{character::{streaming::char, complete::{space1, anychar, multispace1, space0}}, combinator::{opt, map_res}, branch::alt, sequence::{preceded, terminated, tuple, separated_pair}, Parser, multi::{many0, fold_many0}};
+use nom::{
+    branch::alt,
+    character::{
+        complete::{anychar, multispace1, space0, space1},
+        streaming::char,
+    },
+    combinator::{map_res, opt},
+    multi::many0,
+    sequence::{preceded, separated_pair, terminated, tuple},
+    Parser,
+};
 use nom_supreme::tag::complete::tag;
-use uom::si::{f32::{Length, ThermodynamicTemperature, Angle, Pressure}, length::{meter, decimeter}, pressure::hectopascal};
+use uom::si::{
+    f32::{Angle, Length, Pressure, ThermodynamicTemperature},
+    length::{decimeter, meter},
+    pressure::hectopascal,
+};
 
-use crate::{header::{CCCC, WMOProductIdentifier}, ParseResult, parse::{time::yygggg, fromstr}};
+use crate::{
+    header::{WMOProductIdentifier, CCCC},
+    parse::{fromstr, time::yygggg},
+    ParseResult,
+};
 
-use super::{codes::{wind::WindSummary, weather::SignificantWeather, visibility::vvvv, clouds::CloudReport, sea::StateOfTheSea, temperature, runway::{RunwayDeposits, RunwayContaminationLevel, RunwaySurfaceFriction, RunwayDepositDepth}}, Compass, RunwayDesignator};
+use super::{
+    codes::{
+        clouds::CloudReport,
+        runway::{
+            RunwayContaminationLevel, RunwayDepositDepth, RunwayDeposits, RunwaySurfaceFriction,
+        },
+        sea::StateOfTheSea,
+        temperature,
+        visibility::vvvv,
+        weather::SignificantWeather,
+        wind::WindSummary,
+    },
+    Compass, RunwayDesignator,
+};
 
 /// A METAR report parsed from EMWIN files, with additional header line
 #[derive(Clone, Debug)]
@@ -15,7 +46,7 @@ pub struct EmwinMetarReport {
 }
 
 /// A single METAR weather report parsed from a FM 15/16 report
-#[derive(Clone, Debug, )]
+#[derive(Clone, Debug)]
 pub struct MetarReport {
     pub country: CCCC,
     pub origin: Duration,
@@ -44,7 +75,7 @@ pub enum MetarSeaSurfaceReport {
     WaveHeight {
         temp: ThermodynamicTemperature,
         height: Length,
-    }
+    },
 }
 
 /// Wind shear report with segment of runway affected
@@ -63,7 +94,7 @@ pub enum RunwayTrend {
 }
 
 /// Directions that variables winds blow between in a METAR report
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub struct MetarVariableWindDir {
     pub extreme_ccw: Angle,
     pub extreme_cw: Angle,
@@ -84,7 +115,7 @@ pub enum MetarReportKind {
 }
 
 /// Reported runway contamination status
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub struct RunwayState {
     pub runway: RunwayDesignator,
     pub deposits: RunwayDeposits,
@@ -101,74 +132,61 @@ impl EmwinMetarReport {
             MetarReport::parse,
         )(input)? else { return Ok((input, None)) };
 
-        Ok((
-            input,
-            Some(Self {
-                header,
-                metar,
-            })
-        ))
+        Ok((input, Some(Self { header, metar })))
     }
 }
 
 impl MetarReport {
     /// Returns Ok(None) if the report is `NIL`
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, _) = alt((
-            tag("METAR"),
-            tag("SPECI"),
-        ))(input)?;
+        let (input, _) = alt((tag("METAR"), tag("SPECI")))(input)?;
 
-        let (input, kind) = opt(
-            preceded(
-                space0,
-                tag("COR").map(|_| MetarReportKind::Cor),
-            )
-        )(input)?;
-        
+        let (input, kind) = opt(preceded(space0, tag("COR").map(|_| MetarReportKind::Cor)))(input)?;
+
         let (input, country): (_, CCCC) = preceded(space0, fromstr(4))(input)?;
         let (input, origin) = preceded(space0, terminated(yygggg, char('Z')))(input)?;
 
         let (input, kind) = match kind {
             Some(kind) => (input, kind),
-            None => match opt(preceded(space1, alt((
-                tag("NIL").map(|_| None),
-                tag("AUTO").map(|_| Some(MetarReportKind::Auto)),
-            ))))(input)? {
+            None => match opt(preceded(
+                space1,
+                alt((
+                    tag("NIL").map(|_| None),
+                    tag("AUTO").map(|_| Some(MetarReportKind::Auto)),
+                )),
+            ))(input)?
+            {
                 (input, Some(Some(k))) => (input, k),
                 (input, None) => (input, MetarReportKind::Auto),
                 (input, Some(None)) => return Ok((input, None)),
-            }
+            },
         };
 
         let (input, wind) = preceded(space1, WindSummary::parse)(input)?;
-        let (input, variable_wind_dir) = opt(
-            preceded(
-                space0,
-                MetarVariableWindDir::parse,
-            )
-        )(input)?;
+        let (input, variable_wind_dir) = opt(preceded(space0, MetarVariableWindDir::parse))(input)?;
 
         let (input, visibility) = opt(preceded(space0, vvvv))(input)?;
-        
-        let (input, minimum_visibility) = opt(
-            preceded(
-                space0,
-                tuple((
-                    fromstr::<'_, f32>(4),
-                    alt((
-                        tag("N").map(|_|Compass::North),
-                        tag("NE").map(|_| Compass::NorthEast),
-                        tag("E").map(|_| Compass::East),
-                        tag("SE").map(|_| Compass::SouthEast),
-                        tag("S").map(|_| Compass::South),
-                        tag("SW").map(|_| Compass::SouthWest),
-                        tag("W").map(|_| Compass::West),
-                        tag("NW").map(|_| Compass::NorthWest),
-                    ))
-                )).map(|(len, direction)| MetarMinimumVisibility { visibility: Length::new::<meter>(len), direction })
-            )
-        )(input)?;
+
+        let (input, minimum_visibility) = opt(preceded(
+            space0,
+            tuple((
+                fromstr::<'_, f32>(4),
+                alt((
+                    tag("N").map(|_| Compass::North),
+                    tag("NE").map(|_| Compass::NorthEast),
+                    tag("E").map(|_| Compass::East),
+                    tag("SE").map(|_| Compass::SouthEast),
+                    tag("S").map(|_| Compass::South),
+                    tag("SW").map(|_| Compass::SouthWest),
+                    tag("W").map(|_| Compass::West),
+                    tag("NW").map(|_| Compass::NorthWest),
+                )),
+            ))
+            .map(|(len, direction)| MetarMinimumVisibility {
+                visibility: Length::new::<meter>(len),
+                direction,
+            }),
+        ))(input)?;
 
         let mut input = input;
         let mut runway_range = vec![];
@@ -197,58 +215,59 @@ impl MetarReport {
                     .map(|(designator, (distance, trend))| (designator, distance, trend)),
                 )
             )(input) else { break };
-            
+
             input = new_input;
             runway_range.push(rr);
         }
 
-        
         let (input, weather) = opt(preceded(space0, SignificantWeather::parse))(input)?;
         let mut input = input;
         let mut clouds = vec![];
-        
+
         loop {
             let Ok((new_input, cloud)) = preceded(space0, CloudReport::parse)(input) else { break };
             input = new_input;
             let Some(cloud) = cloud else { break; };
             clouds.push(cloud);
         }
-        
-        let (input, air_dewpoint_temperature) = opt(
+
+        let (input, air_dewpoint_temperature) = opt(preceded(
+            space0,
+            separated_pair(temperature(2), char('/'), temperature(2)),
+        ))(input)?;
+
+        let (input, qnh) = opt(preceded(
+            space0,
             preceded(
-                space0,
-                separated_pair(
-                    temperature(2),
-                    char('/'),
-                    temperature(2),
-                ),
+                char('Q'),
+                fromstr(4).map(|v| Pressure::new::<hectopascal>(v)),
             ),
-        )(input)?;
+        ))(input)?;
 
-        let (input, qnh) = opt(
-            preceded(
-                space0,
-                preceded(
-                    char('Q'),
-                    fromstr(4).map(|v| Pressure::new::<hectopascal>(v))
-                )
-            )
-        )(input)?;
-
-        let (input, recent_weather) = opt(
-            preceded(
-                space0,
-                preceded(
-                    tag("RE"),
-                    SignificantWeather::parse,
-                )
-            )
-        )(input)?;
+        let (input, recent_weather) = opt(preceded(
+            space0,
+            preceded(tag("RE"), SignificantWeather::parse),
+        ))(input)?;
 
         let (input, runway_wind_shear) = opt(preceded(space0, RunwayWindShear::parse))(input)?;
-        let (input, sea) = many0(preceded(space0, MetarSeaSurfaceReport::parse))(input)?;
-        
-        let (input, runway_status) = many0(preceded(space0, RunwayState::parse))(input)?;
+
+        let mut input = input;
+        let mut sea = vec![];
+
+        loop {
+            let Ok((new_input, sea_report)) = preceded(space0, MetarSeaSurfaceReport::parse)(input) else { break };
+            input = new_input;
+
+            sea.push(sea_report);
+        }
+
+        let mut input = input;
+        let mut runway_status = vec![];
+        loop {
+            let Ok((new_input, rr)) = preceded(space0, RunwayState::parse)(input) else { break };
+            input = new_input;
+            runway_status.push(rr);
+        }
 
         Ok((
             input,
@@ -269,7 +288,7 @@ impl MetarReport {
                 runway_wind_shear,
                 sea,
                 runway_status,
-            })
+            }),
         ))
     }
 }
@@ -279,15 +298,12 @@ impl RunwayState {
         let (input, (runway, deposits, level, depth, friction)) = preceded(
             char('R'),
             tuple((
-                terminated(
-                    RunwayDesignator::parse,
-                    char('/')
-                ),
+                terminated(RunwayDesignator::parse, char('/')),
                 RunwayDeposits::parse,
                 RunwayContaminationLevel::parse,
                 RunwayDepositDepth::parse,
                 RunwaySurfaceFriction::parse,
-            ))
+            )),
         )(input)?;
 
         Ok((
@@ -298,7 +314,7 @@ impl RunwayState {
                 level,
                 depth,
                 friction,
-            }
+            },
         ))
     }
 }
@@ -312,29 +328,24 @@ impl RunwayWindShear {
                 preceded(
                     char('R'),
                     fromstr(2).map(|v| Self::Within(Length::new::<meter>(v))),
-                )
-            ))
+                ),
+            )),
         )(input)
     }
 }
 
 impl MetarSeaSurfaceReport {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, temp) = preceded(
-            char('W'),
-            terminated(temperature(2), char('/'))
-        )(input)?;
+        let (input, temp) = preceded(char('W'), terminated(temperature(2), char('/')))(input)?;
 
         alt((
-            preceded(
-                char('S'),
-                StateOfTheSea::parse,
-            ).map(move |state| Self::StateOfSea { temp, state }),
+            preceded(char('S'), StateOfTheSea::parse)
+                .map(move |state| Self::StateOfSea { temp, state }),
             preceded(
                 char('H'),
-                fromstr(3)
-                    .map(|v: f32| Length::new::<decimeter>(v))
-            ).map(move |height| Self::WaveHeight { temp, height })
+                fromstr(3).map(|v: f32| Length::new::<decimeter>(v)),
+            )
+            .map(move |height| Self::WaveHeight { temp, height }),
         ))(input)
     }
 }
@@ -350,7 +361,7 @@ impl MetarVariableWindDir {
             Self {
                 extreme_ccw,
                 extreme_cw,
-            }
+            },
         ))
     }
 }
@@ -363,7 +374,8 @@ mod test {
 
     #[test]
     pub fn test_metar() {
-        let (_, metar) = EmwinMetarReport::parse(METAR).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        let (_, metar) = EmwinMetarReport::parse(METAR)
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         panic!("{:#?}", metar);
     }
 }

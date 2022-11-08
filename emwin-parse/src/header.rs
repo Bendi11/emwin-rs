@@ -1,6 +1,6 @@
 use std::{num::ParseIntError, str::FromStr};
 
-use chrono::{NaiveDateTime, NaiveTime, Duration};
+use chrono::{Duration, NaiveDateTime, NaiveTime};
 use nom::{
     bytes::complete::take,
     character::{complete::space1, streaming::char},

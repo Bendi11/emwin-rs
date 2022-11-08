@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use config::{CONFIG_FOLDER, CONFIG_FILE};
+use config::{CONFIG_FILE, CONFIG_FOLDER};
 use emwin_parse::{
     dt::{
         code::CodeForm,
@@ -24,10 +24,10 @@ use tokio::{
     sync::mpsc::{channel, Receiver},
 };
 
-use crate::config::{CONFIG, Config};
+use crate::config::{Config, CONFIG};
 
-pub mod db;
 pub mod config;
+pub mod db;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -141,7 +141,6 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             return ExitCode::FAILURE;
         }
     };
-
 
     while let Some(event) = rx.recv().await {
         match event.kind {

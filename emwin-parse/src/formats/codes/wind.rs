@@ -1,6 +1,18 @@
-use nom::{bytes::complete::take, combinator::{map_res, opt}, error::context, Parser, sequence::preceded, character::streaming::char, branch::alt};
+use nom::{
+    branch::alt,
+    bytes::complete::take,
+    character::streaming::char,
+    combinator::{map_res, opt},
+    error::context,
+    sequence::preceded,
+    Parser,
+};
 use nom_supreme::tag::complete::tag;
-use uom::si::{angle::degree, f32::{Angle, Velocity}, velocity::{knot, meter_per_second}};
+use uom::si::{
+    angle::degree,
+    f32::{Angle, Velocity},
+    velocity::{knot, meter_per_second},
+};
 
 use crate::{parse::fromstr, ParseResult};
 
@@ -17,9 +29,8 @@ pub fn dd(input: &str) -> ParseResult<&str, Angle> {
     context(
         "wind direction 'dd'",
         alt((
-            fromstr(2)
-                .map(|d: f32| Angle::new::<degree>(d * 10f32)),
-            tag("//").map(|_| Angle::new::<degree>(0f32))
+            fromstr(2).map(|d: f32| Angle::new::<degree>(d * 10f32)),
+            tag("//").map(|_| Angle::new::<degree>(0f32)),
         )),
     )(input)
 }
@@ -77,4 +88,3 @@ impl WindSummary {
         ))
     }
 }
-

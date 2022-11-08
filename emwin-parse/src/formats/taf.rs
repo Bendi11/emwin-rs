@@ -26,10 +26,7 @@ use crate::{
     ParseResult,
 };
 
-use super::codes::{
-    weather::SignificantWeather,
-    wind::WindSummary, clouds::CloudReport,
-};
+use super::codes::{clouds::CloudReport, weather::SignificantWeather, wind::WindSummary};
 
 /// Aerodome forecast report in AM 51 TAF format
 #[derive(Clone, Debug)]
@@ -59,7 +56,6 @@ pub enum TAFReportKind {
     Amendment,
     Correction,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct TAFReportItemGroup {
@@ -195,16 +191,16 @@ impl TAFReportItem {
         loop {
             let (new_input, end) = opt(preceded(multispace0, char('=')))(input)?;
             if end.is_some() {
-                break
+                break;
             }
-            
+
             input = new_input;
 
             let (new_input, group) = preceded(
                 multispace0,
                 recover(
                     TAFReportItemGroup::parse,
-                    alt((take_till(|c| c == '\n' || c == '='), nom::combinator::rest))
+                    alt((take_till(|c| c == '\n' || c == '='), nom::combinator::rest)),
                 ),
             )(input)?;
 
@@ -294,10 +290,7 @@ impl TAFReportItemGroup {
 
         let (input, wind) = preceded(
             space0,
-            recover(
-                WindSummary::parse,
-                take_till(|c: char| c.is_whitespace()),
-            )
+            recover(WindSummary::parse, take_till(|c: char| c.is_whitespace())),
         )(input)?;
         let (input, (visibility, weather, clouds)) = parse_vis_weather_clouds(input)?;
 
@@ -319,17 +312,9 @@ impl TAFReportItemGroup {
     }
 }
 
-
 fn parse_vis_weather_clouds(
     input: &str,
-) -> ParseResult<
-    &str,
-    (
-        Option<Length>,
-        Option<SignificantWeather>,
-        Vec<CloudReport>,
-    ),
-> {
+) -> ParseResult<&str, (Option<Length>, Option<SignificantWeather>, Vec<CloudReport>)> {
     let (input, cavok) = opt(preceded(space1, tag("CAVOK")))(input)?;
 
     Ok(match cavok.is_some() {
@@ -352,13 +337,11 @@ fn parse_vis_weather_clouds(
             ))(input)?;
 
             let weather = weather.flatten();
-            
+
             let mut input = input;
             let mut clouds = vec![];
             loop {
-                let (new_input, cloud) = preceded(space0, opt(
-                    CloudReport::parse,
-                ))(input)?;
+                let (new_input, cloud) = preceded(space0, opt(CloudReport::parse))(input)?;
                 input = new_input;
                 match cloud {
                     Some(Some(c)) => clouds.push(c),
@@ -370,8 +353,6 @@ fn parse_vis_weather_clouds(
         }
     })
 }
-
-
 
 #[cfg(test)]
 mod test {

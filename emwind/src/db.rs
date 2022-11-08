@@ -1,9 +1,9 @@
 use sqlx::{Connection, Executor, MySqlPool};
 
-
 /// Setup all data tables needed to record weather data
 pub async fn setup_tables(conn: &MySqlPool) -> Result<(), sqlx::Error> {
-    let taf_tbl = sqlx::query("
+    let taf_tbl = sqlx::query(
+        "
     CREATE TABLE IF NOT EXISTS taf-item (
         item-id int NOT NULL PRIMARY KEY AUTO_INCREMENT,
         kind ENUM('REPORT', 'AMENDMENT', 'CORRECTION'),
@@ -13,7 +13,10 @@ pub async fn setup_tables(conn: &MySqlPool) -> Result<(), sqlx::Error> {
         to DATETIME NOT NULL,
         data-id int FOREIGN KEY REFERENCES taf-data(data-id),
     )
-    ").execute(conn).await;
+    ",
+    )
+    .execute(conn)
+    .await;
 
     Ok(())
 }
