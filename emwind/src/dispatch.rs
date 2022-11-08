@@ -1,11 +1,19 @@
 use std::sync::Arc;
 
-use emwin_parse::{header::GoesFileName, dt::{DataTypeDesignator, AnalysisSubType, product::{Analysis, Forecast}, UpperAirDataSubType, upperair::UpperAirData, code::CodeForm, ForecastSubType}, formats::{rwr::RegionalWeatherRoundup, amdar::AmdarReport, taf::TAFReport}};
+use emwin_parse::{
+    dt::{
+        code::CodeForm,
+        product::{Analysis, Forecast},
+        upperair::UpperAirData,
+        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
+    },
+    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
+    header::GoesFileName,
+};
 use notify::Event;
 use sqlx::MySqlPool;
 
 use crate::config::CONFIG;
-
 
 pub async fn on_create(event: Event, pool: Arc<MySqlPool>) {
     for path in event.paths {

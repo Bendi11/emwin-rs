@@ -18,7 +18,7 @@ use uom::si::{
 
 use crate::{
     header::{WMOProductIdentifier, CCCC},
-    parse::{fromstr, time::yygggg, multi, multi_opt},
+    parse::{fromstr, multi, multi_opt, time::yygggg},
     ParseResult,
 };
 
@@ -186,36 +186,34 @@ impl MetarReport {
                 direction,
             }),
         ))(input)?;
-        
-        let (input, runway_range) = multi(
+
+        let (input, runway_range) = multi(preceded(
+            space0,
             preceded(
-                space0,
-                preceded(
-                    char('R'),
-                    separated_pair(
-                        RunwayDesignator::parse,
-                        char('/'),
-                        tuple((
-                            fromstr(4).map(|v: f32| Length::new::<meter>(v)),
-                            map_res(
-                                anychar,
-                                |c: char| Ok(match c {
-                                    'U' => RunwayTrend::Farther,
-                                    'D' => RunwayTrend::Closer,
-                                    'N' => RunwayTrend::NoChange,
-                                    _ => return Err("Unknown runway trend code")
-                                })
-                            )
-                        ))
-                    )
-                    .map(|(designator, (distance, trend))| (designator, distance, trend)),
+                char('R'),
+                separated_pair(
+                    RunwayDesignator::parse,
+                    char('/'),
+                    tuple((
+                        fromstr(4).map(|v: f32| Length::new::<meter>(v)),
+                        map_res(anychar, |c: char| {
+                            Ok(match c {
+                                'U' => RunwayTrend::Farther,
+                                'D' => RunwayTrend::Closer,
+                                'N' => RunwayTrend::NoChange,
+                                _ => return Err("Unknown runway trend code"),
+                            })
+                        }),
+                    )),
                 )
-            ) 
-        ).parse(input)?;
+                .map(|(designator, (distance, trend))| (designator, distance, trend)),
+            ),
+        ))
+        .parse(input)?;
 
         let (input, weather) = opt(preceded(space0, SignificantWeather::parse))(input)?;
-        
-        let (input, clouds) = multi_opt(preceded(space0, CloudReport::parse)).parse(input)?; 
+
+        let (input, clouds) = multi_opt(preceded(space0, CloudReport::parse)).parse(input)?;
 
         let (input, air_dewpoint_temperature) = opt(preceded(
             space0,
@@ -236,11 +234,10 @@ impl MetarReport {
         ))(input)?;
 
         let (input, runway_wind_shear) = opt(preceded(space0, RunwayWindShear::parse))(input)?;
-        
-        let (input, sea) = multi(preceded(space0, MetarSeaSurfaceReport::parse)).parse(input)?;        
 
-        let (input, runway_status) = multi(preceded(space0, RunwayState::parse))
-            .parse(input)?;
+        let (input, sea) = multi(preceded(space0, MetarSeaSurfaceReport::parse)).parse(input)?;
+
+        let (input, runway_status) = multi(preceded(space0, RunwayState::parse)).parse(input)?;
 
         Ok((
             input,

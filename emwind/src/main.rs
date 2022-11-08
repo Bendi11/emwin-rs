@@ -1,7 +1,8 @@
 use std::{
     path::{Path, PathBuf},
     process::ExitCode,
-    time::Duration, sync::Arc,
+    sync::Arc,
+    time::Duration,
 };
 
 use config::{CONFIG_FILE, CONFIG_FOLDER};
@@ -143,7 +144,6 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             return ExitCode::FAILURE;
         }
     };
-    
 
     while let Some(event) = rx.recv().await {
         match event.kind {

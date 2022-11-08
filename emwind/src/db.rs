@@ -27,8 +27,10 @@ pub async fn setup_tables(conn: &MySqlPool) -> Result<(), sqlx::Error> {
         weather JSON,
         cloud JSON,
     )
-    "
-    ).execute(conn).await?;
+    ",
+    )
+    .execute(conn)
+    .await?;
 
     sqlx::query(
         "
@@ -41,8 +43,10 @@ pub async fn setup_tables(conn: &MySqlPool) -> Result<(), sqlx::Error> {
         to DATETIME,
         data-id int NOT NULL FOREIGN KEY REFERENCES taf-data(data-id)
     )
-    "
-    ).execute(conn).await?;
+    ",
+    )
+    .execute(conn)
+    .await?;
 
     Ok(())
 }

@@ -9,7 +9,7 @@ use crate::ParseResult;
 pub mod recover;
 pub mod time;
 
-/// Parse 0 or more elements of `parser` 
+/// Parse 0 or more elements of `parser`
 pub fn multi<T, I, E, P>(mut parser: P) -> impl Parser<I, Vec<T>, E>
 where
     P: Parser<I, T, E>,
@@ -22,17 +22,17 @@ where
                 Ok((new_input, o)) => {
                     input = new_input;
                     vec.push(o);
-                },
+                }
                 Err(nom::Err::Failure(e)) => break Err(nom::Err::Failure(e)),
-                Err(_) => break Ok((input, vec))
+                Err(_) => break Ok((input, vec)),
             }
         }
     }
 }
 
-    /// Attempt to use the given parser returning an `Option<T>` to build a vector of `T`
+/// Attempt to use the given parser returning an `Option<T>` to build a vector of `T`
 pub fn multi_opt<T, I, E, P>(mut parser: P) -> impl Parser<I, Vec<T>, E>
-where 
+where
     P: Parser<I, Option<T>, E>,
     I: Copy,
 {
@@ -46,7 +46,7 @@ where
                         Some(o) => vec.push(o),
                         None => (),
                     }
-                },
+                }
                 Err(nom::Err::Failure(e)) => break Err(nom::Err::Failure(e)),
                 Err(_) => break Ok((input, vec)),
             }
