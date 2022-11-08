@@ -17,6 +17,7 @@ use uom::si::{
 use crate::{parse::fromstr, ParseResult};
 
 /// Wind report on direction and speed parsed from dddff**G**f*m*f*m* format
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub struct WindSummary {
     pub direction: Angle,

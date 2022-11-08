@@ -3,6 +3,7 @@ use nom::{character::complete::anychar, combinator::map_res, error::context};
 use crate::ParseResult;
 
 /// Sea state, parsed from code table 3700
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum StateOfTheSea {
     Glassy,

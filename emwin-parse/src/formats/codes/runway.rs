@@ -11,6 +11,7 @@ use uom::si::{
 use crate::ParseResult;
 
 /// Runway deposits as specified in code table 0919
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RunwayDeposits {
     Clear,
@@ -27,6 +28,7 @@ pub enum RunwayDeposits {
 }
 
 /// Runway contamination level as specified in code table 0519
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum RunwayContaminationLevel {
     Percent { from: f32, to: f32 },
@@ -34,6 +36,7 @@ pub enum RunwayContaminationLevel {
 }
 
 /// Runway deposit depth as specified by code table 1079
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum RunwayDepositDepth {
     Depth(Length),
@@ -42,6 +45,7 @@ pub enum RunwayDepositDepth {
 }
 
 /// Expected runway surface friction as specified by code table 0366
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum RunwaySurfaceFriction {
     Coefficient(f32),
@@ -50,6 +54,7 @@ pub enum RunwaySurfaceFriction {
     NotReported,
 }
 
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum RunwaySurfaceBrakingAction {
     Poor,

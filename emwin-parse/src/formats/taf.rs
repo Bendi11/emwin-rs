@@ -50,6 +50,7 @@ pub struct TAFReportItem {
     pub groups: Vec<TAFReportItemGroup>,
 }
 
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum TAFReportKind {
     Report,

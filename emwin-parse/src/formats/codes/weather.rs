@@ -8,6 +8,7 @@ use nom::{
 use crate::ParseResult;
 
 /// Significant weather reported in FM 15 and 51
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SignificantWeather {
     pub intensity: SignificantWeatherIntensity,
@@ -16,6 +17,7 @@ pub struct SignificantWeather {
     pub phenomena: Option<SignificantWeatherPhenomena>,
 }
 
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignificantWeatherIntensity {
     Light,
@@ -24,6 +26,7 @@ pub enum SignificantWeatherIntensity {
     Vicinity,
 }
 
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignificantWeatherDescriptor {
     Shallow,
@@ -36,7 +39,9 @@ pub enum SignificantWeatherDescriptor {
     Supercooled,
 }
 
+
 bitflags::bitflags! {
+    #[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct SignificantWeatherPrecipitation: u8 {
         const DRIZZLE   = 0b00000001;
         const RAIN      = 0b00000010;
@@ -49,6 +54,7 @@ bitflags::bitflags! {
     }
 }
 
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignificantWeatherPhenomena {
     Mist,

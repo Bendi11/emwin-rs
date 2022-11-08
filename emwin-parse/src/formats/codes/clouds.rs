@@ -11,6 +11,7 @@ use uom::si::f32::Length;
 use crate::{formats::codetbl::parse_1690, ParseResult};
 
 /// Cloud amount NsNsNs
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CloudAmount {
     Few,
@@ -20,6 +21,7 @@ pub enum CloudAmount {
 }
 
 /// Report containing a cloud level and observed cloud height
+#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub struct CloudReport {
     pub amount: Option<CloudAmount>,
