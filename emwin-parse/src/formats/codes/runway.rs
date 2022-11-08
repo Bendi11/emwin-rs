@@ -106,7 +106,7 @@ impl RunwayDepositDepth {
                     } else if val == 91 {
                         Self::NotReported
                     } else {
-                        Self::Depth(Length::new::<centimeter>((val - 90 * 5) as f32))
+                        Self::Depth(Length::new::<centimeter>((val as f32 - 90f32) * 5f32))
                     }
                 },
             })
