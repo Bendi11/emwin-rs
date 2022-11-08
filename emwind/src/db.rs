@@ -1,4 +1,29 @@
+use emwin_parse::formats::taf::{TAFReport, TAFReportItem, TAFReportKind};
 use sqlx::{Connection, Executor, MySqlPool};
+
+fn encode_taf_kind(kind: &TAFReportKind) -> &'static str {
+    match kind {
+        TAFReportKind::Report => "REPORT",
+        TAFReportKind::Amendment => "AMENDMENT",
+        TAFReportKind::Correction => "CORRECTION",
+    }
+}
+
+/// Insert a new TAF report into the database
+pub async fn insert_taf(pool: &MySqlPool, taf: &TAFReportItem) -> Result<u64, sqlx::Error> {
+    let item_id = sqlx::query!(
+r#"
+    INSERT INTO taf-item (kind, country, origin, from, to)
+    VALUES (?, ?, ?, ?, ?)
+    RETURNING item-id
+"#,
+    )
+    .bind(encode_taf_kind(&taf.kind))
+    .execute(pool)
+    .await?;
+
+    Ok(item_id)
+}
 
 /// Setup all data tables needed to record weather data
 pub async fn setup_tables(conn: &MySqlPool) -> Result<(), sqlx::Error> {
