@@ -2,6 +2,7 @@
 members = [
     "emwin-parse",
     "emwind",
+    "emwin-sql",
 ]
 
 [profile.release]

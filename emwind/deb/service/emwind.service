@@ -1,5 +1,5 @@
 [Unit]
-Description=Automatic parsing of EMWIN file
+Description=Automatic parsing of EMWIN files
 AssertPathExists=/usr/bin/emwind
 
 [Service]
