@@ -29,7 +29,6 @@ use tokio::{
 use crate::config::{Config, CONFIG};
 
 pub mod config;
-pub mod db;
 pub mod dispatch;
 
 #[tokio::main(flavor = "current_thread")]
