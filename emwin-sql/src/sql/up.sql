@@ -84,11 +84,11 @@ CREATE TABLE IF NOT EXISTS weather.significant_weather (
 
 CREATE TABLE IF NOT EXISTS weather.taf_item (
     id int UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    kind ENUM('REPORT', 'AMENDMENT', 'CORRECTION') NOT NULL,
+    month DATETIME NOT NULL,
     country CHAR(4) NOT NULL,
-    origin DATETIME NOT NULL,
-    from_dt DATETIME NOT NULL,
-    to_dt DATETIME NOT NULL,
+    origin_off int UNSIGNED NOT NULL,
+    from_off int UNSIGNED NOT NULL,
+    to_off int UNSIGNED NOT NULL,
     data_id int UNSIGNED NOT NULL,
     CONSTRAINT `fk_taf_item_data`
         FOREIGN KEY (data_id) REFERENCES weather.data (id)
@@ -101,14 +101,14 @@ CREATE TABLE IF NOT EXISTS weather.taf_group (
     item_id int UNSIGNED NOT NULL,
     data_id int UNSIGNED NOT NULL,
     kind ENUM('TIMED', 'CHANGE', 'TEMP', 'PROB') NOT NULL,
-    from_dt DATETIME NOT NULL,
-    to_dt DATETIME,
+    from_off int UNSIGNED NOT NULL,
+    to_off int UNSIGNED,
     probability FLOAT,
     CHECK (
-        (kind='TIMED'  AND to_dt IS     NULL AND probability IS     NULL) OR
-        (kind='CHANGE' AND to_dt IS NOT NULL AND probability IS     NULL) OR
-        (kind='TEMP'   AND to_dt IS NOT NULL AND probability IS NOT NULL) OR
-        (kind='PROB'   AND to_dt IS NOT NULL AND probability IS NOT NULL)
+        (kind='TIMED'  AND to_off IS     NULL AND probability IS     NULL) OR
+        (kind='CHANGE' AND to_off IS NOT NULL AND probability IS     NULL) OR
+        (kind='TEMP'   AND to_off IS NOT NULL AND probability IS NOT NULL) OR
+        (kind='PROB'   AND to_off IS NOT NULL AND probability IS NOT NULL)
     ),
     CONSTRAINT `fk_taf_group_taf_item` 
         FOREIGN KEY (item_id) REFERENCES weather.taf_item (id)

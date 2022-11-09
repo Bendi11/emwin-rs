@@ -17,6 +17,7 @@ use emwin_parse::{
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesFileName,
 };
+use emwin_sql::EmwinSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -133,7 +134,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     }
 
     let pool = match MySqlPool::connect(&CONFIG.wait().db_url).await {
-        Ok(p) => Arc::new(p),
+        Ok(p) => p,
         Err(e) => {
             log::error!(
                 "Failed to connect to database at {}: {}",
@@ -144,13 +145,14 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         }
     };
 
+    let ctx = EmwinSqlContext::new(&pool);
+
     while let Some(event) = rx.recv().await {
         match event.kind {
             EventKind::Create(CreateKind::File) => {
-                let npool = Arc::clone(&pool);
-                if let Err(e) = tokio::spawn(async move { on_create(event, npool).await }).await {
+                /*if let Err(e) = tokio::spawn(async move { on_create(event, npool).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
-                }
+                }*/
             }
             _ => (),
         }
