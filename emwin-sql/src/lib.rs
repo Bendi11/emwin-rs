@@ -1,5 +1,5 @@
 //! Encoding and decoding decoded EMWIN files from a database
-use emwin_parse::formats::codes::weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor};
+use emwin_parse::formats::codes::weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation};
 use sqlx::{Executor, Row, MySqlExecutor};
 
 mod taf;
@@ -58,8 +58,29 @@ VALUES (?, ?, ?, ?, ?);
             }))
             .bind({
                 let mut s = String::new();
-                for i in weather.precipitation {
-
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::DRIZZLE) {
+                    s.push_str("DRIZZLE,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::RAIN) {
+                    s.push_str("RAIN,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::SNOW) {
+                    s.push_str("SNOW,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::SNOWGRAIN) {
+                    s.push_str("SNOWGRAIN,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::ICEPELLET) {
+                    s.push_str("ICEPELLET,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::HAIL) {
+                    s.push_str("HAIL,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::SMALLHAIL) {
+                    s.push_str("SMALLHAIL,")
+                }
+                if weather.precipitation.contains(SignificantWeatherPrecipitation::UNKNOWN) {
+                    s.push_str("")
                 }
 
                 s
