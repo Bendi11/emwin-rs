@@ -34,9 +34,11 @@ pub mod dispatch;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    if let Err(e) = stderrlog::new().show_module_names(false).init() {
+    if let Err(e) = stderrlog::new().verbosity(log::LevelFilter::max()).show_module_names(false).init() {
         eprintln!("Failed to initialize logger: {}", e);
     }
+
+    log::trace!("emwind started!");
 
     let (tx, rx) = channel(10);
     let watcher = match RecommendedWatcher::new(
@@ -133,6 +135,8 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         return ExitCode::FAILURE;
     }
 
+    log::trace!("watching {} for filesystem events", CONFIG.wait().goes_dir.display());
+
     let pool = match MySqlPool::connect(&CONFIG.wait().db_url).await {
         Ok(p) => p,
         Err(e) => {
@@ -145,12 +149,15 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         }
     };
 
+    log::trace!("connected to database on {}", CONFIG.wait().db_url);
+
     let ctx = Arc::new(EmwinSqlContext::new(pool));
 
     while let Some(event) = rx.recv().await {
+        log::trace!("Got filesystem event");
         match event.kind {
             EventKind::Create(CreateKind::File) => {
-                log::trace!("Got filesystem event!");
+
                 let ctx = Arc::clone(&ctx);
                 if let Err(e) = tokio::spawn(async move { on_create(event, ctx).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
