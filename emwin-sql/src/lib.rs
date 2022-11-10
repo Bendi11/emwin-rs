@@ -1,17 +1,18 @@
 //! Encoding and decoding decoded EMWIN files from a database
-use emwin_parse::formats::codes::weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation};
-use sqlx::{Executor, Row, MySqlExecutor};
+use emwin_parse::formats::codes::{weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation, SignificantWeatherPhenomena}, clouds::{CloudReport, CloudAmount}};
+use sqlx::{Executor, Row, MySqlExecutor, MySqlPool};
+use uom::si::length::meter;
 
 mod taf;
 
 /// Context containing a database connection used to execute queries for EMWIN data
 #[derive(Clone, Debug,)]
-pub struct EmwinSqlContext<E: for<'c> MySqlExecutor<'c> + Copy> {
-    conn: E,
+pub struct EmwinSqlContext {
+    conn: MySqlPool,
 }
 
-impl<E: for<'c> MySqlExecutor<'c> + Copy> EmwinSqlContext<E> {
-    pub fn new(conn: E) -> Self {
+impl EmwinSqlContext {
+    pub fn new(conn: MySqlPool) -> Self {
         Self { conn }
     }
     
@@ -24,7 +25,7 @@ VALUES ()
 RETURNING id;
 "#
         )
-            .fetch_one(self.conn)
+            .fetch_one(&self.conn)
             .await?
             .try_get(0usize)
     }
@@ -85,6 +86,45 @@ VALUES (?, ?, ?, ?, ?);
 
                 s
             })
+            .bind(weather.phenomena.map(|p| match p {
+                SignificantWeatherPhenomena::Mist => "MIST",
+                SignificantWeatherPhenomena::Fog => "FOG",
+                SignificantWeatherPhenomena::Smoke => "SMOKE",
+                SignificantWeatherPhenomena::Ash => "ASH",
+                SignificantWeatherPhenomena::Dust => "DUST",
+                SignificantWeatherPhenomena::Sand => "SAND",
+                SignificantWeatherPhenomena::Haze => "HAZE",
+                SignificantWeatherPhenomena::DustSandSwirls => "DUST_SANDSWIRLS",
+                SignificantWeatherPhenomena::Squalls => "SQUALLS",
+                SignificantWeatherPhenomena::FunnelCloud => "FUNNEL_CLOUD",
+                SignificantWeatherPhenomena::SandStorm => "SANDSTORM",
+                SignificantWeatherPhenomena::DustStorm => "DUSTSTORM",
+            }))
+            .execute(&self.conn)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn insert_cloud_report(&self, data_id: u64, clouds: &[CloudReport]) -> Result<(), sqlx::Error> {
+        for clouds in clouds {
+            sqlx::query(
+r#"
+INSERT INTO weather.cloud_report (data_id, amount, altitude)
+VALUES (?, ?, ?);
+"#
+            )
+            .bind(data_id)
+            .bind(clouds.amount.map(|amt| match amt {
+                CloudAmount::Few => "FEW",
+                CloudAmount::Scattered => "SCATTERED",
+                CloudAmount::Broken => "BROKEN",
+                CloudAmount::Overcast => "OVERCAST",
+            }))
+            .bind(clouds.altitude.get::<meter>())
+            .execute(&self.conn)
+            .await?;
         }
 
         Ok(())

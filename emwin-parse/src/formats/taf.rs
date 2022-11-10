@@ -229,6 +229,37 @@ impl TAFReportItem {
     }
 }
 
+impl TAFReportItemGroupKind {
+    /// Get the offset from the month that this group is reporting from
+    pub const fn from(&self) -> Duration {
+        match self {
+            Self::TimeIndicator(from) |
+            Self::Change(from, _) |
+            Self::TemporaryChange { from, .. } |
+            Self::Probable { from, .. } => *from,
+        }
+    }
+    
+    /// Get the offset from the month that this report is expected to last until
+    pub const fn to(&self) -> Option<Duration> {
+        match self {
+            Self::Probable { to, .. } |
+            Self::Change(_, to) |
+            Self::TemporaryChange { to, .. } => Some(*to),
+            _ => None,
+        }
+    }
+    
+    /// Get the probability of this event occuring
+    pub const fn probability(&self) -> Option<f32> {
+        match self {
+            Self::Probable { probability, .. } |
+            Self::TemporaryChange { probability, .. } => Some(*probability),
+            _ => None,
+        }
+    }
+}
+
 impl TAFReportItemGroup {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
         fn parse_from_to(input: &str) -> ParseResult<&str, (Duration, Duration)> {

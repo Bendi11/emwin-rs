@@ -10,12 +10,13 @@ use emwin_parse::{
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesFileName,
 };
+use emwin_sql::EmwinSqlContext;
 use notify::Event;
 use sqlx::MySqlPool;
 
 use crate::config::CONFIG;
 
-pub async fn on_create(event: Event, pool: Arc<MySqlPool>) {
+pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
     for path in event.paths {
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
@@ -81,6 +82,14 @@ pub async fn on_create(event: Event, pool: Arc<MySqlPool>) {
                                 return;
                             }
                         };
+
+                        for item in forecast.items {
+                            if let Err(e) = ctx
+                                .insert_taf(&item)
+                                .await {
+                                log::error!("Failed to write TAF forecast to database: {}", e);
+                            }
+                        }
                     }
                     _ => {
                         log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);

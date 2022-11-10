@@ -145,14 +145,15 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         }
     };
 
-    let ctx = EmwinSqlContext::new(&pool);
+    let ctx = Arc::new(EmwinSqlContext::new(pool));
 
     while let Some(event) = rx.recv().await {
         match event.kind {
             EventKind::Create(CreateKind::File) => {
-                /*if let Err(e) = tokio::spawn(async move { on_create(event, npool).await }).await {
+                let ctx = Arc::clone(&ctx);
+                if let Err(e) = tokio::spawn(async move { on_create(event, ctx).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
-                }*/
+                }
             }
             _ => (),
         }
