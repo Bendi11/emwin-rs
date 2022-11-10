@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use once_cell::sync::OnceCell;
+use async_once_cell::OnceCell;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 

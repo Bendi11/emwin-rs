@@ -14,17 +14,21 @@ use emwin_sql::EmwinSqlContext;
 use notify::Event;
 use sqlx::MySqlPool;
 
-use crate::config::CONFIG;
+use crate::config::{CONFIG, Config};
 
 pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
+    let config = CONFIG;
+    let config = config.get().expect("global configuration not initialized");
     for path in event.paths {
+
+
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
                 let filename: GoesFileName = match filename.parse() {
                     Ok(f) => f,
                     Err(e) => {
                         log::error!("Failed to parse newly created filename {}: {}", filename, e);
-                        CONFIG.wait().failure.do_for(&path).await;
+                        config.failure.do_for(&path).await;
                         return;
                     }
                 };
@@ -34,7 +38,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                         Ok(src) => Some(src),
                         Err(e) => {
                             log::error!("Failed to read file {}: {}", path.display(), e);
-                            CONFIG.wait().failure.do_for(&path).await;
+                            config.failure.do_for(&path).await;
                             None
                         }
                     }
@@ -50,7 +54,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                             Ok((_, rwr)) => rwr,
                             Err(e) => {
                                 log::error!("Failed to parse regional weather roundup: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
+                                config.failure.do_for(&path).await;
                                 return;
                             }
                         };
@@ -64,7 +68,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                             Ok((_, report)) => report,
                             Err(e) => {
                                 log::error!("Failed to parse AMDAR upper air report: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
+                                config.failure.do_for(&path).await;
                                 return;
                             }
                         };
@@ -78,7 +82,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                             Ok((_, forecast)) => forecast,
                             Err(e) => {
                                 log::error!("Failed to parse TAF report: {}", e);
-                                CONFIG.wait().failure.do_for(&path).await;
+                                config.failure.do_for(&path).await;
                                 return;
                             }
                         };
@@ -93,7 +97,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                     }
                     _ => {
                         log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
-                        CONFIG.wait().unrecognized.do_for(&path).await;
+                        config.unrecognized.do_for(&path).await;
                     }
                 }
             }
@@ -102,7 +106,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
                     "Newly created file {} contains invalid unicode characters",
                     path.display()
                 );
-                CONFIG.wait().unrecognized.do_for(&path).await;
+                config.unrecognized.do_for(&path).await;
             }
         }
     }
