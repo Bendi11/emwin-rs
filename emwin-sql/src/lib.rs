@@ -21,7 +21,7 @@ impl EmwinSqlContext {
         sqlx::query(
 r#"
 INSERT INTO weather.data
-VALUES ()
+DEFAULT VALUES
 RETURNING id;
 "#
         )
