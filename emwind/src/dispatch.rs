@@ -14,14 +14,10 @@ use emwin_sql::EmwinSqlContext;
 use notify::Event;
 use sqlx::MySqlPool;
 
-use crate::config::{CONFIG, Config};
+use crate::config::Config;
 
-pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>) {
-    let config = CONFIG;
-    let config = config.get().expect("global configuration not initialized");
+pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
     for path in event.paths {
-
-
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
                 let filename: GoesFileName = match filename.parse() {

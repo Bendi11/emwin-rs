@@ -16,7 +16,6 @@ log = { version = "0.4", features = ["release_max_level_trace"] }
 toml = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 stderrlog = { version = "0.5", default-features = false }
-async-once-cell = "0.4"
 sqlx = { version = "0.6", features = ["mysql", "runtime-tokio-native-tls", "json"] }
 
 [package.metadata.deb]

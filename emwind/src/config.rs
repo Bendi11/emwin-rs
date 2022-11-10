@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use async_once_cell::OnceCell;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncWriteExt;
 
@@ -28,7 +27,6 @@ pub struct Config {
     pub failure: UnrecognizedFileOpt,
 }
 
-pub const CONFIG: OnceCell<Config> = OnceCell::new();
 pub const CONFIG_FOLDER: &str = "emwind/";
 pub const CONFIG_FILE: &str = "config.toml";
 

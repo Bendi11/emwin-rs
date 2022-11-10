@@ -26,7 +26,7 @@ use tokio::{
     sync::mpsc::{channel, Receiver},
 };
 
-use crate::config::{Config, CONFIG};
+use crate::config::Config;
 
 pub mod config;
 pub mod dispatch;
@@ -73,7 +73,7 @@ fn main() -> ExitCode {
 }
 
 async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
-    let config = match dirs::config_dir() {
+    let config = Arc::new(match dirs::config_dir() {
         Some(dir) => {
             let config_path = dir.join(CONFIG_FOLDER).join(CONFIG_FILE);
             if config_path.exists() {
@@ -130,11 +130,8 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             );
             Config::default()
         }
-    };
-    
-    let global_config = CONFIG;
-    let config = global_config.get_or_init(async move { config }).await;
-
+    });
+   
     if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
@@ -166,9 +163,9 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         log::trace!("Got filesystem event");
         match event.kind {
             EventKind::Create(CreateKind::File) => {
-
+                let config = Arc::clone(&config);
                 let ctx = Arc::clone(&ctx);
-                if let Err(e) = tokio::spawn(async move { on_create(event, ctx).await }).await {
+                if let Err(e) = tokio::spawn(async move { on_create(event, ctx, config).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
                 }
             }
