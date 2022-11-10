@@ -48,7 +48,7 @@ fn main() -> ExitCode {
     let (tx, rx) = channel(10);
     let watcher = match RecommendedWatcher::new(
         move |res| {
-            tokio::runtime::Handle::current().block_on(async {
+            rt_clone.block_on(async {
                 log::trace!("got filesystem event");
                 match res {
                     Ok(event) => {
