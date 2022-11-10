@@ -1,4 +1,4 @@
-use chrono::Duration;
+use chrono::{Duration, NaiveDate, NaiveDateTime};
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till, take_until},
@@ -23,7 +23,7 @@ use crate::{
         recover::recover,
         time::{yygg, yygggg},
     },
-    ParseResult,
+    ParseResult, ParseError,
 };
 
 use super::codes::{clouds::CloudReport, weather::SignificantWeather, wind::WindSummary};
@@ -32,6 +32,7 @@ use super::codes::{clouds::CloudReport, weather::SignificantWeather, wind::WindS
 #[derive(Clone, Debug)]
 pub struct TAFReport {
     pub header: WMOProductIdentifier,
+    pub month: NaiveDate,
     pub items: Vec<TAFReportItem>,
 }
 
@@ -84,7 +85,11 @@ pub enum TAFReportItemGroupKind {
 }
 
 impl TAFReport {
-    pub fn parse(input: &str) -> ParseResult<&str, TAFReport> {
+    pub fn parse<'a>(month: NaiveDate) -> impl FnMut(&'a str) -> ParseResult<&'a str, Self> {
+        move |input| Self::parse_full(input, month)
+    }
+
+    pub fn parse_full(input: &str, month: NaiveDate) -> ParseResult<&str, TAFReport> {
         let (input, header) = WMOProductIdentifier::parse(input)?;
 
         let mut input = input;
@@ -121,7 +126,7 @@ impl TAFReport {
             input = new_input;
         }
 
-        Ok((input, Self { header, items }))
+        Ok((input, Self { header, month, items }))
     }
 }
 
@@ -407,7 +412,7 @@ mod test {
         let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         assert_eq!(item.unwrap().groups.len(), 5);
-        let (_, _) = TAFReport::parse(TAF).unwrap_or_else(|e| match e {
+        let (_, _) = TAFReport::parse(chrono::Local::now().naive_utc().date()).parse(TAF).unwrap_or_else(|e| match e {
             nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
                 "{}",
                 e.map_locations(|s| &s[0..s.find('\n').unwrap_or(s.len())])

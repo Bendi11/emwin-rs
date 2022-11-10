@@ -6,6 +6,6 @@ edition = "2021"
 [dependencies]
 emwin-parse = { path = "../emwin-parse" }
 uom = { version = "0.33", default-features = false, features = ["f32", "si", "std"] }
-sqlx = { version = "0.6", features = ["mysql"] }
+sqlx = { version = "0.6", features = ["mysql", "chrono"] }
 log = { version = "0.4" }
 chrono = "0.4"

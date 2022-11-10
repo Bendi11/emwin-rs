@@ -79,7 +79,7 @@ impl<T> Expect for Option<T> {
         self.ok_or_else(|| GoesFileNameParseError::Length)
     }
 }
-
+ 
 impl FromStr for GoesFileName {
     type Err = GoesFileNameParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {

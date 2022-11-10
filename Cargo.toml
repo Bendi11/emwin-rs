@@ -7,3 +7,6 @@ members = [
 
 [profile.release]
 lto = true
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3

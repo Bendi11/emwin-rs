@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::{Datelike, NaiveDateTime, NaiveDate};
 use emwin_parse::{
     dt::{
         code::CodeForm,
@@ -28,6 +29,8 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
                         return;
                     }
                 };
+
+                let month = filename.creation_timestamp.date().with_day0(0).expect("First day of month is invalid");
 
                 let read = async {
                     match tokio::fs::read_to_string(&path).await {
@@ -74,7 +77,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
                         ..
                     }) => {
                         let Some(src) = read.await else { return };
-                        let forecast = match TAFReport::parse(&src) {
+                        let forecast = match TAFReport::parse(month)(&src) {
                             Ok((_, forecast)) => forecast,
                             Err(e) => {
                                 log::error!("Failed to parse TAF report: {}", e);
@@ -85,7 +88,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
 
                         for item in forecast.items {
                             if let Err(e) = ctx
-                                .insert_taf(&item)
+                                .insert_taf(forecast.month, &item)
                                 .await {
                                 log::error!("Failed to write TAF forecast to database: {}", e);
                             }

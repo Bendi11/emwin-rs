@@ -1,4 +1,4 @@
-use chrono::Duration;
+use chrono::{Duration, NaiveDateTime, NaiveDate};
 use emwin_parse::formats::taf::{TAFReportItem, TAFReportKind, TAFReportItemGroupKind};
 use sqlx::{Executor, MySql, MySqlExecutor, Row};
 use uom::si::{f32::Length, length::meter};
@@ -9,16 +9,17 @@ use crate::EmwinSqlContext;
 impl EmwinSqlContext {
     /// Insert a TAF report item into the database connection, returning the ID of the inserted
     /// row of the `weather.taf_item` table
-    pub async fn insert_taf(&self, taf: &TAFReportItem) -> Result<u64, sqlx::Error> {
+    pub async fn insert_taf(&self, month: NaiveDate, taf: &TAFReportItem) -> Result<u64, sqlx::Error> {
         let data = self.insert_data().await?;
 
         let item_id = sqlx::query(
 r#"
-INSERT INTO weather.taf_item (country, origin_off, from_off, to_off, data_id)
+INSERT INTO weather.taf_item (month, country, origin_off, from_off, to_off, data_id)
 VALUES (?, ?, ?, ?, ?)
 RETURNING id;
 "#,
         )
+        .bind(month)
         .bind(taf.country.code.iter().collect::<String>())
         .bind(taf.origin_date.num_seconds())
         .bind(taf.time_range.0.num_seconds())
