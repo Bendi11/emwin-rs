@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS weather.cloud_report (
         'FEW',
         'SCATTERED',
         'BROKEN',
-        'OVERCAST',
+        'OVERCAST'
     ),
     altitude FLOAT NOT NULL,
     CONSTRAINT `fk_cloud_report_data`
