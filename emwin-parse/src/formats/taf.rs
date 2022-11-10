@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDate, NaiveDateTime};
+use chrono::{Duration, NaiveDate};
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till, take_until},
@@ -23,7 +23,7 @@ use crate::{
         recover::recover,
         time::{yygg, yygggg},
     },
-    ParseResult, ParseError,
+    ParseResult,
 };
 
 use super::codes::{clouds::CloudReport, weather::SignificantWeather, wind::WindSummary};

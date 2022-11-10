@@ -1,6 +1,6 @@
 //! Encoding and decoding decoded EMWIN files from a database
 use emwin_parse::formats::codes::{weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation, SignificantWeatherPhenomena}, clouds::{CloudReport, CloudAmount}};
-use sqlx::{Executor, Row, MySqlExecutor, MySqlPool};
+use sqlx::{Row, MySqlPool};
 use uom::si::length::meter;
 
 mod taf;
@@ -12,8 +12,18 @@ pub struct EmwinSqlContext {
 }
 
 impl EmwinSqlContext {
+    const UP: &str = include_str!("./sql/up.sql");
+
     pub fn new(conn: MySqlPool) -> Self {
         Self { conn }
+    }
+
+    /// Create all datatables if they do not yet exist
+    pub async fn init(&self) -> Result<(), sqlx::Error> {
+        sqlx::query(Self::UP)
+            .execute(&self.conn)
+            .await
+            .map(|_| ())
     }
     
     /// Create a new data ID and return the ID

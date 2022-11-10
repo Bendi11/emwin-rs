@@ -1,6 +1,6 @@
-use chrono::{Duration, NaiveDateTime, NaiveDate};
-use emwin_parse::formats::taf::{TAFReportItem, TAFReportKind, TAFReportItemGroupKind};
-use sqlx::{Executor, MySql, MySqlExecutor, Row};
+use chrono::NaiveDate;
+use emwin_parse::formats::taf::{TAFReportItem, TAFReportItemGroupKind};
+use sqlx::Row;
 use uom::si::{f32::Length, length::meter};
 
 use crate::EmwinSqlContext;

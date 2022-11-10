@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chrono::{Datelike, NaiveDateTime, NaiveDate};
+use chrono::Datelike;
 use emwin_parse::{
     dt::{
         code::CodeForm,
@@ -13,7 +13,6 @@ use emwin_parse::{
 };
 use emwin_sql::EmwinSqlContext;
 use notify::Event;
-use sqlx::MySqlPool;
 
 use crate::config::Config;
 
@@ -95,7 +94,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
                         }
                     }
                     _ => {
-                        log::info!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
+                        log::trace!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
                         config.unrecognized.do_for(&path).await;
                     }
                 }

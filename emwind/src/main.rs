@@ -1,5 +1,4 @@
 use std::{
-    path::{Path, PathBuf},
     process::ExitCode,
     sync::Arc,
     time::Duration,
@@ -7,22 +6,12 @@ use std::{
 
 use config::{CONFIG_FILE, CONFIG_FOLDER};
 use dispatch::on_create;
-use emwin_parse::{
-    dt::{
-        code::CodeForm,
-        product::{Analysis, Forecast},
-        upperair::UpperAirData,
-        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
-    },
-    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
-    header::GoesFileName,
-};
 use emwin_sql::EmwinSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
-use serde::{Deserialize, Serialize};
+
 use sqlx::MySqlPool;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncReadExt,
     sync::mpsc::{channel, Receiver},
 };
 
@@ -157,6 +146,9 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     log::trace!("connected to database on {}", config.db_url);
 
     let ctx = Arc::new(EmwinSqlContext::new(pool));
+    if let Err(e) = ctx.init().await {
+        log::error!("Failed to initialize database: {}", e);
+    }
 
     while let Some(event) = rx.recv().await {
         match event.kind {
