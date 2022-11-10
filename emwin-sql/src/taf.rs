@@ -64,7 +64,7 @@ VALUES (?, ?, ?, ?, ?);
     async fn insert_taf_visibility(&self, data_id: u64, vis: Option<Length>) -> Result<(), sqlx::Error> {
         sqlx::query(
 r#"
-INSERT INTO weather.taf_visbility (data_id, horizontal_visibility)
+INSERT INTO weather.taf_visibility (data_id, horizontal_visibility)
 VALUES (?, ?);
 "#
         )
