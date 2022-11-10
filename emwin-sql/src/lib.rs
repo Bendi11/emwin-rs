@@ -20,8 +20,8 @@ impl EmwinSqlContext {
     async fn insert_data(&self) -> Result<u64, sqlx::Error> {
         sqlx::query(
 r#"
-INSERT INTO weather.data
-DEFAULT VALUES
+INSERT INTO weather.data ()
+VALUES ()
 RETURNING id;
 "#
         )
