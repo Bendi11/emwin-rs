@@ -150,6 +150,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     while let Some(event) = rx.recv().await {
         match event.kind {
             EventKind::Create(CreateKind::File) => {
+                log::trace!("Got filesystem event!");
                 let ctx = Arc::clone(&ctx);
                 if let Err(e) = tokio::spawn(async move { on_create(event, ctx).await }).await {
                     log::error!("Failed to spawn file reader task: {}", e);
