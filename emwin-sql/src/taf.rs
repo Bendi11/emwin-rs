@@ -15,7 +15,7 @@ impl EmwinSqlContext {
         let item_id = sqlx::query(
 r#"
 INSERT INTO weather.taf_item (country, origin, from_off, to_off, data_id)
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?)
 RETURNING id;
 "#,
         )
