@@ -49,7 +49,6 @@ fn main() -> ExitCode {
     let watcher = match RecommendedWatcher::new(
         move |res| {
             rt_clone.block_on(async {
-                log::trace!("got filesystem event");
                 match res {
                     Ok(event) => {
                         if let Err(e) = tx.send(event).await {
@@ -160,7 +159,6 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
     let ctx = Arc::new(EmwinSqlContext::new(pool));
 
     while let Some(event) = rx.recv().await {
-        log::trace!("Got filesystem event");
         match event.kind {
             EventKind::Create(CreateKind::File) => {
                 let config = Arc::clone(&config);
