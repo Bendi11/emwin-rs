@@ -15,7 +15,7 @@ impl EmwinSqlContext {
         let item_id = sqlx::query(
 r#"
 INSERT INTO weather.taf_item (month, country, origin_off, from_off, to_off, data_id)
-VALUES (?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id;
 "#,
         )
@@ -39,8 +39,8 @@ RETURNING id;
         for group in taf.groups.iter() {
             sqlx::query(
 r#"
-INSERT INTO weather.taf_group (item_id, data_id, kind, from_off, to_off, probability)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO weather.taf_group (data_id, kind, from_off, to_off, probability)
+VALUES (?, ?, ?, ?, ?);
 "#
             )
             .bind(item_id)

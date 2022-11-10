@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS weather.taf_item (
     origin_off int UNSIGNED NOT NULL,
     from_off int UNSIGNED NOT NULL,
     to_off int UNSIGNED NOT NULL,
-    data_id int UNSIGNED NOT NULL,
+    data_id int UNSIGNED NOT NULL UNIQUE,
     CONSTRAINT `fk_taf_item_data`
         FOREIGN KEY (data_id) REFERENCES weather.data (id)
         ON DELETE CASCADE
@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS weather.taf_item (
 
 
 CREATE TABLE IF NOT EXISTS weather.taf_group (
-    item_id int UNSIGNED NOT NULL,
     data_id int UNSIGNED NOT NULL,
     kind ENUM('TIMED', 'CHANGE', 'TEMP', 'PROB') NOT NULL,
     from_off int UNSIGNED NOT NULL,
