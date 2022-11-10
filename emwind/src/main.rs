@@ -32,18 +32,25 @@ use crate::config::{Config, CONFIG};
 pub mod config;
 pub mod dispatch;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     if let Err(e) = stderrlog::new().verbosity(log::LevelFilter::max()).show_module_names(false).init() {
         eprintln!("Failed to initialize logger: {}", e);
     }
 
     log::trace!("emwind started!");
 
+    let rt = Arc::new(tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to initialize tokio runtime")
+    );
+    
+    let rt_clone = rt.clone();
     let (tx, rx) = channel(10);
     let watcher = match RecommendedWatcher::new(
         move |res| {
-            tokio::runtime::Handle::current().block_on(async {
+            rt_clone.block_on(async {
+                log::trace!("got filesystem event");
                 match res {
                     Ok(event) => {
                         if let Err(e) = tx.send(event).await {
@@ -63,7 +70,7 @@ async fn main() -> ExitCode {
         }
     };
 
-    watch(watcher, rx).await
+    rt.block_on(watch(watcher, rx))
 }
 
 async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
