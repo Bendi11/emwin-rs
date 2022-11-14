@@ -46,7 +46,7 @@ RETURNING id;
         for weather in weather {
             sqlx::query(
 r#"
-INSERT INTP weather.significant_weather (data_id, intensity, descriptor, precipitation, phenomena)
+INSERT INTO weather.significant_weather (data_id, intensity, descriptor, precipitation, phenomena)
 VALUES (?, ?, ?, ?, ?);
 "#
             )

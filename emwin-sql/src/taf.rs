@@ -43,7 +43,6 @@ INSERT INTO weather.taf_group (data_id, kind, from_off, to_off, probability)
 VALUES (?, ?, ?, ?, ?);
 "#
             )
-            .bind(item_id)
             .bind(data)
             .bind(match group.kind {
                 TAFReportItemGroupKind::TimeIndicator(..) => "TIMED",
