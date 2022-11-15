@@ -1,7 +1,7 @@
 //! Encoding and decoding decoded EMWIN files from a database
-use emwin_parse::formats::codes::{weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation, SignificantWeatherPhenomena}, clouds::{CloudReport, CloudAmount}};
+use emwin_parse::formats::codes::{weather::{SignificantWeather, SignificantWeatherIntensity, SignificantWeatherDescriptor, SignificantWeatherPrecipitation, SignificantWeatherPhenomena}, clouds::{CloudReport, CloudAmount}, wind::WindSummary};
 use sqlx::{Row, MySqlPool};
-use uom::si::length::meter;
+use uom::si::{length::meter, angle::radian, velocity::meter_per_second};
 
 mod taf;
 
@@ -108,6 +108,23 @@ VALUES (?, ?, ?);
             .execute(&self.conn)
             .await?;
         }
+
+        Ok(())
+    }
+
+    async fn insert_wind_summary(&self, data_id: u64, wind: &WindSummary) -> Result<(), sqlx::Error> {
+        sqlx::query(
+r#"
+INSERT INTO weather.wind_summary (data_id, angle, speed, max_speed)
+VALUES (?, ?, ?, ?);
+"#
+        )
+        .bind(data_id)
+        .bind(wind.direction.get::<radian>())
+        .bind(wind.speed.get::<meter_per_second>())
+        .bind(wind.max_speed.map(|s| s.get::<meter_per_second>()))
+        .execute(&self.conn)
+        .await?;
 
         Ok(())
     }
