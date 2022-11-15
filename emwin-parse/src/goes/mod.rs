@@ -47,7 +47,7 @@ impl GoesFileName {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
         let (input, env) = fromstr::<SystemEnvironment>(2).parse(input)?;
         let (input, dsn) = preceded(char('_'), DataShortName::parse)(input)?;
-        let (input, satellite) = preceded(char('_'), fromstr::<Satellite>(2))(input)?;
+        let (input, satellite) = preceded(char('_'), fromstr::<Satellite>(3))(input)?;
 
         let (input, start) = preceded(tag("_s"), Self::timestamp)(input)?;
         let (input, end) = preceded(tag("_e"), Self::timestamp)(input)?;
@@ -70,7 +70,7 @@ impl GoesFileName {
         map_opt(
             pair(
                 map_res(
-                    take(14usize),
+                    take(13usize),
                     |s| NaiveDateTime::parse_from_str(
                         s,
                         "%Y%j%H%M%S"
@@ -119,5 +119,34 @@ impl FromStr for Satellite {
             "G19" => Self::Goes19,
             _ => return Err(InvalidSatelliteIdentifier),
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::goes::dsn::{Instrument, ProductAcronym, Channel, ABISector};
+
+    use super::*;
+    
+    const GOES1: &str = "OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
+
+    #[test]
+    fn test_goesr_fn() {
+        let (_, goes1) = GoesFileName::parse(GOES1)
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e))); 
+        assert_eq!(goes1.env, SystemEnvironment::OperationalRealTime);
+        assert_eq!(
+            goes1.dsn,
+            DataShortName {
+                instrument: Instrument::AdvancedBaselineImager,
+                acronym: ProductAcronym::L1b(Channel::new(13)),
+                sector: ABISector::FullDisk,
+                mode: dsn::ABIMode::Mode6,
+            }
+        );
+        assert_eq!(
+            goes1.satellite,
+            Satellite::Goes17,
+        );
     }
 }

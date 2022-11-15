@@ -346,6 +346,5 @@ mod test {
     pub fn test_metar() {
         let (_, metar) = EmwinMetarReport::parse(METAR)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
-        panic!("{:#?}", metar);
     }
 }

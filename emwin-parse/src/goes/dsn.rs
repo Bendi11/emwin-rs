@@ -6,20 +6,20 @@ use nom_supreme::tag::complete::tag;
 use crate::{ParseResult, parse::fromstr};
 
 /// A channel number between 01 and 16
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Channel(u8);
 
 /// Instrument that an image was taken with, represented as an enum with one variant in case more
 /// satellites with more instruments are ever put into orbit
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Instrument {
     AdvancedBaselineImager,
 }
 
 /// Either level 1b or 2+ processing level for [DataShortName] with product acronym
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductAcronym {
     /// Always radiance data
     L1b(Channel),
@@ -27,7 +27,7 @@ pub enum ProductAcronym {
 }
 
 /// Product acronyms for [level 2+](ProductAcronym::L2)
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum L2Acronym {
     CloudTopHeight,
     CloudTopTemperature,
@@ -54,7 +54,7 @@ pub enum L2Acronym {
     TotalPrecipitableWater,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ABISector {
     FullDisk,
     CONUS,
@@ -62,7 +62,7 @@ pub enum ABISector {
     Mesoscale2,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ABIMode {
     Mode3,
     Mode4,
@@ -70,7 +70,7 @@ pub enum ABIMode {
 }
 
 /// Structure representing a full DSN part of a GOES-R series filename
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DataShortName {
     pub instrument: Instrument,
     pub acronym: ProductAcronym,

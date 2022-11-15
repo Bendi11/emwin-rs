@@ -34,9 +34,9 @@ pub struct CCCC {
     pub code: [char; 4],
 }
 
-/// A parsed EMWIN filename
+/// A parsed EMWIN filename from a GOES-R series satellite
 #[derive(Clone, Debug)]
-pub struct GoesFileName {
+pub struct GoesEmwinFileName {
     pub wmo_product_id: DataTypeDesignator,
     pub country: CCCC,
     pub last_modify: NaiveTime,
@@ -80,7 +80,7 @@ impl<T> Expect for Option<T> {
     }
 }
  
-impl FromStr for GoesFileName {
+impl FromStr for GoesEmwinFileName {
     type Err = GoesFileNameParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.char_indices().peekable();
@@ -218,7 +218,7 @@ mod test {
 
     #[test]
     fn parse_filename() {
-        let filename: GoesFileName =
+        let filename: GoesEmwinFileName =
             "A_FXUS65KABQ121804AAB_C_KWIN_20160112180901_008996-2-AFDABQNM.TXT"
                 .parse()
                 .unwrap();

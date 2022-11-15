@@ -9,7 +9,7 @@ use emwin_parse::{
         AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
     },
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
-    header::GoesFileName,
+    header::GoesEmwinFileName,
 };
 use emwin_sql::EmwinSqlContext;
 use notify::Event;
@@ -20,7 +20,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
     for path in event.paths {
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
-                let filename: GoesFileName = match filename.parse() {
+                let filename: GoesEmwinFileName = match filename.parse() {
                     Ok(f) => f,
                     Err(e) => {
                         log::error!("Failed to parse newly created filename {}: {}", filename, e);
@@ -29,7 +29,11 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
                     }
                 };
 
-                let month = filename.creation_timestamp.date().with_day0(0).expect("First day of month is invalid");
+                let month = filename
+                    .creation_timestamp
+                    .date()
+                    .with_day0(0)
+                    .expect("First day of month is invalid");
 
                 let read = async {
                     match tokio::fs::read_to_string(&path).await {
