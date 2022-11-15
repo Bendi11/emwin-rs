@@ -1,15 +1,20 @@
 use std::str::FromStr;
 
 use chrono::{NaiveDateTime, Timelike};
-use nom::{character::streaming::char, sequence::{preceded, pair}, Parser, combinator::{map_res, map_opt}, bytes::complete::take};
+use nom::{
+    bytes::complete::take,
+    character::streaming::char,
+    combinator::{map_opt, map_res},
+    sequence::{pair, preceded},
+    Parser,
+};
 use nom_supreme::tag::complete::tag;
 
-use crate::{ParseResult, parse::fromstr};
+use crate::{parse::fromstr, ParseResult};
 
 use self::dsn::DataShortName;
 
 pub mod dsn;
-
 
 /// Two-letter system environment code specifying if a GOES image was received from a test or
 /// real-time data transmission
@@ -33,7 +38,7 @@ pub enum Satellite {
 }
 
 /// GOES-R series file name
-#[derive(Clone, Copy, Debug,)]
+#[derive(Clone, Copy, Debug)]
 pub struct GoesFileName {
     pub env: SystemEnvironment,
     pub dsn: DataShortName,
@@ -62,20 +67,16 @@ impl GoesFileName {
                 start,
                 end,
                 creation,
-            }
+            },
         ))
     }
 
     fn timestamp(input: &str) -> ParseResult<&str, NaiveDateTime> {
         map_opt(
             pair(
-                map_res(
-                    take(13usize),
-                    |s| NaiveDateTime::parse_from_str(
-                        s,
-                        "%Y%j%H%M%S"
-                    )
-                ),
+                map_res(take(13usize), |s| {
+                    NaiveDateTime::parse_from_str(s, "%Y%j%H%M%S")
+                }),
                 fromstr::<u32>(1),
             ),
             |(dt, n)| dt.with_nanosecond(n * 1e+8 as u32),
@@ -124,16 +125,17 @@ impl FromStr for Satellite {
 
 #[cfg(test)]
 mod test {
-    use crate::goes::dsn::{Instrument, ProductAcronym, Channel, ABISector};
+    use crate::goes::dsn::{ABISector, Channel, Instrument, ProductAcronym};
 
     use super::*;
-    
-    const GOES1: &str = "OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
+
+    const GOES1: &str =
+        "OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
 
     #[test]
     fn test_goesr_fn() {
-        let (_, goes1) = GoesFileName::parse(GOES1)
-            .unwrap_or_else(|e| panic!("{}", crate::display_error(e))); 
+        let (_, goes1) =
+            GoesFileName::parse(GOES1).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         assert_eq!(goes1.env, SystemEnvironment::OperationalRealTime);
         assert_eq!(
             goes1.dsn,
@@ -144,9 +146,6 @@ mod test {
                 mode: dsn::ABIMode::Mode6,
             }
         );
-        assert_eq!(
-            goes1.satellite,
-            Satellite::Goes17,
-        );
+        assert_eq!(goes1.satellite, Satellite::Goes17,);
     }
 }

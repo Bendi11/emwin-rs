@@ -123,7 +123,7 @@ impl SignificantWeather {
                 _ => return None,
             })
         }))(input)?;
-        
+
         match o_input == input {
             true => Err(nom::Err::Incomplete(nom::Needed::Unknown)),
             false => Ok((

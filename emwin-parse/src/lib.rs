@@ -6,8 +6,8 @@ pub type ParseResult<I, O> = IResult<I, O, ParseError<I>>;
 
 pub mod dt;
 pub mod formats;
-pub mod header;
 pub mod goes;
+pub mod header;
 mod parse;
 
 fn display_error(e: nom::Err<ParseError<&str>>) -> String {

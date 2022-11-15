@@ -1,8 +1,4 @@
-use std::{
-    process::ExitCode,
-    sync::Arc,
-    time::Duration,
-};
+use std::{process::ExitCode, sync::Arc, time::Duration};
 
 use config::{CONFIG_FILE, CONFIG_FOLDER};
 use dispatch::on_create;
@@ -21,18 +17,23 @@ pub mod config;
 pub mod dispatch;
 
 fn main() -> ExitCode {
-    if let Err(e) = stderrlog::new().verbosity(log::LevelFilter::max()).show_module_names(false).init() {
+    if let Err(e) = stderrlog::new()
+        .verbosity(log::LevelFilter::max())
+        .show_module_names(false)
+        .init()
+    {
         eprintln!("Failed to initialize logger: {}", e);
     }
 
     log::trace!("emwind started!");
 
-    let rt = Arc::new(tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to initialize tokio runtime")
+    let rt = Arc::new(
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to initialize tokio runtime"),
     );
-    
+
     let rt_clone = rt.clone();
     let (tx, rx) = channel(10);
     let watcher = match RecommendedWatcher::new(
@@ -119,7 +120,7 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             Config::default()
         }
     });
-   
+
     if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
@@ -129,16 +130,15 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
         return ExitCode::FAILURE;
     }
 
-    log::trace!("watching {} for filesystem events", config.goes_dir.display());
+    log::trace!(
+        "watching {} for filesystem events",
+        config.goes_dir.display()
+    );
 
     let pool = match MySqlPool::connect(&config.db_url).await {
         Ok(p) => p,
         Err(e) => {
-            log::error!(
-                "Failed to connect to database at {}: {}",
-                config.db_url,
-                e,
-            );
+            log::error!("Failed to connect to database at {}: {}", config.db_url, e,);
             return ExitCode::FAILURE;
         }
     };
@@ -155,7 +155,9 @@ async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> Exit
             EventKind::Create(CreateKind::File) => {
                 let config = Arc::clone(&config);
                 let ctx = Arc::clone(&ctx);
-                if let Err(e) = tokio::spawn(async move { on_create(event, ctx, config).await }).await {
+                if let Err(e) =
+                    tokio::spawn(async move { on_create(event, ctx, config).await }).await
+                {
                     log::error!("Failed to spawn file reader task: {}", e);
                 }
             }

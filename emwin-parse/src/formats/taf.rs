@@ -19,9 +19,9 @@ use crate::{
     formats::codes::visibility::vvvv,
     header::{WMOProductIdentifier, CCCC},
     parse::{
-        fromstr,
+        fromstr, multi, multi_opt,
         recover::recover,
-        time::{yygg, yygggg}, multi, multi_opt,
+        time::{yygg, yygggg},
     },
     ParseResult,
 };
@@ -126,7 +126,14 @@ impl TAFReport {
             input = new_input;
         }
 
-        Ok((input, Self { header, month, items }))
+        Ok((
+            input,
+            Self {
+                header,
+                month,
+                items,
+            },
+        ))
     }
 }
 
@@ -238,28 +245,29 @@ impl TAFReportItemGroupKind {
     /// Get the offset from the month that this group is reporting from
     pub const fn from(&self) -> Duration {
         match self {
-            Self::TimeIndicator(from) |
-            Self::Change(from, _) |
-            Self::TemporaryChange { from, .. } |
-            Self::Probable { from, .. } => *from,
+            Self::TimeIndicator(from)
+            | Self::Change(from, _)
+            | Self::TemporaryChange { from, .. }
+            | Self::Probable { from, .. } => *from,
         }
     }
-    
+
     /// Get the offset from the month that this report is expected to last until
     pub const fn to(&self) -> Option<Duration> {
         match self {
-            Self::Probable { to, .. } |
-            Self::Change(_, to) |
-            Self::TemporaryChange { to, .. } => Some(*to),
+            Self::Probable { to, .. } | Self::Change(_, to) | Self::TemporaryChange { to, .. } => {
+                Some(*to)
+            }
             _ => None,
         }
     }
-    
+
     /// Get the probability of this event occuring
     pub const fn probability(&self) -> Option<f32> {
         match self {
-            Self::Probable { probability, .. } |
-            Self::TemporaryChange { probability, .. } => Some(*probability),
+            Self::Probable { probability, .. } | Self::TemporaryChange { probability, .. } => {
+                Some(*probability)
+            }
             _ => None,
         }
     }
@@ -371,7 +379,8 @@ fn parse_vis_weather_clouds(
                         }
                     }),
                 )),
-            )).parse(input)?;
+            ))
+            .parse(input)?;
 
             let mut input = input;
             let mut clouds = vec![];
@@ -410,13 +419,15 @@ mod test {
         let (_, item) =
             TAFReportItem::parse(ITEM).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         assert_eq!(item.unwrap().groups.len(), 5);
-        let (_, _) = TAFReport::parse(chrono::Local::now().naive_utc().date()).parse(TAF).unwrap_or_else(|e| match e {
-            nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
-                "{}",
-                e.map_locations(|s| &s[0..s.find('\n').unwrap_or(s.len())])
-            ),
-            e => panic!("{}", e),
-        });
+        let (_, _) = TAFReport::parse(chrono::Local::now().naive_utc().date())
+            .parse(TAF)
+            .unwrap_or_else(|e| match e {
+                nom::Err::Error(e) | nom::Err::Failure(e) => panic!(
+                    "{}",
+                    e.map_locations(|s| &s[0..s.find('\n').unwrap_or(s.len())])
+                ),
+                e => panic!("{}", e),
+            });
     }
 
     #[test]

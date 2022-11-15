@@ -1,9 +1,15 @@
 use std::str::FromStr;
 
-use nom::{branch::alt, Parser, sequence::{preceded, terminated}, character::streaming::char, combinator::map_res};
+use nom::{
+    branch::alt,
+    character::streaming::char,
+    combinator::map_res,
+    sequence::{preceded, terminated},
+    Parser,
+};
 use nom_supreme::tag::complete::tag;
 
-use crate::{ParseResult, parse::fromstr};
+use crate::{parse::fromstr, ParseResult};
 
 /// A channel number between 01 and 16
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,7 +87,11 @@ pub struct DataShortName {
 impl Channel {
     /// Panics if `ch` is not within [1, 16]
     pub fn new(ch: u8) -> Self {
-        assert!((1..=16).contains(&ch), "Channel::new called with invalid channel {}", ch);
+        assert!(
+            (1..=16).contains(&ch),
+            "Channel::new called with invalid channel {}",
+            ch
+        );
         Self(ch)
     }
 }
@@ -93,16 +103,16 @@ impl DataShortName {
         let (input, sector) = ABISector::parse(input)?;
         let (input, mode): (_, ABIMode) = fromstr(3)(input)?;
 
-        let channel = preceded(char('C'), map_res(fromstr::<u8>(2), |v| Channel::try_from(v)));
+        let channel = preceded(
+            char('C'),
+            map_res(fromstr::<u8>(2), |v| Channel::try_from(v)),
+        );
 
         let (input, acronym) = match acronym {
-            ProductAcronym::L2(L2Acronym::DerivedMotionWinds(_)) => 
-                    channel
-                        .map(|c| ProductAcronym::L2(L2Acronym::DerivedMotionWinds(c)))
-                        .parse(input)?,
-            ProductAcronym::L1b(_) => channel
-                .map(|c| ProductAcronym::L1b(c))
+            ProductAcronym::L2(L2Acronym::DerivedMotionWinds(_)) => channel
+                .map(|c| ProductAcronym::L2(L2Acronym::DerivedMotionWinds(c)))
                 .parse(input)?,
+            ProductAcronym::L1b(_) => channel.map(|c| ProductAcronym::L1b(c)).parse(input)?,
             ProductAcronym::L2(L2Acronym::CloudMoistureImagery(_)) => channel
                 .map(|c| ProductAcronym::L2(L2Acronym::CloudMoistureImagery(c)))
                 .parse(input)?,
@@ -116,7 +126,7 @@ impl DataShortName {
                 acronym,
                 sector,
                 mode,
-            }
+            },
         ))
     }
 }
@@ -124,11 +134,7 @@ impl DataShortName {
 impl ProductAcronym {
     fn parse(input: &str) -> ParseResult<&str, Self> {
         alt((
-            terminated(
-                tag("-L1b")
-                    .map(|_| Self::L1b(Channel(1))),
-                tag("-Rad"),
-            ),
+            terminated(tag("-L1b").map(|_| Self::L1b(Channel(1))), tag("-Rad")),
             preceded(
                 tag("-L2"),
                 alt((
@@ -160,8 +166,8 @@ impl ProductAcronym {
                         tag("TPW").map(|_| L2Acronym::TotalPrecipitableWater),
                     )),
                 ))
-                .map(|acronym| Self::L2(acronym))
-            )
+                .map(|acronym| Self::L2(acronym)),
+            ),
         ))(input)
     }
 }
@@ -173,13 +179,16 @@ impl ABISector {
             tag("C").map(|_| Self::CONUS),
             tag("M1").map(|_| Self::Mesoscale1),
             tag("M2").map(|_| Self::Mesoscale2),
-        )).parse(input)
+        ))
+        .parse(input)
     }
 }
 
 impl Instrument {
     fn parse(input: &str) -> ParseResult<&str, Self> {
-        tag("ABI").map(|_| Self::AdvancedBaselineImager).parse(input)
+        tag("ABI")
+            .map(|_| Self::AdvancedBaselineImager)
+            .parse(input)
     }
 }
 
@@ -211,7 +220,7 @@ impl TryFrom<u8> for Channel {
         match (1..=16).contains(&value) {
             true => Ok(Self(value)),
             false => Err(InvalidChannel),
-        }    
+        }
     }
 }
 

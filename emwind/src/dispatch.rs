@@ -90,9 +90,7 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
                         };
 
                         for item in forecast.items {
-                            if let Err(e) = ctx
-                                .insert_taf(forecast.month, &item)
-                                .await {
+                            if let Err(e) = ctx.insert_taf(forecast.month, &item).await {
                                 log::error!("Failed to write TAF forecast to database: {}", e);
                             }
                         }
