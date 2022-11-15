@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "emwin-parse",
-    "emwind",
-    "emwin-sql",
+    "goes-parse",
+    "goesd",
+    "goes-sql",
 ]
 
 [profile.release]

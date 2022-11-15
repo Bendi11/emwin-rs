@@ -1,5 +1,5 @@
 [package]
-name = "emwin-parse"
+name = "goes-parse"
 version = "0.1.0"
 edition = "2021"
 
