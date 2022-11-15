@@ -67,35 +67,7 @@ VALUES (?, ?, ?, ?, ?);
                 SignificantWeatherDescriptor::Thunderstorm => "THUNDERSTORM",
                 SignificantWeatherDescriptor::Supercooled => "SUPERCOOLED",
             }))
-            .bind({
-                let mut s = String::new();
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::DRIZZLE) {
-                    s.push_str("DRIZZLE,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::RAIN) {
-                    s.push_str("RAIN,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::SNOW) {
-                    s.push_str("SNOW,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::SNOWGRAIN) {
-                    s.push_str("SNOWGRAIN,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::ICEPELLET) {
-                    s.push_str("ICEPELLET,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::HAIL) {
-                    s.push_str("HAIL,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::SMALLHAIL) {
-                    s.push_str("SMALLHAIL,")
-                }
-                if weather.precipitation.contains(SignificantWeatherPrecipitation::UNKNOWN) {
-                    s.push_str("")
-                }
-
-                s
-            })
+            .bind(weather.precipitation.bits())
             .bind(weather.phenomena.map(|p| match p {
                 SignificantWeatherPhenomena::Mist => "MIST",
                 SignificantWeatherPhenomena::Fog => "FOG",
