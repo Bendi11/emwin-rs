@@ -1,3 +1,5 @@
+CREATE DATABASE IF NOT EXISTS weather;
+
 
 CREATE TABLE IF NOT EXISTS weather.data (
     id int UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT
@@ -13,16 +15,6 @@ CREATE TABLE IF NOT EXISTS weather.cloud_report (
     ),
     altitude FLOAT NOT NULL,
     CONSTRAINT `fk_cloud_report_data`
-        FOREIGN KEY (data_id) REFERENCES weather.data (id)
-        ON DELETE CASCADE
-        ON UPDATE RESTRICT
-);
-
-
-CREATE TABLE IF NOT EXISTS weather.taf_visibility (
-    data_id int UNSIGNED NOT NULL,
-    horizontal_visibility FLOAT,
-    CONSTRAINT `fk_taf_visibility_data`
         FOREIGN KEY (data_id) REFERENCES weather.data (id)
         ON DELETE CASCADE
         ON UPDATE RESTRICT
@@ -89,6 +81,7 @@ CREATE TABLE IF NOT EXISTS weather.taf_item (
     origin_off int UNSIGNED NOT NULL,
     from_off int UNSIGNED NOT NULL,
     to_off int UNSIGNED NOT NULL,
+    visibility FLOAT,
     data_id int UNSIGNED NOT NULL UNIQUE,
     CONSTRAINT `fk_taf_item_data`
         FOREIGN KEY (data_id) REFERENCES weather.data (id)
@@ -103,6 +96,7 @@ CREATE TABLE IF NOT EXISTS weather.taf_group (
     from_off int UNSIGNED NOT NULL,
     to_off int UNSIGNED,
     probability FLOAT,
+    visibility FLOAT,
     CHECK (
         (kind='TIMED'  AND to_off IS     NULL AND probability IS     NULL) OR
         (kind='CHANGE' AND to_off IS NOT NULL AND probability IS     NULL) OR

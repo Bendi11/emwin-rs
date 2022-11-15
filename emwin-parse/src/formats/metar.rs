@@ -55,7 +55,7 @@ pub struct MetarReport {
     pub visibility: Option<Length>,
     pub minimum_visibility: Option<MetarMinimumVisibility>,
     pub runway_range: Vec<(RunwayDesignator, Length, RunwayTrend)>,
-    pub weather: Option<SignificantWeather>,
+    pub weather: Vec<SignificantWeather>,
     pub clouds: Vec<CloudReport>,
     pub air_dewpoint_temperature: Option<(ThermodynamicTemperature, ThermodynamicTemperature)>,
     pub qnh: Option<Pressure>,
@@ -211,7 +211,7 @@ impl MetarReport {
         ))
         .parse(input)?;
 
-        let (input, weather) = opt(preceded(space0, SignificantWeather::parse))(input)?;
+        let (input, weather) = multi(preceded(space0, SignificantWeather::parse)).parse(input)?;
 
         let (input, clouds) = multi_opt(preceded(space0, CloudReport::parse)).parse(input)?;
 

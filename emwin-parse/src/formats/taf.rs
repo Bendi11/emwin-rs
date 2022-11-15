@@ -21,7 +21,7 @@ use crate::{
     parse::{
         fromstr,
         recover::recover,
-        time::{yygg, yygggg},
+        time::{yygg, yygggg}, multi, multi_opt,
     },
     ParseResult,
 };
@@ -46,7 +46,7 @@ pub struct TAFReportItem {
     pub time_range: (Duration, Duration),
     pub wind: Option<WindSummary>,
     pub horizontal_vis: Option<Length>,
-    pub significant_weather: Option<SignificantWeather>,
+    pub significant_weather: Vec<SignificantWeather>,
     pub clouds: Vec<CloudReport>,
     pub groups: Vec<TAFReportItemGroup>,
 }
@@ -64,7 +64,7 @@ pub struct TAFReportItemGroup {
     pub kind: TAFReportItemGroupKind,
     pub wind: Option<WindSummary>,
     pub visibility: Option<Length>,
-    pub weather: Option<SignificantWeather>,
+    pub weather: Vec<SignificantWeather>,
     pub clouds: Vec<CloudReport>,
 }
 
@@ -351,15 +351,15 @@ impl TAFReportItemGroup {
 
 fn parse_vis_weather_clouds(
     input: &str,
-) -> ParseResult<&str, (Option<Length>, Option<SignificantWeather>, Vec<CloudReport>)> {
+) -> ParseResult<&str, (Option<Length>, Vec<SignificantWeather>, Vec<CloudReport>)> {
     let (input, cavok) = opt(preceded(space1, tag("CAVOK")))(input)?;
 
     Ok(match cavok.is_some() {
-        true => (input, (None, None, vec![])),
+        true => (input, (None, vec![], vec![])),
         false => {
             let (input, visibility) = opt(vvvv)(input)?;
 
-            let (input, weather) = opt(preceded(
+            let (input, weather) = multi_opt(preceded(
                 space1,
                 alt((
                     SignificantWeather::parse.map(|w| Some(w)),
@@ -371,9 +371,7 @@ fn parse_vis_weather_clouds(
                         }
                     }),
                 )),
-            ))(input)?;
-
-            let weather = weather.flatten();
+            )).parse(input)?;
 
             let mut input = input;
             let mut clouds = vec![];

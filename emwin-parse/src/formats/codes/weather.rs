@@ -76,7 +76,7 @@ pub fn wtildewtilde(input: &str) -> ParseResult<&str, SignificantWeather> {
 }
 
 impl SignificantWeather {
-    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+    pub fn parse(o_input: &str) -> ParseResult<&str, Self> {
         let (input, intensity) = opt(alt((
             map_opt(anychar, |c: char| {
                 Some(match c {
@@ -88,7 +88,7 @@ impl SignificantWeather {
             map_opt(take(2usize), |s: &str| {
                 (s == "VC").then_some(SignificantWeatherIntensity::Moderate)
             }),
-        )))(input)?;
+        )))(o_input)?;
 
         let intensity = intensity.unwrap_or(SignificantWeatherIntensity::Moderate);
         let (input, descriptor) = opt(map_opt(take(2usize), |s: &str| {
@@ -123,16 +123,19 @@ impl SignificantWeather {
                 _ => return None,
             })
         }))(input)?;
-
-        Ok((
-            input,
-            Self {
-                intensity,
-                descriptor,
-                precipitation,
-                phenomena,
-            },
-        ))
+        
+        match o_input == input {
+            true => Err(nom::Err::Incomplete(nom::Needed::Unknown)),
+            false => Ok((
+                input,
+                Self {
+                    intensity,
+                    descriptor,
+                    precipitation,
+                    phenomena,
+                },
+            )),
+        }
     }
 }
 
