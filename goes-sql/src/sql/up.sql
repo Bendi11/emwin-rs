@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
         'CLOUD_TOP_PHASE',
         'AEROSOL_OPTICAL_DEPTH',
         'CLOUD_MOISTURE_IMAGERY',
+        'MULTIBAND_CLOUD_MOISTURE_IMAGERY',
         'CLOUD_OPTICAL_DEPTH',
         'CLOUD_PARTICLE_SIZE_DISTRIBUTION',
         'CLOUD_TOP_PRESSURE',
@@ -173,7 +174,7 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
     ) NOT NULL,
     start_dt DATETIME NOT NULL,
     end_dt DATETIME NOT NULL,
-    file_name UUID NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
     CHECK (
         (channel IS NULL OR (channel>=1 AND CHANNEL <=16)) AND
         (

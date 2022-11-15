@@ -11,6 +11,7 @@ use sqlx::{MySqlPool, Row};
 use uom::si::{angle::radian, length::meter, velocity::meter_per_second};
 
 mod taf;
+mod goes;
 
 /// Context containing a database connection used to execute queries for EMWIN data
 #[derive(Clone, Debug)]

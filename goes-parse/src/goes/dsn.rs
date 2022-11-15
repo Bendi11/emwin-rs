@@ -184,6 +184,18 @@ impl ABISector {
     }
 }
 
+impl ProductAcronym {
+    /// Get the channel number associated with this acronym, if any
+    pub const fn channel(&self) -> Option<Channel> {
+        match self {
+            Self::L1b(ch) |
+                Self::L2(L2Acronym::DerivedMotionWinds(ch)) |
+                Self::L2(L2Acronym::CloudMoistureImagery(ch)) => Some(*ch),
+            _ => None,
+        }
+    }
+}
+
 impl Instrument {
     fn parse(input: &str) -> ParseResult<&str, Self> {
         tag("ABI")
