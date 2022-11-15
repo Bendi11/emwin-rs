@@ -43,7 +43,7 @@ RETURNING id;
             sqlx::query(
 r#"
 INSERT INTO weather.taf_group (item_id, data_id, kind, from_off, to_off, visibility, probability)
-VALUES (?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?);
 "#
             )
             .bind(item_id)
