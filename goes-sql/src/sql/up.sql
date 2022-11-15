@@ -113,3 +113,76 @@ CREATE TABLE IF NOT EXISTS weather.taf_group (
         ON DELETE CASCADE
         ON UPDATE RESTRICT
 );
+
+CREATE DATABASE IF NOT EXISTS goesimg;
+CREATE TABLE IF NOT EXISTS goesimg.files (
+    id int UNSIGNED PRIMARY KEY NOT NULL AUTO_INCREMENT,
+    env ENUM(
+        'OP_REALTIME',
+        'OP_TEST',
+        'TEST_REALTIME',
+        'TEST_DATA',
+        'TEST_PLAYBACK',
+        'TEST_SIMULATED'
+    ) NOT NULL,
+    instrument ENUM(
+        'ADVANCED_BASELINE_IMAGER'
+    ) NOT NULL,
+    acronym ENUM(
+        'L1b',
+        'CLOUD_TOP_HEIGHT',
+        'CLOUD_TOP_TEMPERATURE',
+        'CLEAR_SKY_MASK',
+        'CLOUD_TOP_PHASE',
+        'AEROSOL_OPTICAL_DEPTH',
+        'CLOUD_MOISTURE_IMAGERY',
+        'CLOUD_OPTICAL_DEPTH',
+        'CLOUD_PARTICLE_SIZE_DISTRIBUTION',
+        'CLOUD_TOP_PRESSURE',
+        'DERIVED_MOTION_WIND',
+        'DERIVED_MOTION_WIND_BAND8',
+        'DERIVED_STABILITY_INDEX',
+        'DOWNWARD_SHORTWAVE_SURFACE',
+        'FIRE_HOT_CHARACTERIZATION',
+        'SNOW_COVER',
+        'LAND_SKIN_TEMPERATURE',
+        'LEGACY_VERTICAL_MOISTURE_PROFILE',
+        'LEGACY_VERTICAL_TEMPERATURE_PROFILE',
+        'RAINFALL_RATE',
+        'REFLECTED_SHORTWAVE',
+        'SEA_SKIN_TEMPERATURE',
+        'TOTAL_PRECIPITABLE_WATER'
+    ),
+    channel TINYINT,
+    sector ENUM(
+        'FULL_DISK',
+        'CONUS',
+        'MESOSCALE1',
+        'MESOSCALE2'
+    ) NOT NULL,
+    abi_mode ENUM(
+        '3',
+        '4',
+        '6'
+    ) NOT NULL,
+    satellite ENUM(
+        'GOES16',
+        'GOES17',
+        'GOES18',
+        'GOES19'
+    ) NOT NULL,
+    start_dt DATETIME NOT NULL,
+    end_dt DATETIME NOT NULL,
+    file_name UUID NOT NULL,
+    CHECK (
+        (channel IS NULL OR (channel>=1 AND CHANNEL <=16)) AND
+        (
+            (
+                acronym!='CLOUD_MOISTURE_IMAGERY' OR
+                acronym!='DERIVED_MOTION_WIND' OR
+                acronym!='L1b'
+            ) OR
+            channel IS NOT NULL
+        )
+    ),
+);

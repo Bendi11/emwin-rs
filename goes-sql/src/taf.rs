@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use emwin_parse::formats::taf::{TAFReportItem, TAFReportItemGroupKind};
+use goes_parse::formats::taf::{TAFReportItem, TAFReportItemGroupKind};
 use sqlx::Row;
 use uom::si::{f32::Length, length::meter};
 

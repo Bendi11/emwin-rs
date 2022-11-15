@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{path::{Path, PathBuf}, sync::Arc, process::ExitCode};
 
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
 /// Action to take when an unrecognized file appears in the input directory
 #[derive(Serialize, Deserialize)]
@@ -63,7 +63,68 @@ impl UnrecognizedFileOpt {
     }
 }
 
-pub async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
+pub async fn read_cfg() -> Result<Arc<Config>, ExitCode> {
+    Ok(Arc::new(match dirs::config_dir() {
+        Some(dir) => {
+            let config_path = dir.join(CONFIG_FOLDER).join(CONFIG_FILE);
+            if config_path.exists() {
+                match tokio::fs::File::open(&config_path).await {
+                    Ok(mut file) => {
+                        let mut buf = Vec::with_capacity(128);
+                        if let Err(e) = file.read_to_end(&mut buf).await {
+                            log::error!(
+                                "Failed to read configuration file {}: {}",
+                                config_path.display(),
+                                e
+                            );
+                            return Err(ExitCode::FAILURE);
+                        }
+
+                        match toml::from_slice(&buf) {
+                            Ok(config) => config,
+                            Err(e) => {
+                                log::error!(
+                                    "Failed to deserialize configuration from file {}: {}",
+                                    config_path.display(),
+                                    e,
+                                );
+                                return Err(ExitCode::FAILURE);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!(
+                            "Failed to open configuration file at {}: {}",
+                            config_path.display(),
+                            e,
+                        );
+                        return Err(ExitCode::FAILURE);
+                    }
+                }
+            } else {
+                let config = Config::default();
+                if let Err(e) = std::fs::create_dir_all(config_path.parent().unwrap()) {
+                    log::warn!(
+                        "Failed to create configuration directory {}: {}, using default configuration",
+                        config_path.display(),
+                        e,
+                    );
+                } else {
+                    write_config(&config_path, &config).await;
+                }
+                config
+            }
+        }
+        None => {
+            log::warn!(
+                "Failed to find system configuration directory, using default configuration"
+            );
+            Config::default()
+        }
+    }))
+}
+
+async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
     match tokio::fs::File::create(&path).await {
         Ok(mut file) => {
             let buf = match toml::to_vec(&config) {

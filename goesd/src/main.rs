@@ -1,15 +1,11 @@
 use std::{process::ExitCode, sync::Arc, time::Duration};
 
-use config::{CONFIG_FILE, CONFIG_FOLDER};
 use dispatch::on_create;
-use emwin_sql::EmwinSqlContext;
+use goes_sql::EmwinSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 
 use sqlx::MySqlPool;
-use tokio::{
-    io::AsyncReadExt,
-    sync::mpsc::{channel, Receiver},
-};
+use tokio::sync::mpsc::{channel, Receiver};
 
 use crate::config::Config;
 
@@ -58,69 +54,17 @@ fn main() -> ExitCode {
         }
     };
 
-    rt.block_on(async { watch(watcher, rx).await })
+    rt.block_on(async {
+        let config = match config::read_cfg().await {
+            Ok(cfg) => cfg,
+            Err(e) => return e,
+        };
+
+        watch(config, watcher, rx).await
+    })
 }
 
-async fn watch(mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
-    let config = Arc::new(match dirs::config_dir() {
-        Some(dir) => {
-            let config_path = dir.join(CONFIG_FOLDER).join(CONFIG_FILE);
-            if config_path.exists() {
-                match tokio::fs::File::open(&config_path).await {
-                    Ok(mut file) => {
-                        let mut buf = Vec::with_capacity(128);
-                        if let Err(e) = file.read_to_end(&mut buf).await {
-                            log::error!(
-                                "Failed to read configuration file {}: {}",
-                                config_path.display(),
-                                e
-                            );
-                            return ExitCode::FAILURE;
-                        }
-
-                        match toml::from_slice(&buf) {
-                            Ok(config) => config,
-                            Err(e) => {
-                                log::error!(
-                                    "Failed to deserialize configuration from file {}: {}",
-                                    config_path.display(),
-                                    e,
-                                );
-                                return ExitCode::FAILURE;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!(
-                            "Failed to open configuration file at {}: {}",
-                            config_path.display(),
-                            e,
-                        );
-                        return ExitCode::FAILURE;
-                    }
-                }
-            } else {
-                let config = Config::default();
-                if let Err(e) = std::fs::create_dir_all(config_path.parent().unwrap()) {
-                    log::warn!(
-                        "Failed to create configuration directory {}: {}, using default configuration",
-                        config_path.display(),
-                        e,
-                    );
-                } else {
-                    config::write_config(&config_path, &config).await;
-                }
-                config
-            }
-        }
-        None => {
-            log::warn!(
-                "Failed to find system configuration directory, using default configuration"
-            );
-            Config::default()
-        }
-    });
-
+async fn watch(config: Arc<Config>, mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
     if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",

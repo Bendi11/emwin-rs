@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::Datelike;
-use emwin_parse::{
+use goes_parse::{
     dt::{
         code::CodeForm,
         product::{Analysis, Forecast},
@@ -11,7 +11,7 @@ use emwin_parse::{
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesEmwinFileName,
 };
-use emwin_sql::EmwinSqlContext;
+use goes_sql::EmwinSqlContext;
 use notify::Event;
 
 use crate::config::Config;

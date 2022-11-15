@@ -1,5 +1,5 @@
 //! Encoding and decoding decoded EMWIN files from a database
-use emwin_parse::formats::codes::{
+use goes_parse::formats::codes::{
     clouds::{CloudAmount, CloudReport},
     weather::{
         SignificantWeather, SignificantWeatherDescriptor, SignificantWeatherIntensity,
