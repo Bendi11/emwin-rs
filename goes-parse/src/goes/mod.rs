@@ -131,6 +131,8 @@ mod test {
 
     const GOES1: &str =
         "OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
+    const GOES2: &str =
+        "OR_ABI-L2-CMIPM1-M6C02_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
 
     #[test]
     fn test_goesr_fn() {
@@ -147,5 +149,7 @@ mod test {
             }
         );
         assert_eq!(goes1.satellite, Satellite::Goes17,);
+
+        GoesFileName::parse(GOES2).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
     }
 }

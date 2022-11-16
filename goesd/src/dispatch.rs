@@ -133,9 +133,8 @@ pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Co
 
                 if let Err(e) = ctx.insert_goes(file_name, &path).await {
                     log::error!("Failed to write GOES-R image file to database: {}", e);
+                    config.failure.do_for(&path).await;
                 }
-
-                config.done.do_for(path).await; 
             },
             None => {
                 log::error!(
