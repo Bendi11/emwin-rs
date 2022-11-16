@@ -25,7 +25,7 @@ depends = "$auto, systemd"
 extended-description = "Systemd service that automatically parses new EMWIN data pulled from a satellite downlink"
 section = "utils"
 assets = [
-    ["target/release/emwind", "usr/bin/goesd", "755"],
+    ["target/release/goesd", "usr/bin/goesd", "755"],
 ]
 maintainer-scripts = "deb/scripts"
 priority="optional"
