@@ -10,7 +10,7 @@ pub mod goes;
 pub mod header;
 mod parse;
 
-fn display_error(e: nom::Err<ParseError<&str>>) -> String {
+pub fn display_error(e: nom::Err<ParseError<&str>>) -> String {
     match e {
         nom::Err::Error(e) | nom::Err::Failure(e) => e
             .map_locations(|s| match s.find('\n') {

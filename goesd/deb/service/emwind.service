@@ -1,6 +1,7 @@
 [Unit]
 Description=Automatic parsing of EMWIN files
 AssertPathExists=/usr/bin/emwind
+Requires=goesproc.service
 
 [Service]
 Type=simple

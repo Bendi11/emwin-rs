@@ -3,9 +3,9 @@ use goes_parse::formats::taf::{TAFReportItem, TAFReportItemGroupKind};
 use sqlx::Row;
 use uom::si::{f32::Length, length::meter};
 
-use crate::EmwinSqlContext;
+use crate::GoesSqlContext;
 
-impl EmwinSqlContext {
+impl GoesSqlContext {
     /// Insert a TAF report item into the database connection, returning the ID of the inserted
     /// row of the `weather.taf_item` table
     pub async fn insert_taf(

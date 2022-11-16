@@ -3,10 +3,10 @@ use std::path::Path;
 use goes_parse::goes::{GoesFileName, SystemEnvironment, dsn::{Instrument, ProductAcronym, L2Acronym, ABISector, ABIMode}, Satellite};
 use sqlx::Row;
 
-use crate::EmwinSqlContext;
+use crate::GoesSqlContext;
 
 
-impl EmwinSqlContext {
+impl GoesSqlContext {
     pub async fn insert_goes(&self, filename: GoesFileName, path: impl AsRef<Path>) -> Result<u64, sqlx::Error> {
         let id = sqlx::query(
 r#"

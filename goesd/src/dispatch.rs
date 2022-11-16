@@ -9,14 +9,14 @@ use goes_parse::{
         AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
     },
     formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
-    header::GoesEmwinFileName,
+    header::GoesEmwinFileName, goes::GoesFileName, display_error,
 };
-use goes_sql::EmwinSqlContext;
+use goes_sql::GoesSqlContext;
 use notify::Event;
 
 use crate::config::Config;
 
-pub async fn emwin_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
+pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
@@ -104,7 +104,7 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc
             None => {
                 log::error!(
                     "Newly created file {} contains invalid unicode characters",
-                    path.display()
+                    path.display(),
                 );
                 config.unrecognized.do_for(&path).await;
             }
@@ -113,6 +113,29 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc
 }
 
 
-pub async fn img_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
+pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
+    for path in event.paths {
+        match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
+            Some(file_name) => {
+                let file_name = match GoesFileName::parse(file_name) {
+                    Ok((_, f)) => f,
+                    Err(e) => {
+                        log::error!("Failed to parse GOES-R image file name: {}", display_error(e));
+                        return
+                    }
+                };
 
+                if let Err(e) = ctx.insert_goes(file_name, path).await {
+                    log::error!("Failed to write GOES-R image file to database: {}", e);
+                }
+            },
+            None => {
+                log::error!(
+                    "Newly created image file {} contains invalid unicode characters",
+                    path.display(),
+                );
+                config.unrecognized.do_for(&path).await;
+            }
+        }
+    }
 }

@@ -15,11 +15,11 @@ mod goes;
 
 /// Context containing a database connection used to execute queries for EMWIN data
 #[derive(Clone, Debug)]
-pub struct EmwinSqlContext {
+pub struct GoesSqlContext {
     conn: MySqlPool,
 }
 
-impl EmwinSqlContext {
+impl GoesSqlContext {
     const UP: &str = include_str!("./sql/up.sql");
 
     pub fn new(conn: MySqlPool) -> Self {

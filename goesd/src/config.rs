@@ -165,7 +165,7 @@ impl Default for Config {
             failure: UnrecognizedFileOpt::Move(
                 dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),
             ),
-            db_url: "mysql://root:@localhost/weather".to_owned(),
+            db_url: "mysql://root:@localhost".to_owned(),
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::{process::ExitCode, sync::Arc, time::Duration};
 
 use dispatch::{emwin_dispatch, img_dispatch};
-use goes_sql::EmwinSqlContext;
+use goes_sql::GoesSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 
 use sqlx::MySqlPool;
@@ -31,6 +31,7 @@ fn main() -> ExitCode {
     );
      
     rt.clone().block_on(async move {
+        
         let config = match config::read_cfg().await {
             Ok(cfg) => cfg,
             Err(e) => return e,
@@ -46,7 +47,7 @@ fn main() -> ExitCode {
 
         log::trace!("connected to database on {}", config.db_url);
 
-        let ctx = Arc::new(EmwinSqlContext::new(pool));
+        let ctx = Arc::new(GoesSqlContext::new(pool));
         if let Err(e) = ctx.init().await {
             log::error!("Failed to initialize database: {}", e);
         }
@@ -92,7 +93,7 @@ fn create_watcher(rt: Arc<Runtime>, tx: Sender<Event>) -> Result<RecommendedWatc
     })
 }
 
-async fn img_task(config: Arc<Config>, ctx: Arc<EmwinSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
+async fn img_task(config: Arc<Config>, ctx: Arc<GoesSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
     if let Err(e) = watcher.watch(&config.img_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
@@ -120,7 +121,7 @@ async fn img_task(config: Arc<Config>, ctx: Arc<EmwinSqlContext>, mut rx: Receiv
     ExitCode::SUCCESS
 }
 
-async fn emwin_task(config: Arc<Config>, ctx: Arc<EmwinSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
+async fn emwin_task(config: Arc<Config>, ctx: Arc<GoesSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
     if let Err(e) = watcher.watch(&config.emwin_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
