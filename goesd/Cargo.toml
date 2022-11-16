@@ -33,3 +33,4 @@ conf-files = ["${XDG_CONFIG_HOME}/goesd/config.toml"]
 
 [package.metadata.deb.systemd-units]
 unit-scripts = "deb/service"
+unit-name = "goesproc"
