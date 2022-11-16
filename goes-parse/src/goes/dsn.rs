@@ -136,7 +136,7 @@ impl ProductAcronym {
         alt((
             terminated(tag("-L1b").map(|_| Self::L1b(Channel(1))), tag("-Rad")),
             preceded(
-                tag("-L2"),
+                tag("-L2-"),
                 alt((
                     alt((
                         tag("ACHA").map(|_| L2Acronym::CloudTopHeight),
