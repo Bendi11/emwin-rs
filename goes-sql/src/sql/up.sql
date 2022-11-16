@@ -192,16 +192,5 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
     ) NOT NULL,
     start_dt DATETIME NOT NULL,
     end_dt DATETIME NOT NULL,
-    file_name VARCHAR(512) NOT NULL,
-    CHECK (
-        (channel IS NULL OR (channel>=1 AND CHANNEL <=16)) AND
-        (
-            (
-                acronym!='CLOUD_MOISTURE_IMAGERY' OR
-                acronym!='DERIVED_MOTION_WIND' OR
-                acronym!='L1b'
-            ) OR
-            channel IS NOT NULL
-        )
-    )
+    file_name VARCHAR(512) NOT NULL
 );
