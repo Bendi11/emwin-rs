@@ -60,6 +60,8 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<
                                 return;
                             }
                         };
+
+                        config.done.do_for(path).await;
                     }
                     DataTypeDesignator::UpperAirData(UpperAirData {
                         subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
@@ -74,6 +76,8 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<
                                 return;
                             }
                         };
+
+                        config.done.do_for(path).await;
                     }
                     DataTypeDesignator::Forecast(Forecast {
                         subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
@@ -94,6 +98,8 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<
                                 log::error!("Failed to write TAF forecast to database: {}", e);
                             }
                         }
+
+                        config.done.do_for(path).await;
                     }
                     _ => {
                         log::trace!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
@@ -125,9 +131,11 @@ pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Co
                     }
                 };
 
-                if let Err(e) = ctx.insert_goes(file_name, path).await {
+                if let Err(e) = ctx.insert_goes(file_name, &path).await {
                     log::error!("Failed to write GOES-R image file to database: {}", e);
                 }
+
+                config.done.do_for(path).await; 
             },
             None => {
                 log::error!(

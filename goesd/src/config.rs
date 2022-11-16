@@ -28,6 +28,7 @@ pub struct Config {
     /// What to do when we get an unrecognized file in the input directory
     pub unrecognized: UnrecognizedFileOpt,
     pub failure: UnrecognizedFileOpt,
+    pub done: UnrecognizedFileOpt,
 }
 
 pub const CONFIG_FOLDER: &str = "goesd/";
@@ -165,6 +166,7 @@ impl Default for Config {
             failure: UnrecognizedFileOpt::Move(
                 dirs::home_dir().unwrap_or("~".into()).join(CONFIG_FOLDER).join("fail/"),
             ),
+            done: UnrecognizedFileOpt::Delete,
             db_url: "mysql://root:@localhost".to_owned(),
         }
     }
