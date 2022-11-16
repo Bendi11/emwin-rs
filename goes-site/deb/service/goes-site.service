@@ -1,0 +1,20 @@
+[Unit]
+Description=GOES HTTP server
+AssertPathExists=/usr/bin/goes-site
+Requires=mariadb.service network.target
+
+[Service]
+Type=simple
+WorkingDirectory=~
+ExecStart=/usr/bin/goes-site
+Restart=always
+PrivateTmp=true
+NoNewPrivileges=true
+User=goesguy
+Group=goesguy
+StandardError=journal
+StandardOutput=journal
+StandardInput=null
+
+[Install]
+WantedBy=default.target

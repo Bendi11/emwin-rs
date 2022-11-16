@@ -3,6 +3,7 @@ members = [
     "goes-parse",
     "goesd",
     "goes-sql",
+    "goes-site",
 ]
 
 [profile.release]

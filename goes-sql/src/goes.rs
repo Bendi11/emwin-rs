@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use goes_parse::goes::{GoesFileName, SystemEnvironment, dsn::{Instrument, ProductAcronym, L2Acronym, ABISector, ABIMode}, Satellite};
+use goes_parse::goes::{GoesFileName, SystemEnvironment, dsn::{Instrument, ProductAcronym, L2Acronym, ABISector, ABIMode, Channel}, Satellite};
 use sqlx::Row;
 
 use crate::GoesSqlContext;
@@ -55,7 +55,30 @@ RETURNING id;
                 L2Acronym::TotalPrecipitableWater => "TOTAL_PRECIPITABLE_WATER",
             }
         })
-        .bind(filename.dsn.acronym.channel().map(|ch| *ch.as_ref()))
+        .bind(
+            filename
+                .dsn
+                .acronym
+                .channel()
+                .map(|ch| match ch {
+                    Channel::Blue => "BLUE",
+                    Channel::Red => "RED",
+                    Channel::Veggie => "VEGGIE",
+                    Channel::Cirrus => "CIRRUS",
+                    Channel::SnowIce => "SNOWICE",
+                    Channel::CloudParticleSize => "CLOUD_PARTICLE_SIZE",
+                    Channel::ShortwaveWindow => "SHORTWAVE_WINDOW",
+                    Channel::UpperLevelTroposphericWaterVapor => "UPPER_LEVEL_TROPOSPHERIC_WATER_VAPOR",
+                    Channel::MidLevelTroposphericWaterVapor => "MID_LEVEL_TROPOSPHERIC_WATER_VAPOR",
+                    Channel::LowerLevelWaterVapor => "LOWER_LEVEL_WATER_VAPOR",
+                    Channel::CloudTopPhase => "CLOUD_TOP_PHASE",
+                    Channel::Ozone => "OZONE",
+                    Channel::CleanIR => "CLEAN_IR",
+                    Channel::IR => "IR",
+                    Channel::DirtyIR => "DIRTY_IR",
+                    Channel::CO2 => "CO2",
+                    Channel::FullColor => "FULL_COLOR",
+                }))
         .bind(match filename.dsn.sector {
             ABISector::FullDisk => "FULL_DISK",
             ABISector::CONUS => "CONUS",

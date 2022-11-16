@@ -12,9 +12,28 @@ use nom_supreme::tag::complete::tag;
 use crate::{parse::fromstr, ParseResult};
 
 /// A channel number between 01 and 16
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Channel(u8);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Channel {
+    Blue,
+    Red,
+    Veggie,
+    Cirrus,
+    SnowIce,
+    CloudParticleSize,
+    ShortwaveWindow,
+    UpperLevelTroposphericWaterVapor,
+    MidLevelTroposphericWaterVapor,
+    LowerLevelWaterVapor,
+    CloudTopPhase,
+    Ozone,
+    CleanIR,
+    IR,
+    DirtyIR,
+    CO2,
+
+    ///Extension channel for full color
+    FullColor,
+}
 
 /// Instrument that an image was taken with, represented as an enum with one variant in case more
 /// satellites with more instruments are ever put into orbit
@@ -87,12 +106,25 @@ pub struct DataShortName {
 impl Channel {
     /// Panics if `ch` is not within [1, 16]
     pub fn new(ch: u8) -> Self {
-        assert!(
-            (1..=16).contains(&ch),
-            "Channel::new called with invalid channel {}",
-            ch
-        );
-        Self(ch)
+        match ch {
+            1 => Self::Blue,
+            2 => Self::Red,
+            3 => Self::Veggie,
+            4 => Self::Cirrus,
+            5 => Self::SnowIce,
+            6 => Self::CloudParticleSize,
+            7 => Self::ShortwaveWindow,
+            8 => Self::UpperLevelTroposphericWaterVapor,
+            9 => Self::MidLevelTroposphericWaterVapor,
+            10 => Self::LowerLevelWaterVapor,
+            11 => Self::CloudTopPhase,
+            12 => Self::Ozone,
+            13 => Self::CleanIR,
+            14 => Self::IR,
+            15 => Self::DirtyIR,
+            16 => Self::CO2,
+            _ => panic!("Channel::new called with invalid channel {}", ch),
+        }
     }
 }
 
@@ -105,7 +137,10 @@ impl DataShortName {
 
         let channel = preceded(
             char('C'),
-            map_res(fromstr::<u8>(2), |v| Channel::try_from(v)),
+            alt((
+                map_res(fromstr::<u8>(2), |v| Channel::try_from(v)),
+                tag("FC").map(|_| Channel::FullColor),
+            ))
         );
 
         let (input, acronym) = match acronym {
@@ -134,7 +169,7 @@ impl DataShortName {
 impl ProductAcronym {
     fn parse(input: &str) -> ParseResult<&str, Self> {
         alt((
-            terminated(tag("-L1b").map(|_| Self::L1b(Channel(1))), tag("-Rad")),
+            terminated(tag("-L1b").map(|_| Self::L1b(Channel::new(1))), tag("-Rad")),
             preceded(
                 tag("-L2-"),
                 alt((
@@ -144,12 +179,12 @@ impl ProductAcronym {
                         tag("ACM").map(|_| L2Acronym::ClearSkyMasks),
                         tag("ACTP").map(|_| L2Acronym::CloudTopPhase),
                         tag("ADP").map(|_| L2Acronym::AerosolOpticalDepth),
-                        tag("CMIP").map(|_| L2Acronym::CloudMoistureImagery(Channel(1))),
+                        tag("CMIP").map(|_| L2Acronym::CloudMoistureImagery(Channel::new(1))),
                         tag("MCMIP").map(|_| L2Acronym::MultibandCloudMoistureImagery),
                         tag("COD").map(|_| L2Acronym::CloudOpticalDepth),
                         tag("CPS").map(|_| L2Acronym::CloudParticleSizeDistribution),
                         tag("CTP").map(|_| L2Acronym::CloudTopTemperature),
-                        tag("DMW").map(|_| L2Acronym::DerivedMotionWinds(Channel(1))),
+                        tag("DMW").map(|_| L2Acronym::DerivedMotionWinds(Channel::new(1))),
                     )),
                     alt((
                         tag("DMWV").map(|_| L2Acronym::DerivedMotionWindsBand8),
@@ -230,14 +265,8 @@ impl TryFrom<u8> for Channel {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match (1..=16).contains(&value) {
-            true => Ok(Self(value)),
+            true => Ok(Self::new(value)),
             false => Err(InvalidChannel),
         }
-    }
-}
-
-impl AsRef<u8> for Channel {
-    fn as_ref(&self) -> &u8 {
-        &self.0
     }
 }

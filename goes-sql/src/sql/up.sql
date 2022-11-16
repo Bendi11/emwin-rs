@@ -154,7 +154,25 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
         'SEA_SKIN_TEMPERATURE',
         'TOTAL_PRECIPITABLE_WATER'
     ),
-    channel TINYINT,
+    channel ENUM(
+        'BLUE',
+        'RED',
+        'VEGGIE',
+        'CIRRUS',
+        'SNOWICE',
+        'CLOUD_PARTICLE_SIZE',
+        'SHORTWAVE_WINDOW',
+        'UPPER_LEVEL_TROPOSPHERIC_WATER_VAPOR',
+        'MID_LEVEL_TROPOSPHERIC_WATER_VAPOR',
+        'LOWER_LEVEL_WATER_VAPOR',
+        'CLOUD_TOP_PHASE',
+        'OZONE',
+        'CLEAN_IR',
+        'IR',
+        'DIRTY_IR',
+        'CO2',
+        'FULL_COLOR'
+    ) NOT NULL,
     sector ENUM(
         'FULL_DISK',
         'CONUS',
