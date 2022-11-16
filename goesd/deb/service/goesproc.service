@@ -16,4 +16,4 @@ StandardOutput=journal
 StandardInput=null
 
 [Install]
-WantedBy=default.target emwind.service
+WantedBy=default.target goesd.service

@@ -1,12 +1,12 @@
 [Unit]
 Description=Automatic parsing of EMWIN files
-AssertPathExists=/usr/bin/emwind
+AssertPathExists=/usr/bin/goesd
 Requires=goesproc.service
 
 [Service]
 Type=simple
 WorkingDirectory=~
-ExecStart=/usr/bin/emwind
+ExecStart=/usr/bin/goesd
 Restart=always
 PrivateTmp=true
 NoNewPrivileges=true

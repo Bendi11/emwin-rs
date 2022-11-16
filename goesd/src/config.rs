@@ -30,7 +30,7 @@ pub struct Config {
     pub failure: UnrecognizedFileOpt,
 }
 
-pub const CONFIG_FOLDER: &str = "emwind/";
+pub const CONFIG_FOLDER: &str = "goesd/";
 pub const CONFIG_FILE: &str = "config.toml";
 
 impl UnrecognizedFileOpt {
@@ -163,7 +163,7 @@ impl Default for Config {
             img_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/img"),
             unrecognized: UnrecognizedFileOpt::Delete,
             failure: UnrecognizedFileOpt::Move(
-                dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),
+                dirs::home_dir().unwrap_or("~".into()).join(CONFIG_FOLDER).join("fail/"),
             ),
             db_url: "mysql://root:@localhost".to_owned(),
         }
