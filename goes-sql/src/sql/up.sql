@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
     ) NOT NULL,
     start_dt DATETIME NOT NULL,
     end_dt DATETIME NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
+    file_name VARCHAR() NOT NULL,
     CHECK (
         (channel IS NULL OR (channel>=1 AND CHANNEL <=16)) AND
         (
@@ -185,5 +185,5 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
             ) OR
             channel IS NOT NULL
         )
-    ),
+    )
 );

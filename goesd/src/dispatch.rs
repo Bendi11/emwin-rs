@@ -16,7 +16,7 @@ use notify::Event;
 
 use crate::config::Config;
 
-pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
+pub async fn emwin_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
     for path in event.paths {
         match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
             Some(filename) => {
@@ -110,4 +110,9 @@ pub async fn on_create(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Conf
             }
         }
     }
+}
+
+
+pub async fn img_dispatch(event: Event, ctx: Arc<EmwinSqlContext>, config: Arc<Config>) {
+
 }

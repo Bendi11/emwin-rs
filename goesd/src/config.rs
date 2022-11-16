@@ -17,9 +17,12 @@ pub enum UnrecognizedFileOpt {
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    /// Folder that contains all GOES output files
-    #[serde(rename = "goes-dir")]
-    pub goes_dir: PathBuf,
+    /// Folder that contains all GOES EMWIN output files
+    #[serde(rename = "emwin-dir")]
+    pub emwin_dir: PathBuf,
+    /// Folder that contains all GOES image files
+    #[serde(rename = "img-dir")]
+    pub img_dir: PathBuf,
     #[serde(rename = "db-url")]
     pub db_url: String,
     /// What to do when we get an unrecognized file in the input directory
@@ -156,7 +159,8 @@ async fn write_config<P: AsRef<Path>>(path: P, config: &Config) {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            goes_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/"),
+            emwin_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/text"),
+            img_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/img"),
             unrecognized: UnrecognizedFileOpt::Delete,
             failure: UnrecognizedFileOpt::Move(
                 dirs::home_dir().unwrap_or("~".into()).join("emwind/fail/"),

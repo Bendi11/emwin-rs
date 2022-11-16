@@ -1,11 +1,11 @@
 use std::{process::ExitCode, sync::Arc, time::Duration};
 
-use dispatch::on_create;
+use dispatch::{emwin_dispatch, img_dispatch};
 use goes_sql::EmwinSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 
 use sqlx::MySqlPool;
-use tokio::sync::mpsc::{channel, Receiver};
+use tokio::{sync::mpsc::{channel, Receiver, Sender}, runtime::Runtime};
 
 use crate::config::Config;
 
@@ -29,12 +29,49 @@ fn main() -> ExitCode {
             .build()
             .expect("Failed to initialize tokio runtime"),
     );
+     
+    rt.clone().block_on(async move {
+        let config = match config::read_cfg().await {
+            Ok(cfg) => cfg,
+            Err(e) => return e,
+        };
 
-    let rt_clone = rt.clone();
-    let (tx, rx) = channel(10);
-    let watcher = match RecommendedWatcher::new(
-        move |res| {
-            rt_clone.block_on(async {
+        let pool = match MySqlPool::connect(&config.db_url).await {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Failed to connect to database at {}: {}", config.db_url, e,);
+                return ExitCode::FAILURE;
+            }
+        };
+
+        log::trace!("connected to database on {}", config.db_url);
+
+        let ctx = Arc::new(EmwinSqlContext::new(pool));
+        if let Err(e) = ctx.init().await {
+            log::error!("Failed to initialize database: {}", e);
+        }
+        
+        
+        let (emwin_tx, emwin_rx) = channel(10);
+        let (img_tx, img_rx) = channel(10);
+        let (emwin_watcher, img_watcher) = match (create_watcher(rt.clone(), emwin_tx), create_watcher(rt.clone(), img_tx)) {
+            (Ok(emwin_w), Ok(img_w)) => (emwin_w, img_w),
+            (Err(e), _) | (_, Err(e)) => return e,
+        };
+
+        let emwin_task = tokio::task::spawn(emwin_task(config.clone(), ctx.clone(), emwin_rx, emwin_watcher));
+        let img_task = tokio::task::spawn(img_task(config, ctx, img_rx, img_watcher)); 
+
+        tokio::select! {
+            Ok(v) = emwin_task => return v,
+            Ok(v) = img_task => return v,
+        } 
+    })
+}
+
+fn create_watcher(rt: Arc<Runtime>, tx: Sender<Event>) -> Result<RecommendedWatcher, ExitCode> {
+    Ok(match RecommendedWatcher::new(move |res| {
+            rt.block_on(async {
                 match res {
                     Ok(event) => {
                         if let Err(e) = tx.send(event).await {
@@ -50,48 +87,19 @@ fn main() -> ExitCode {
         Ok(watcher) => watcher,
         Err(e) => {
             log::error!("Failed to create filesystem watcher: {}", e);
-            return ExitCode::FAILURE;
+            return Err(ExitCode::FAILURE);
         }
-    };
-
-    rt.block_on(async {
-        let config = match config::read_cfg().await {
-            Ok(cfg) => cfg,
-            Err(e) => return e,
-        };
-
-        watch(config, watcher, rx).await
     })
 }
 
-async fn watch(config: Arc<Config>, mut watcher: RecommendedWatcher, mut rx: Receiver<Event>) -> ExitCode {
-    if let Err(e) = watcher.watch(&config.goes_dir, notify::RecursiveMode::Recursive) {
+async fn img_task(config: Arc<Config>, ctx: Arc<EmwinSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
+    if let Err(e) = watcher.watch(&config.img_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
-            config.goes_dir.display(),
+            config.img_dir.display(),
             e,
         );
         return ExitCode::FAILURE;
-    }
-
-    log::trace!(
-        "watching {} for filesystem events",
-        config.goes_dir.display()
-    );
-
-    let pool = match MySqlPool::connect(&config.db_url).await {
-        Ok(p) => p,
-        Err(e) => {
-            log::error!("Failed to connect to database at {}: {}", config.db_url, e,);
-            return ExitCode::FAILURE;
-        }
-    };
-
-    log::trace!("connected to database on {}", config.db_url);
-
-    let ctx = Arc::new(EmwinSqlContext::new(pool));
-    if let Err(e) = ctx.init().await {
-        log::error!("Failed to initialize database: {}", e);
     }
 
     while let Some(event) = rx.recv().await {
@@ -100,7 +108,35 @@ async fn watch(config: Arc<Config>, mut watcher: RecommendedWatcher, mut rx: Rec
                 let config = Arc::clone(&config);
                 let ctx = Arc::clone(&ctx);
                 if let Err(e) =
-                    tokio::spawn(async move { on_create(event, ctx, config).await }).await
+                    tokio::spawn(async move { img_dispatch(event, ctx, config).await }).await
+                {
+                    log::error!("Failed to spawn file reader task: {}", e);
+                }
+            }
+            _ => (),
+        }
+    }
+
+    ExitCode::SUCCESS
+}
+
+async fn emwin_task(config: Arc<Config>, ctx: Arc<EmwinSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
+    if let Err(e) = watcher.watch(&config.emwin_dir, notify::RecursiveMode::Recursive) {
+        log::error!(
+            "Failed to subscribe to filesystem events for {}: {}",
+            config.emwin_dir.display(),
+            e,
+        );
+        return ExitCode::FAILURE;
+    }
+
+    while let Some(event) = rx.recv().await {
+        match event.kind {
+            EventKind::Create(CreateKind::File) => {
+                let config = Arc::clone(&config);
+                let ctx = Arc::clone(&ctx);
+                if let Err(e) =
+                    tokio::spawn(async move { emwin_dispatch(event, ctx, config).await }).await
                 {
                     log::error!("Failed to spawn file reader task: {}", e);
                 }
