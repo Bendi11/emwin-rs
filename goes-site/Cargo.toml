@@ -25,7 +25,7 @@ extended-description = "HTTP server displaying data from the GOES database"
 section = "utils"
 assets = [
     ["target/release/goes-site", "usr/bin/goes-site", "755"],
-    ["goes-site/static/**", "usr/share/goes-site/static/", "444"],
+    ["static/**", "usr/share/goes-site/static/", "444"],
 ]
 maintainer-scripts = "deb/scripts"
 priority="optional"
