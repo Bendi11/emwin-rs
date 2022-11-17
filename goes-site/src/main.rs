@@ -84,10 +84,10 @@ async fn main() -> ExitCode {
             .service(index)
             .service(Files::new("/static", static_dir))
         )
-        .bind("localhost:8000") {
+        .bind("0.0.0.0:8000") {
             Ok(bound) => bound,
             Err(e) => {
-                log::error!("Failed to bind HTTP server to localhost:8000: {}", e);
+                log::error!("Failed to bind HTTP server to 0.0.0.0:8000: {}", e);
                 return ExitCode::FAILURE
             }
         };
