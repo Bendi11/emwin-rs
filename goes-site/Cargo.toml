@@ -1,7 +1,11 @@
 [package]
 name = "goes-site"
+authors = ["bkliebmann@gmail.com"]
+description = "GOES database HTTP server"
+license = "LGPL-2.1-only"
 version = "0.1.0"
 edition = "2021"
+
 
 [dependencies]
 actix-web = "4.2"
