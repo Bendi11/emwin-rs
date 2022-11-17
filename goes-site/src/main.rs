@@ -1,4 +1,4 @@
-use std::{path::Path, process::ExitCode, sync::Arc};
+use std::{path::{Path, PathBuf}, process::ExitCode, sync::Arc};
 
 use actix_files::Files;
 use actix_web::{error, get, web::{self, Data}, App, HttpServer, Responder, HttpResponse, middleware::Logger, Result};
@@ -21,8 +21,25 @@ async fn index() -> impl Responder {
     Index
 }
 
+fn map_path(cfg: &Config) -> impl FnOnce(&str) -> String + '_ {
+    move |path: &str| PathBuf::from(path)
+        .strip_prefix(&cfg.img_dir)
+        .map(Path::to_owned)
+        .unwrap_or_else(|e| {
+            log::error!(
+                "Failed to remove image prefix {} from path {}: {}",
+                cfg.img_dir.display(),
+                path,
+                e,
+            );
+            PathBuf::new()
+        })
+        .to_string_lossy()
+        .into_owned()
+}
+
 #[get("latest.html")]
-async fn latest(sql: Data<MySqlPool>) -> Result<impl Responder> {
+async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
     let fd = sqlx::query(
 r#"
 SELECT (file_name)
@@ -34,7 +51,8 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
         .await
         .map_err(|e| error::ErrorBadRequest(e))
         .and_then(|v| v
-            .try_get::<String, _>(0)
+            .try_get::<&str, _>(0)
+            .map(map_path(cfg.get_ref()))
             .map_err(|e| error::ErrorBadRequest(e))
         );
 
@@ -49,7 +67,8 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1
     .await
     .map_err(|e| error::ErrorBadRequest(e))
     .and_then(|v| v
-        .try_get::<String, _>(0)
+        .try_get::<&str, _>(0)
+        .map(map_path(cfg.get_ref()))
         .map_err(|e| error::ErrorBadRequest(e))
     );
 
@@ -71,7 +90,7 @@ async fn main() -> ExitCode {
     std::env::set_var("RUST_LOG", "warn");
     env_logger::init();
     let config = match Config::read().await {
-        Ok(cfg) => cfg,
+        Ok(cfg) => Data::new(cfg),
         Err(e) => return e,
     };
     
@@ -90,9 +109,11 @@ async fn main() -> ExitCode {
         let logger = Logger::default();
         App::new()
             .app_data(db_conn.clone())
+            .app_data(config.clone())
             .service(index)
             .wrap(logger)
             .service(Files::new("/", static_dir))
+            .service(Files::new("/", &config.img_dir))
         })
         .bind("0.0.0.0:8000") {
             Ok(bound) => bound,
