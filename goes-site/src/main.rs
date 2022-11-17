@@ -68,7 +68,7 @@ async fn main() -> ExitCode {
         Err(e) => return e,
     };
 
-    let static_dir = Path::new("goes-site/static");
+    let static_dir = Path::new("/usr/share/goes-site/static");
 
     let db_conn = match sqlx::MySqlPool::connect(&config.db_url).await {
         Ok(pool) => Data::new(pool),
