@@ -25,9 +25,9 @@ async fn index() -> impl Responder {
 async fn latest(sql: Data<MySqlPool>) -> Result<impl Responder> {
     let fd = sqlx::query(
 r#"
-SELECT (path)
+SELECT (file_name)
 FROM goesimg.files
-WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='FULL_DISK';
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK' AND channel='FULL_COLOR') AND sector='FULL_DISK' AND channel='FULL_COLOR';
 "#
     )
         .fetch_one(sql.get_ref())
@@ -40,9 +40,9 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='FULL_DISK';
 
     let mesoscale1 = sqlx::query(
 r#"
-SELECT (path)
-FROM GOESIMG.files
-WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1';
+SELECT (file_name)
+FROM goesimg.files
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1' AND channel='FULL_COLOR') AND sector='MESOSCALE1' AND channel='FULL_COLOR';
 "#
     )
     .fetch_one(sql.get_ref())
@@ -69,6 +69,7 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1'
 #[actix_web::main]
 async fn main() -> ExitCode {
     std::env::set_var("RUST_LOG", "warn");
+    env_logger::init();
     let config = match Config::read().await {
         Ok(cfg) => cfg,
         Err(e) => return e,
@@ -90,7 +91,7 @@ async fn main() -> ExitCode {
             .app_data(db_conn.clone())
             .service(index)
             .wrap(logger)
-            .service(Files::new("/static", static_dir))
+            .service(Files::new("/", static_dir))
         })
         .bind("0.0.0.0:8000") {
             Ok(bound) => bound,
