@@ -118,7 +118,6 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<
     }
 }
 
-
 pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {
         let file_name = match GoesFileName::parse(&path) {
