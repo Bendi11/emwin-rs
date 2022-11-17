@@ -1,7 +1,7 @@
 use std::{path::{Path, PathBuf}, process::ExitCode, sync::Arc};
 
 use actix_files::Files;
-use actix_web::{error, get, web::{self, Data}, App, HttpServer, Responder, HttpResponse, middleware::Logger, Result};
+use actix_web::{error, get, web::{self, Data}, App, HttpServer, Responder, HttpResponse, middleware::{Logger, self}, Result};
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
@@ -112,6 +112,7 @@ async fn main() -> ExitCode {
             .app_data(config.clone())
             .service(index)
             .wrap(logger)
+            .wrap(middleware::Compress::default())
             .service(Files::new("/", static_dir))
             .service(Files::new("/", &config.img_dir))
         })
