@@ -32,10 +32,11 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='FULL_DISK';
     )
         .fetch_one(sql.get_ref())
         .await
-        .map_err(|e| error::ErrorBadRequest(e))?
-        .try_get::<&str, _>(0)
-        .map_err(|e| error::ErrorBadRequest(e))?
-        .to_owned();
+        .map_err(|e| error::ErrorBadRequest(e))
+        .and_then(|v| v
+            .try_get::<String, _>(0)
+            .map_err(|e| error::ErrorBadRequest(e))
+        );
 
     let mesoscale1 = sqlx::query(
 r#"
@@ -46,14 +47,22 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1'
     )
     .fetch_one(sql.get_ref())
     .await
-    .map_err(|e| error::ErrorBadRequest(e))?
-    .try_get::<&str, _>(0)
-    .map_err(|e| error::ErrorBadRequest(e))?
-    .to_owned();
+    .map_err(|e| error::ErrorBadRequest(e))
+    .and_then(|v| v
+        .try_get::<String, _>(0)
+        .map_err(|e| error::ErrorBadRequest(e))
+    );
+
 
     Ok(Latest {
-        fd,
-        mesoscale1,
+        fd: fd.unwrap_or_else(|e| {
+            log::error!("Failed to fetch latest full disk from database: {}", e);
+            "".to_owned()
+        }),
+        mesoscale1: mesoscale1.unwrap_or_else(|e| {
+            log::error!("Failed to fetch the latest mesoscale 1 image from database: {}", e);
+            "".to_owned()
+        }),
     })
 }
 
