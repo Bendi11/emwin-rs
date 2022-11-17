@@ -12,7 +12,7 @@ actix-web = "4.2"
 actix-files = "0.6"
 askama_actix = "0.13"
 askama = { version = "0.11", features = ["with-actix-web"] }
-sqlx = { version = "0.6", features = ["mysql", "chrono"] }
+sqlx = { version = "0.6", features = ["mysql", "chrono", "runtime-tokio-native-tls"] }
 log = { version = "0.4" }
 chrono = "0.4"
 stderrlog = { version = "0.5", default-features = false }
