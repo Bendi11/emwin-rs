@@ -2,6 +2,7 @@ use std::{path::Path, process::ExitCode, sync::Arc};
 
 use actix_files::Files;
 use actix_web::{get, web::{self, Data}, App, HttpServer, Responder, HttpResponse};
+use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
 #[derive(askama::Template)]
@@ -54,9 +55,22 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1'
 
 #[actix_web::main]
 async fn main() -> ExitCode {
+    if let Err(e) = stderrlog::new()
+        .verbosity(log::LevelFilter::max())
+        .show_module_names(false)
+        .init()
+    {
+        eprintln!("Failed to initialize logger: {}", e);
+    }
+    
+    let config = match Config::read().await {
+        Ok(cfg) => cfg,
+        Err(e) => return e,
+    };
+
     let static_dir = Path::new("goes-site/static");
 
-    let db_conn = match sqlx::MySqlPool::connect("").await {
+    let db_conn = match sqlx::MySqlPool::connect(&config.db_url).await {
         Ok(pool) => Data::new(pool),
         Err(e) => {
             log::error!("Failed to connect to SQL database: {}", e);

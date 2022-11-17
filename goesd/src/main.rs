@@ -7,9 +7,8 @@ use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 use sqlx::MySqlPool;
 use tokio::{sync::mpsc::{channel, Receiver, Sender}, runtime::Runtime};
 
-use crate::config::Config;
+use goes_cfg::Config;
 
-pub mod config;
 pub mod dispatch;
 
 fn main() -> ExitCode {
@@ -32,8 +31,8 @@ fn main() -> ExitCode {
      
     rt.clone().block_on(async move {
         
-        let config = match config::read_cfg().await {
-            Ok(cfg) => cfg,
+        let config = match Config::read().await {
+            Ok(cfg) => Arc::new(cfg),
             Err(e) => return e,
         };
 

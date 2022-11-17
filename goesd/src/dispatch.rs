@@ -14,7 +14,7 @@ use goes_parse::{
 use goes_sql::GoesSqlContext;
 use notify::Event;
 
-use crate::config::Config;
+use goes_cfg::Config;
 
 pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {

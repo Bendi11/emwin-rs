@@ -4,6 +4,7 @@ members = [
     "goesd",
     "goes-sql",
     "goes-site",
+    "goes-cfg",
 ]
 
 [profile.release]

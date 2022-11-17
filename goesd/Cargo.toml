@@ -10,11 +10,9 @@ edition = "2021"
 tokio = { version = "1.21", default-features = false, features = ["rt", "io-std", "io-util", "macros", "sync", "fs"] }
 goes-parse = { path = "../goes-parse" }
 goes-sql = { path = "../goes-sql" }
+goes-cfg = { path = "../goes-cfg" }
 notify = { version = "5.0", default-features = false, features = ["macos_fsevent"] }
-dirs = "4.0"
 log = { version = "0.4", features = ["release_max_level_warn"] }
-toml = "0.5"
-serde = { version = "1.0", features = ["derive"] }
 stderrlog = { version = "0.5", default-features = false }
 sqlx = { version = "0.6", features = ["mysql", "runtime-tokio-native-tls"] }
 chrono = "0.4"
