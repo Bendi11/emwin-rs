@@ -1,7 +1,7 @@
 use std::{path::Path, process::ExitCode, sync::Arc};
 
 use actix_files::Files;
-use actix_web::{get, web::{self, Data}, App, HttpServer, Responder, HttpResponse};
+use actix_web::{error, get, web::{self, Data}, App, HttpServer, Responder, HttpResponse, middleware::Logger, Result};
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
@@ -22,7 +22,7 @@ async fn index() -> impl Responder {
 }
 
 #[get("latest.html")]
-async fn latest(sql: Data<MySqlPool>) -> impl Responder {
+async fn latest(sql: Data<MySqlPool>) -> Result<impl Responder> {
     let fd = sqlx::query(
 r#"
 SELECT (path)
@@ -31,8 +31,10 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='FULL_DISK';
 "#
     )
         .fetch_one(sql.get_ref())
-        .await?
-        .try_get::<&str, _>(0)?
+        .await
+        .map_err(|e| error::ErrorBadRequest(e))?
+        .try_get::<&str, _>(0)
+        .map_err(|e| error::ErrorBadRequest(e))?
         .to_owned();
 
     let mesoscale1 = sqlx::query(
@@ -43,11 +45,13 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1'
 "#
     )
     .fetch_one(sql.get_ref())
-    .await?
-    .try_get::<&str, _>(0)?
+    .await
+    .map_err(|e| error::ErrorBadRequest(e))?
+    .try_get::<&str, _>(0)
+    .map_err(|e| error::ErrorBadRequest(e))?
     .to_owned();
 
-    Ok::<_, Box<dyn std::error::Error>>(Latest {
+    Ok(Latest {
         fd,
         mesoscale1,
     })
@@ -55,14 +59,7 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files) AND sector='MESOSCALE1'
 
 #[actix_web::main]
 async fn main() -> ExitCode {
-    if let Err(e) = stderrlog::new()
-        .verbosity(log::LevelFilter::max())
-        .show_module_names(false)
-        .init()
-    {
-        eprintln!("Failed to initialize logger: {}", e);
-    }
-    
+    std::env::set_var("RUST_LOG", "warn");
     let config = match Config::read().await {
         Ok(cfg) => cfg,
         Err(e) => return e,
@@ -78,12 +75,14 @@ async fn main() -> ExitCode {
         }
     };
 
-    let bound = match HttpServer::new(move ||
+    let bound = match HttpServer::new(move || {
+        let logger = Logger::default();
         App::new()
             .app_data(db_conn.clone())
             .service(index)
+            .wrap(logger)
             .service(Files::new("/static", static_dir))
-        )
+        })
         .bind("0.0.0.0:8000") {
             Ok(bound) => bound,
             Err(e) => {

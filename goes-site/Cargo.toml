@@ -15,7 +15,7 @@ askama = { version = "0.11", features = ["with-actix-web"] }
 sqlx = { version = "0.6", features = ["mysql", "chrono", "runtime-tokio-native-tls"] }
 log = { version = "0.4", features = ["release_max_level_warn"] }
 chrono = "0.4"
-stderrlog = { version = "0.5", default-features = false }
+env_logger = "0.8"
 goes-cfg = { path = "../goes-cfg" }
 
 [package.metadata.deb]
@@ -25,7 +25,7 @@ extended-description = "HTTP server displaying data from the GOES database"
 section = "utils"
 assets = [
     ["target/release/goes-site", "usr/bin/goes-site", "755"],
-    ["static/**", "usr/share/goes-site/static/", "444"],
+    ["static/*", "usr/share/goes-site/static/", "444"],
 ]
 maintainer-scripts = "deb/scripts"
 priority="optional"
