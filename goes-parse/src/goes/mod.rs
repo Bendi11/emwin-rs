@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, path::Path};
 
 use chrono::{NaiveDateTime, Timelike};
 use nom::{
@@ -6,11 +6,11 @@ use nom::{
     character::streaming::char,
     combinator::{map_opt, map_res},
     sequence::{pair, preceded},
-    Parser,
+    Parser, error::{FromExternalError, ErrorKind},
 };
 use nom_supreme::tag::complete::tag;
 
-use crate::{parse::fromstr, ParseResult};
+use crate::{parse::fromstr, ParseResult, ParseError};
 
 use self::dsn::DataShortName;
 
@@ -49,9 +49,24 @@ pub struct GoesFileName {
 }
 
 impl GoesFileName {
-    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+    pub fn parse(path: &Path) -> ParseResult<&str, Self> {
+        let Some(input) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
+            return Err(nom::Err::Failure(ParseError::from_external_error(
+                "",
+                ErrorKind::Fail,
+                "File path without a filename passed to GoesFileName::parse"
+            )))
+        };
+
+        let country_lines = path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(std::ffi::OsStr::to_str)
+            .map(|s| s != "CUSTOMLUT")
+            .unwrap_or(false);
+
         let (input, env) = fromstr::<SystemEnvironment>(2).parse(input)?;
-        let (input, dsn) = preceded(char('_'), DataShortName::parse)(input)?;
+        let (input, dsn) = preceded(char('_'), DataShortName::parse(country_lines))(input)?;
         let (input, satellite) = preceded(char('_'), fromstr::<Satellite>(3))(input)?;
 
         let (input, start) = preceded(tag("_s"), Self::timestamp)(input)?;
@@ -125,19 +140,26 @@ impl FromStr for Satellite {
 
 #[cfg(test)]
 mod test {
-    use crate::goes::dsn::{ABISector, Channel, Instrument, ProductAcronym};
+    use crate::goes::dsn::{ABISector, Channel, Instrument, ProductAcronym, L2Acronym};
 
     use super::*;
 
     const GOES1: &str =
-        "OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
+        "/OR_ABI-L1b-RadF-M6C13_G17_s20210481330321_e20210481339399_c20210481339454.nc";
     const GOES2: &str =
-        "OR_ABI-L2-CMIPM1-M6C02_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
+        "/OR_ABI-L2-CMIPM1-M6C02_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
+
+    const GOES_NO_COUNTRY_LINES: &str =
+        "/img/CUSTOMLUT/OR_ABI-L2-CMIPM1-M6CFC_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
+
+    const GOES_COUNTRY_LINES: &str =
+        "img/fc/OR_ABI-L2-CMIPM1-M6CFC_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
+
 
     #[test]
     fn test_goesr_fn() {
         let (_, goes1) =
-            GoesFileName::parse(GOES1).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+            GoesFileName::parse(Path::new(GOES1)).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         assert_eq!(goes1.env, SystemEnvironment::OperationalRealTime);
         assert_eq!(
             goes1.dsn,
@@ -150,6 +172,23 @@ mod test {
         );
         assert_eq!(goes1.satellite, Satellite::Goes17,);
 
-        GoesFileName::parse(GOES2).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        GoesFileName::parse(Path::new(GOES2)).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+
+        let (_, no_country_lines) = GoesFileName::parse(Path::new(GOES_NO_COUNTRY_LINES))
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+
+        assert_eq!(
+            no_country_lines.dsn.acronym,
+            ProductAcronym::L2(L2Acronym::CloudMoistureImagery(Channel::FullColor))
+        );
+
+        let (_, country_lines) = GoesFileName::parse(Path::new(GOES_COUNTRY_LINES))
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+
+        assert_eq!(
+            country_lines.dsn.acronym,
+            ProductAcronym::L2(L2Acronym::CloudMoistureImagery(Channel::FullColorCountries))
+        );
+
     }
 }

@@ -78,6 +78,7 @@ RETURNING id;
                     Channel::DirtyIR => "DIRTY_IR",
                     Channel::CO2 => "CO2",
                     Channel::FullColor => "FULL_COLOR",
+                    Channel::FullColorCountries => "FULL_COLOR_LINES",
                 }))
         .bind(match filename.dsn.sector {
             ABISector::FullDisk => "FULL_DISK",

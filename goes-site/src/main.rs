@@ -74,6 +74,7 @@ async fn main() -> ExitCode {
         Ok(cfg) => cfg,
         Err(e) => return e,
     };
+    
 
     let static_dir = Path::new("/usr/share/goes-site/static");
 

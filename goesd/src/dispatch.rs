@@ -121,28 +121,17 @@ pub async fn emwin_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<
 
 pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {
-        match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
-            Some(file_name) => {
-                let file_name = match GoesFileName::parse(file_name) {
-                    Ok((_, f)) => f,
-                    Err(e) => {
-                        log::error!("Failed to parse GOES-R image file name: {}", display_error(e));
-                        return
-                    }
-                };
-
-                if let Err(e) = ctx.insert_goes(file_name, &path).await {
-                    log::error!("Failed to write GOES-R image file to database: {}", e);
-                    config.failure.do_for(&path).await;
-                }
-            },
-            None => {
-                log::error!(
-                    "Newly created image file {} contains invalid unicode characters",
-                    path.display(),
-                );
-                config.unrecognized.do_for(&path).await;
+        let file_name = match GoesFileName::parse(&path) {
+            Ok((_, f)) => f,
+            Err(e) => {
+                log::error!("Failed to parse GOES-R image file name: {}", display_error(e));
+                return
             }
+        };
+
+        if let Err(e) = ctx.insert_goes(file_name, &path).await {
+            log::error!("Failed to write GOES-R image file to database: {}", e);
+            config.failure.do_for(&path).await;
         }
     }
 }

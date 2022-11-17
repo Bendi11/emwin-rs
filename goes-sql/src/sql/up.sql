@@ -171,7 +171,8 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
         'IR',
         'DIRTY_IR',
         'CO2',
-        'FULL_COLOR'
+        'FULL_COLOR',
+        'FULL_COLOR_LINES'
     ) NOT NULL,
     sector ENUM(
         'FULL_DISK',

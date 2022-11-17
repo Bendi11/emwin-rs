@@ -33,6 +33,8 @@ pub enum Channel {
 
     ///Extension channel for full color
     FullColor,
+    ///Extension for full color with country lines
+    FullColorCountries,
 }
 
 /// Instrument that an image was taken with, represented as an enum with one variant in case more
@@ -129,7 +131,11 @@ impl Channel {
 }
 
 impl DataShortName {
-    pub fn parse(input: &str) -> ParseResult<&str, Self> {
+    pub fn parse(country_lines: bool) -> impl FnMut(&str) -> ParseResult<&str, Self> {
+        move |input: &str| Self::parse_full(country_lines, input)
+    }
+
+    pub fn parse_full(country_lines: bool, input: &str) -> ParseResult<&str, Self> {
         let (input, instrument) = Instrument::parse(input)?;
         let (input, acronym) = ProductAcronym::parse(input)?;
         let (input, sector) = ABISector::parse(input)?;
@@ -139,7 +145,10 @@ impl DataShortName {
             char('C'),
             alt((
                 map_res(fromstr::<u8>(2), |v| Channel::try_from(v)),
-                tag("FC").map(|_| Channel::FullColor),
+                tag("FC").map(|_| match country_lines {
+                    true => Channel::FullColorCountries,
+                    false => Channel::FullColor,
+                }),
             ))
         );
 
