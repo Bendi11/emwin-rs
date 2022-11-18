@@ -6,11 +6,11 @@
     <body>
         {% include "nav.html" %} 
         <div style="width: 100%;">
-            <div style="width: 50%; height: 100px; float: left; background: green;">
-                <img src="/assets/{{ fd }}" alt="Latest full disk image">
+            <div style="width: 50%; height: 100%; float: left;">
+                <img style="height:100%; width:100%;" src="/assets/{{ fd }}" alt="Latest full disk image">
             </div>
-            <div style="margin-left: 50%; height: 100px; background: blue;">
-                <img src="/assets/{{ mesoscale1 }}" alt="Latest mesoscale 1 image">
+            <div style="margin-left: 50%; height: 100%;">
+                <img style="height: 100%; width: 100%;" src="/assets/{{ mesoscale1 }}" alt="Latest mesoscale 1 image">
             </div>
         </div>
     </body>
