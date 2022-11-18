@@ -60,7 +60,7 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
 r#"
 SELECT (file_name)
 FROM goesimg.files
-WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1' AND channel='FULL_COLOR') AND sector='MESOSCALE1' AND channel='FULL_COLOR';
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1' AND channel='FULL_COLOR_LINES') AND sector='MESOSCALE1' AND channel='FULL_COLOR_LINES';
 "#
     )
     .fetch_one(sql.get_ref())
