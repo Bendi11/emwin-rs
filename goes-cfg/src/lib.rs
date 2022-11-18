@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, sync::Arc, process::ExitCode};
+use std::{path::{Path, PathBuf}, process::ExitCode};
 
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncWriteExt, AsyncReadExt};

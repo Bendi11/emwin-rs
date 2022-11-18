@@ -1,9 +1,9 @@
-use std::{path::{Path, PathBuf}, process::ExitCode, sync::Arc};
+use std::{path::{Path, PathBuf}, process::ExitCode};
 
 use actix_files::Files;
 use actix_web::{get, web::Data, App, HttpServer, Responder, middleware::{Logger, self}};
 use goes_cfg::Config;
-use page::latest::{latest, latest_fd_fc_ep};
+use page::latest::latest_scope;
 
 pub mod page;
 
@@ -60,11 +60,10 @@ async fn main() -> ExitCode {
         App::new()
             .app_data(db_conn.clone())
             .app_data(config.clone())
-            .service(index)
-            .service(latest)
-            .service(latest_fd_fc_ep)
             .wrap(logger)
             .wrap(middleware::Compress::default())
+            .service(index)
+            .service(latest_scope())
             .service(Files::new("/assets", &config.img_dir).show_files_listing())
             .service(Files::new("/", static_dir))
         })

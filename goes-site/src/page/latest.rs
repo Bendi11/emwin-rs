@@ -1,28 +1,47 @@
 use actix_files::NamedFile;
-use actix_web::{get, web::Data, Result, error, Responder};
-use chrono::{NaiveDateTime, Utc, DateTime, SecondsFormat};
+use actix_web::{web::{Data, self}, Result, error, Responder, Scope};
+use chrono::{Utc, DateTime, SecondsFormat};
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
 use crate::map_path;
 
+pub fn latest_scope() -> Scope {
+    web::scope("/latest")
+        .service(web::resource("/fd.html").to(latest_fd))
+        .service(web::resource("/fd_fc.jpg").to(latest_fd_fc))
+}
+
 #[derive(askama::Template)]
 #[template(path="latest.html")]
-pub struct Latest {
+struct Latest {
     fd_fc: String,
     fd_fc_dt: String,
     fd: String,
     fd_dt: String,
 }
 
-#[get("/latest_fd_fc.jpg")]
-async fn latest_fd_fc_ep(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
-    let fd = latest_fd_fc(sql.get_ref(), cfg.get_ref()).await?;
+async fn latest_fd_fc(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
+    let fd = sqlx::query(
+r#"
+SELECT (file_name)
+FROM goesimg.files
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK' AND channel='FULL_COLOR') AND sector='FULL_DISK' AND channel='FULL_COLOR';
+"#
+    )
+        .fetch_one(sql.get_ref())
+        .await
+        .map_err(|e| error::ErrorBadRequest(e.to_string()))
+        .and_then(|v| v
+            .try_get::<&str, _>(0)
+            .map(map_path(cfg.get_ref()))
+            .map_err(|e| error::ErrorBadRequest(e.to_string()))
+        )?;
+
     Ok(NamedFile::open(cfg.img_dir.join(fd))?)
 }
 
-#[get("latest.html")]
-async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
+async fn latest_fd(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
     let (fd_fc, fd_fc_dt)  =  sqlx::query(
 r#"
 SELECT file_name, start_dt
@@ -73,24 +92,3 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
         fd_dt,
     })
 }
-
-/// Fetch the latest full disk full color image path
-async fn latest_fd_fc(sql: &MySqlPool, cfg: &Config) -> Result<String> {
-    sqlx::query(
-r#"
-SELECT (file_name)
-FROM goesimg.files
-WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK' AND channel='FULL_COLOR') AND sector='FULL_DISK' AND channel='FULL_COLOR';
-"#
-    )
-        .fetch_one(sql)
-        .await
-        .map_err(|e| error::ErrorBadRequest(e.to_string()))
-        .and_then(|v| v
-            .try_get::<&str, _>(0)
-            .map(map_path(cfg))
-            .map_err(|e| error::ErrorBadRequest(e.to_string()))
-        )
-}
-
-

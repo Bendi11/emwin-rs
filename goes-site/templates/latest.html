@@ -16,8 +16,8 @@
             }
 
             document.addEventListener("DOMContentLoaded", function(){
-                document.getElementById('fd_fc_last_update').innerHTML = "Last Updated: " + dt("{{ fd_fc_dt }}");
-                document.getElementById('fd_last_update').innerHTML = "Last Updated: " + dt("{{ fd_dt }}");
+                document.getElementById('fd_fc_last_update').innerHTML = dt("{{ fd_fc_dt }}");
+                document.getElementById('fd_last_update').innerHTML = dt("{{ fd_dt }}");
             });
         </script>
     </head>
