@@ -14,7 +14,7 @@ goes-cfg = { path = "../goes-cfg" }
 notify = { version = "5.0", default-features = false, features = ["macos_fsevent"] }
 log = { version = "0.4", features = ["release_max_level_warn"] }
 stderrlog = { version = "0.5", default-features = false }
-sqlx = { version = "0.6", features = ["mysql", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.6", features = ["mysql", "runtime-tokio-rustls"] }
 chrono = "0.4"
 
 [package.metadata.deb]

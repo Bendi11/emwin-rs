@@ -39,7 +39,7 @@ fn map_path(cfg: &Config) -> impl FnOnce(&str) -> String + '_ {
 }
 
 #[get("latest.html")]
-async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
+async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
     let fd = sqlx::query(
 r#"
 SELECT (file_name)
@@ -49,11 +49,11 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
     )
         .fetch_one(sql.get_ref())
         .await
-        .map_err(|e| error::ErrorBadRequest(e))
+        .map_err(|e| error::ErrorBadRequest(e.to_string()))
         .and_then(|v| v
             .try_get::<&str, _>(0)
             .map(map_path(cfg.get_ref()))
-            .map_err(|e| error::ErrorBadRequest(e))
+            .map_err(|e| error::ErrorBadRequest(e.to_string()))
         );
 
     let mesoscale1 = sqlx::query(
@@ -65,11 +65,11 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1
     )
     .fetch_one(sql.get_ref())
     .await
-    .map_err(|e| error::ErrorBadRequest(e))
+    .map_err(|e| error::ErrorBadRequest(e.to_string()))
     .and_then(|v| v
         .try_get::<&str, _>(0)
         .map(map_path(cfg.get_ref()))
-        .map_err(|e| error::ErrorBadRequest(e))
+        .map_err(|e| error::ErrorBadRequest(e.to_string()))
     );
 
 
@@ -87,7 +87,7 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1
 
 #[actix_web::main]
 async fn main() -> ExitCode {
-    std::env::set_var("RUST_LOG", "warn");
+    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
     let config = match Config::read().await {
         Ok(cfg) => Data::new(cfg),
@@ -96,7 +96,7 @@ async fn main() -> ExitCode {
     
 
     let static_dir = Path::new("/usr/share/goes-site/static");
-
+    
     let db_conn = match sqlx::MySqlPool::connect(&config.db_url).await {
         Ok(pool) => Data::new(pool),
         Err(e) => {
