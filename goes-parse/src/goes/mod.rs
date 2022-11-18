@@ -1,6 +1,6 @@
 use std::{str::FromStr, path::Path};
 
-use chrono::{NaiveDateTime, Timelike};
+use chrono::{NaiveDateTime, Timelike, Utc, DateTime, TimeZone};
 use nom::{
     bytes::complete::take,
     character::streaming::char,
@@ -43,9 +43,9 @@ pub struct GoesFileName {
     pub env: SystemEnvironment,
     pub dsn: DataShortName,
     pub satellite: Satellite,
-    pub start: NaiveDateTime,
-    pub end: NaiveDateTime,
-    pub creation: NaiveDateTime,
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub creation: DateTime<Utc>,
 }
 
 impl GoesFileName {
@@ -86,11 +86,12 @@ impl GoesFileName {
         ))
     }
 
-    fn timestamp(input: &str) -> ParseResult<&str, NaiveDateTime> {
+    fn timestamp(input: &str) -> ParseResult<&str, DateTime<Utc>> {
         map_opt(
             pair(
                 map_res(take(13usize), |s| {
                     NaiveDateTime::parse_from_str(s, "%Y%j%H%M%S")
+                        .map(|dt| Utc.from_utc_datetime(&dt))
                 }),
                 fromstr::<u32>(1),
             ),
