@@ -61,7 +61,7 @@ fn map_path(cfg: &Config) -> impl FnOnce(&str) -> String + '_ {
 #[get("/latest_fd_fc.jpg")]
 async fn latest_fd_fc_ep(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
     let fd = latest_fd_fc(sql.get_ref(), cfg.get_ref()).await?;
-    Ok(NamedFile::open(fd)?)
+    Ok(NamedFile::open(cfg.img_dir.join(fd))?)
 }
 
 #[get("latest.html")]
