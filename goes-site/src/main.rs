@@ -2,6 +2,7 @@ use std::{path::{Path, PathBuf}, process::ExitCode, sync::Arc};
 
 use actix_files::{Files, NamedFile};
 use actix_web::{error, get, web::{self, Data}, App, HttpServer, Responder, HttpResponse, middleware::{Logger, self}, Result};
+use chrono::NaiveDateTime;
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
@@ -13,7 +14,9 @@ pub struct Index;
 #[template(path="latest.html")]
 pub struct Latest {
     fd_fc: String,
+    fd_fc_dt: String,
     fd: String,
+    fd_dt: String,
 }
 
 #[get("index.html")]
@@ -24,7 +27,7 @@ async fn index() -> impl Responder {
 
 /// Fetch the latest full disk full color image path
 async fn latest_fd_fc(sql: &MySqlPool, cfg: &Config) -> Result<String> {
-     sqlx::query(
+    sqlx::query(
 r#"
 SELECT (file_name)
 FROM goesimg.files
@@ -64,12 +67,34 @@ async fn latest_fd_fc_ep(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl
     Ok(NamedFile::open(cfg.img_dir.join(fd))?)
 }
 
+const DT_FMT: &str = "%A, %B %e %I:%M %p";
+
 #[get("latest.html")]
 async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
-    let fd_fc = latest_fd_fc(sql.get_ref(), cfg.get_ref()).await;
-    let fd = sqlx::query(
+    let (fd_fc, fd_fc_dt)  =  sqlx::query(
 r#"
-SELECT (file_name)
+SELECT file_name, start_dt
+FROM goesimg.files
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK' AND channel='FULL_COLOR') AND sector='FULL_DISK' AND channel='FULL_COLOR';
+"#
+    )
+        .fetch_one(sql.get_ref())
+        .await
+        .map_err(|e| error::ErrorBadRequest(e))
+        .and_then(|v| Ok((
+            v
+                .try_get::<&str, _>(0)
+                .map(map_path(cfg.get_ref()))
+                .map_err(|e| error::ErrorBadRequest(e))?,
+            v
+                .try_get::<NaiveDateTime, _>(1)
+                .map(|dt| dt.format(DT_FMT).to_string())
+                .map_err(|e| error::ErrorBadRequest(e))?
+            ))
+        )?;
+    let (fd, fd_dt) = sqlx::query(
+r#"
+SELECT file_name, start_dt
 FROM goesimg.files
 WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK') AND sector='FULL_DISK';
 "#
@@ -77,22 +102,25 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
     .fetch_one(sql.get_ref())
     .await
     .map_err(|e| error::ErrorBadRequest(e.to_string()))
-    .and_then(|v| v
-        .try_get::<&str, _>(0)
-        .map(map_path(cfg.get_ref()))
-        .map_err(|e| error::ErrorBadRequest(e.to_string()))
-    );
+    .and_then(|v| Ok((
+            v
+                .try_get::<&str, _>(0)
+                .map(map_path(cfg.get_ref()))
+                .map_err(|e| error::ErrorBadRequest(e))?,
+            v
+                .try_get::<NaiveDateTime, _>(1)
+                .map(|dt| dt.format(DT_FMT).to_string())
+                .map_err(|e| error::ErrorBadRequest(e))?
+            ))
+        )?;
+
 
 
     Ok(Latest {
-        fd_fc: fd_fc.unwrap_or_else(|e| {
-            log::error!("Failed to fetch latest full disk from database: {}", e);
-            "".to_owned()
-        }),
-        fd: fd.unwrap_or_else(|e| {
-            log::error!("Failed to fetch the latest mesoscale 1 image from database: {}", e);
-            "".to_owned()
-        }),
+        fd_fc,
+        fd_fc_dt,
+        fd,
+        fd_dt,
     })
 }
 
