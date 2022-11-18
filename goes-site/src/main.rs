@@ -114,8 +114,8 @@ async fn main() -> ExitCode {
             .service(latest)
             .wrap(logger)
             .wrap(middleware::Compress::default())
-            .service(Files::new("/", static_dir))
             .service(Files::new("/assets", &config.img_dir).show_files_listing())
+            .service(Files::new("/", static_dir))
         })
         .bind("0.0.0.0:8000") {
             Ok(bound) => bound,
