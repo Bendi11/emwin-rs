@@ -111,6 +111,7 @@ async fn main() -> ExitCode {
             .app_data(db_conn.clone())
             .app_data(config.clone())
             .service(index)
+            .service(latest)
             .wrap(logger)
             .wrap(middleware::Compress::default())
             .service(Files::new("/", static_dir))
