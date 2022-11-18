@@ -1,47 +1,10 @@
-none {
-    --p1: #251D3A;
-    --p2: #2A2550;
-    --p3: #E04D01;
-    --p4: #FF7700;
-}
-
-:root {
-    --bg: #3C4048;
-    --bg-standout: #282b30;
-    --text: #EAEAEA;
-    --bg-hi: #B2B2B2;
-    --select: #00ABB3;
-}
-
-html, body {
-    background-color: var(--bg);
-    font-family: Verdana,sans-serif;
-}
-
-.nav-bar {
-    list-style-type: none;
-    background-color: var(--bg-standout);
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-}
-
-.nav-bar li {
-    float: left;
-}
-
-.nav-bar li a {
-    display: block;
-    text-align: center;
-    padding: 9px 16px;
-    text-decoration: none;
-    color: var(--text);
-}
-
-.nav-bar li a:hover {
-    background-color: var(--select);
-}
+body {
+    background-color: black;
+    }
+    h1 {
+    color: white;
+    }
+    .navbar-custom {
+        background-color: black;
+    }
+    
