@@ -1,16 +1,32 @@
 <!DOCTYPE HTML>
 <html>
     <head>
-        <link rel="stylesheet" href="/style.css">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/style.css"> 
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     </head>
     <body>
         {% include "nav.html" %} 
-        <div style="width: 100%;">
-            <div style="width: 50%; height: 100%; float: left;">
-                <img style="height:100%; width:100%;" src="/assets/{{ fd }}" alt="Latest full disk image">
+        <div class="container-fluid">
+            <center>
+            <h1>GOES 18 live reception and METAR search!</h1>
+            </center>
+        </div>
+        <div class="row">
+            <div class="col-sm-6">
+                <center>
+                    <h1>Latest FD FC image</h1>
+                    <img class="img-responsive" src="/assets/{{ fd }}" alt="Latest FD FC image">
+                </center>
             </div>
-            <div style="margin-left: 50%; height: 100%;">
-                <img style="height: 100%; width: 100%;" src="/assets/{{ mesoscale1 }}" alt="Latest mesoscale 1 image">
+            <div class="col-sm-6">
+                <center>
+                    <h1>Latest FD image</h1>
+                    <img class="img-responsive" src="/assets/{{ mesoscale1 }}" alt="Latest FD image">
+                </center>
             </div>
         </div>
     </body>
