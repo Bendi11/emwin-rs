@@ -12,8 +12,8 @@ pub struct Index;
 #[derive(askama::Template)]
 #[template(path="latest.html")]
 pub struct Latest {
+    fd_fc: String,
     fd: String,
-    mesoscale1: String,
 }
 
 #[get("index.html")]
@@ -66,12 +66,12 @@ async fn latest_fd_fc_ep(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl
 
 #[get("latest.html")]
 async fn latest(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
-    let fd = latest_fd_fc(sql.get_ref(), cfg.get_ref()).await;
-    let mesoscale1 = sqlx::query(
+    let fd_fc = latest_fd_fc(sql.get_ref(), cfg.get_ref()).await;
+    let fd = sqlx::query(
 r#"
 SELECT (file_name)
 FROM goesimg.files
-WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1' AND channel='FULL_COLOR_LINES') AND sector='MESOSCALE1' AND channel='FULL_COLOR_LINES';
+WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK') AND sector='FULL_DISK';
 "#
     )
     .fetch_one(sql.get_ref())
@@ -85,11 +85,11 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='MESOSCALE1
 
 
     Ok(Latest {
-        fd: fd.unwrap_or_else(|e| {
+        fd_fc: fd_fc.unwrap_or_else(|e| {
             log::error!("Failed to fetch latest full disk from database: {}", e);
             "".to_owned()
         }),
-        mesoscale1: mesoscale1.unwrap_or_else(|e| {
+        fd: fd.unwrap_or_else(|e| {
             log::error!("Failed to fetch the latest mesoscale 1 image from database: {}", e);
             "".to_owned()
         }),
