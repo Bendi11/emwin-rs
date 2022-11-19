@@ -3,7 +3,7 @@ use std::{path::{Path, PathBuf}, process::ExitCode};
 use actix_files::Files;
 use actix_web::{get, web::Data, App, HttpServer, Responder, middleware::{Logger, self}};
 use goes_cfg::Config;
-use page::latest::latest_scope;
+use page::{latest::latest_scope, search::search_scope};
 
 pub mod page;
 
@@ -64,6 +64,7 @@ async fn main() -> ExitCode {
             .wrap(middleware::Compress::default())
             .service(index)
             .service(latest_scope())
+            .service(search_scope())
             .service(Files::new("/assets", &config.img_dir).show_files_listing())
             .service(Files::new("/", static_dir))
         })
