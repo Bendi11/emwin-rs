@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
         'REFLECTED_SHORTWAVE',
         'SEA_SKIN_TEMPERATURE',
         'TOTAL_PRECIPITABLE_WATER'
-    ),
+    ) NOT NULL,
     channel ENUM(
         'BLUE',
         'RED',
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
         'CO2',
         'FULL_COLOR',
         'FULL_COLOR_LINES'
-    ) NOT NULL,
+    ),
     sector ENUM(
         'FULL_DISK',
         'CONUS',
@@ -193,5 +193,10 @@ CREATE TABLE IF NOT EXISTS goesimg.files (
     ) NOT NULL,
     start_dt DATETIME NOT NULL,
     end_dt DATETIME NOT NULL,
-    file_name VARCHAR(512) NOT NULL
+    file_name VARCHAR(512) NOT NULL,
+    CHECK(
+        (acronym!='L1b' OR channel IS NOT NULL) AND
+        (acronym!='CLOUD_MOISTURE_IMAGERY' OR channel IS NOT NULL) AND
+        (acronym!='DERIVED_MOTION_WIND' OR channel IS NOT NULL)
+    )
 );

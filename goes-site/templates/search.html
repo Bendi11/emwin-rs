@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="/style.css"> 
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function(){
+            $("#acronym-select").change(function() {
+            if(["L1b", "CLOUD_MOISTURE_IMAGERY", "DERIVED_MOTION_WIND"].includes($(this).val())) {
+                $('#channel-select').val("FULL_COLOR_LINES")
+                $('#channel-select').prop("disabled", false)
+            } else {
+                $('#channel-select').val("")
+                $('#channel-select').prop("disabled", true)
+            }
+            })
+        })
+    </script>
+    </head>
+    <body>
+        {% include "nav.html" %}
+        <form action="#" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="acronym-select">Imagery Classification</label>
+                    <select class="form-control" id="acronym-select">
+                        <option value="L1b">Radiance</option>
+                        <option value="CLOUD_TOP_HEIGHT">Cloud Top Height</option>
+                        <option value="CLOUD_TOP_TEMPERATURE">Cloud Top Temperature</option>
+                        <option value="CLEAR_SKY_MASK">Clear Sky Masks</option>
+                        <option value="CLOUD_TOP_PHASE">Cloud Top Phases</option>
+                        <option value="AEROSOL_OPTICAL_DEPTH">Aerosol Optical Depth</option>
+                        <option value="CLOUD_MOISTURE_IMAGERY" selected>Cloud Moisture Imagery</option>
+                        <option value="MULTIBAND_CLOUD_MOISTURE_IMAGERY">Cloud Moisture Imagery (Multiband)</option>
+                        <option value="CLOUD_OPTICAL_DEPTH">Cloud Optical Depth</option>
+                        <option value="CLOUD_PARTICLE_SIZE_DISTRIBUTION">Cloud Particle Size Distribution</option>
+                        <option value="CLOUD_TOP_PRESSURE">Cloud Top Pressure</option>
+                        <option value="DERIVED_MOTION_WIND">Derived Wind Motion</option>
+                        <option value="DERIVED_MOTION_WIND_BAND8">Derived Wind Motion (Band 8)</option>
+                        <option value="DERIVED_STABILITY_INDEX">Derived Stability Index</option>
+                        <option value="DOWNWARD_SHORTWAVE_SURFACE">Downward Shortwave Radiation (Surface)</option>
+                        <option value="FIRE_HOT_CHARACTERIZATION">Fire and Hotspot Characterization</option>
+                        <option value="SNOW_COVER">Snow Covering</option>
+                        <option value="LAND_SKIN_TEMPERATURE">Land Skin Temperature</option>
+                        <option value="RAINFALL_RATE">Rainfall Rate</option>
+                        <option value="REFLECTED_SHORTWAVE">Reflected Shortwave Radiation</option>
+                        <option value="SEA_SKIN_TEMPERATURE">Sea Skin Temperature</option>
+                        <option value="TOTAL_PRECIPITABLE_WATER">Total Precipitable Water</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-6" id="channel-select-div">
+                    <label for="channel-select">Channel</label>
+                    <select id="channel-select" class="form-control">
+                        <option value="BLUE">Blue</option>
+                        <option value="RED">Red</option>
+                        <option value="VEGGIE">Vegetation</option>
+                        <option value="CIRRUS">Cirrus</option>
+                        <option value="SNOWICE">Snow and Ice</option>
+                        <option value="CLOUD_PARTICLE_SIZE">Cloud Particle Size</option>
+                        <option value="SHORTWAVE_WINDOW">Shortwave Window</option>
+                        <option value="UPPER_LEVEL_TROPOSPHERIC_WATER_VAPOR">Upper Level Tropospheric Water Vapor</option>
+                        <option value="MID_LEVEL_TROPOSPHERIC_WATER_VAPOR">Mid Level Tropospheric Water Vapor</option>
+                        <option value="LOWER_LEVEL_WATER_VAPOR">Lower Level Water Vapor</option>
+                        <option value="CLOUD_TOP_PHASE">Cloud Top Phase</option>
+                        <option value="OZONE">Ozone</option>
+                        <option value="CLEAN_IR">IR (Clean)</option>
+                        <option value="IR">IR</option>
+                        <option value="DIRTY_IR">IR (Dirty)</option>
+                        <option value="CO2">Carbon Dioxide</option>
+                        <option value="FULL_COLOR">False Color</option>
+                        <option value="FULL_COLOR_LINES" selected>False Color (Borders)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row container" style="width:100%;">
+                <div class="form-group col-md-6">
+                    <label for="satellite-select">Satellite</label>
+                    <select id="satellite-select" class="form-control" multiple>
+                        <option value="GOES16" selected>GOES-16</option>
+                        <option value="GOES17" selected>GOES-17</option>
+                        <option value="GOES18" selected>GOES-18</option>
+                        <option value="GOES19" selected>GOES-19</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="sector-select">Imagery Sector</label>
+                    <select id="sector-select" class="form-control">
+                        <option value="FULL_DISK" selected>Full Disk</option>
+                        <option value="CONUS">Continental United States</option>
+                        <option value="MESOSCALE1">Mesoscale 1</option>
+                        <option value="MESOSCALE2">Mesoscale 2</option>
+                    </select>
+                </div>
+            </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="from-input">From</label>
+                    <input class="form-control" type="datetime-local" id="from-input" />
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="to-input">To</label>
+                    <input class="form-control" type="datetime-local" id="to-input" />
+                </div>
+            </div>
+            <div class="form-row container" style="width:100%;">
+                <button class="btn btn-primary mb-2" type="submit">Search</button>
+            </div>
+        </form>
+    </body>
+</html>
