@@ -14,8 +14,8 @@ struct SearchQuery;
 
 pub fn search_scope() -> Scope {
     web::scope("/search")
-        .route("img.html", web::post().to(search_query))
-        .route("result-img.html", web::get().to(search_results))
+        .route("img.html", web::get().to(search_query))
+        .route("result-img.html", web::post().to(search_results))
 }
 
 pub async fn search_results(_sql: Data<MySqlPool>, form: Form<HashMap<String, String>>) -> Result<impl Responder> {
