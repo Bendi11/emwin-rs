@@ -48,13 +48,13 @@ pub struct QueryForm {
 
 fn deserialize_input_dt<'d, D: Deserializer<'d>>(d: D) -> Result<Option<NaiveDateTime>, D::Error>
 where D::Error: serde::de::Error {
-    let s = <&str as Deserialize>::deserialize(d)?;
+    let s = <String as Deserialize>::deserialize(d)?;
     
 
     if s.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M")
+        Ok(Some(NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
             .map_err(D::Error::custom)?
         ))
     }
