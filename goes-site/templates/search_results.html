@@ -10,6 +10,12 @@
     </head>
         <body>
         {% include "nav.html" %}
+        {% for row in images %}
+            <div class="row">
+                <center>
+                    <img class="img-responsive" src="/assets/{{ row }}" alt="Latest FD image">
+                </center>
+            </div>
+        {% endfor %}
         </body>
 </html>
-
