@@ -42,7 +42,7 @@ pub struct QueryForm {
     #[serde(rename="sector-select")]
     pub sector: String,
     #[serde(rename="satellite-select")]
-    pub satellite: Vec<String>,
+    pub satellite: String,
 
 }
 
@@ -74,16 +74,8 @@ r#"SELECT (file_name) FROM goesimg.files WHERE (acronym="#
     qb.push(" AND sector=");
     qb.push_bind(&form.sector);
 
-    qb.push(" AND satellite IN (");
-
-    {
-        let mut list = qb.separated(", ");
-        for s in form.satellite.iter() {
-            list.push_bind(s);
-        }
-
-        list.push_unseparated(") ");
-    }
+    qb.push(" AND satellite=");
+    qb.push_bind(&form.satellite);
 
     match (form.from_dt, form.to_dt) {
         (Some(from), Some(to)) => {
