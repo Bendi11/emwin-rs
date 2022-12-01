@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use actix_files::NamedFile;
 use futures::TryStreamExt;
 use goes_cfg::Config;
 use serde::de::Error;
@@ -14,77 +15,153 @@ use crate::map_path;
 
 pub fn search_scope() -> Scope {
     web::scope("/search")
-        .service(search_results)
+        .service(img_multi)
+        .service(img_single)
+}
+
+#[derive(Debug, Deserialize)]
+pub enum TimeQuery {
+    #[serde(rename="latest")]
+    Latest,
+    #[serde(rename="from")]
+    From(
+        #[serde(deserialize_with="deserialize_input_dt")]
+        NaiveDateTime
+    ),
+    #[serde(rename="to")]
+    To(
+        #[serde(deserialize_with="deserialize_input_dt")]
+        NaiveDateTime,
+    ),
+    #[serde(rename="within")]
+    Within {
+        #[serde(deserialize_with="deserialize_input_dt")]
+        from: NaiveDateTime,
+        #[serde(deserialize_with="deserialize_input_dt")]
+        to: NaiveDateTime,
+    },
 }
 
 #[derive(Debug, Deserialize)]
 pub struct QueryForm {
-    #[serde(rename="from_dt")]
-    #[serde(deserialize_with="deserialize_input_dt")]
-    from_dt: Option<NaiveDateTime>,
-    #[serde(deserialize_with="deserialize_input_dt")]
-    to_dt: Option<NaiveDateTime>,
-    #[serde(rename="acronym-select")]
-    pub acronym: String,
-    #[serde(rename="channel-select")]
-    pub channel: String,
-    #[serde(rename="sector-select")]
-    pub sector: String,
-    #[serde(rename="satellite-select")]
-    pub satellite: String,
-
+    #[serde(flatten)]
+    pub time: TimeQuery, 
+    pub acronym: Option<String>,
+    pub channel: Option<String>,
+    pub sector: Option<String>,
+    pub satellite: Option<String>, 
 }
 
-fn deserialize_input_dt<'d, D: Deserializer<'d>>(d: D) -> Result<Option<NaiveDateTime>, D::Error>
+#[derive(Debug, Deserialize)]
+pub struct MultiQueryForm {
+    #[serde(flatten)]
+    pub query: QueryForm,
+    pub limit: u16,
+    pub page: u16,
+}
+
+fn deserialize_input_dt<'d, D: Deserializer<'d>>(d: D) -> Result<NaiveDateTime, D::Error>
 where D::Error: serde::de::Error {
     let s = <String as Deserialize>::deserialize(d)?;
     
-
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
-            .map_err(D::Error::custom)?
-        ))
-    }
+    Ok(NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M")
+        .map_err(D::Error::custom)?
+    )
 }
 
-#[post("/img")]
-pub async fn search_results(sql: Data<MySqlPool>, cfg: Data<Config>, form: Json<QueryForm>) -> Result<impl Responder> {
+fn search_sql(form: &QueryForm, single: bool) -> QueryBuilder<MySql> {
     let mut qb: QueryBuilder<MySql> = QueryBuilder::new(
-r#"SELECT (file_name) FROM goesimg.files WHERE (acronym="#
+r#"
+with search as (
+    select file_name, start_dt from goesimg.files where (
+"#
     );
 
-    qb.push_bind(&form.acronym);
-    qb.push(" AND channel=");
-    qb.push_bind(&form.channel);
+    {
+        let mut params = qb.separated(" and ");
+        if let Some(ref acronym) = form.acronym {
+            params.push("acronym=");
+            params.push_bind_unseparated(acronym);
+        }
+        if let Some(ref channel) = form.channel {
+            params.push("channel=");
+            params.push_bind_unseparated(channel);
+        }
+        if let Some(ref sector) = form.sector {
+            params.push("sector=");
+            params.push_bind_unseparated(sector);
+        }
+        if let Some(ref satellite) = form.satellite {
+            params.push("satellite=");
+            params.push_bind_unseparated(satellite);
+        }
+    }
 
-    qb.push(" AND sector=");
-    qb.push_bind(&form.sector);
-
-    qb.push(" AND satellite=");
-    qb.push_bind(&form.satellite);
-
-    match (form.from_dt, form.to_dt) {
-        (Some(from), Some(to)) => {
-            qb.push(" AND (start_dt BETWEEN ");
+    qb.push(
+        r#"
+)
+select file_name from search
+"#
+    );
+   
+    match form.time {
+        TimeQuery::Within { from, to } => {
+            qb.push("where (start_dt between ");
             qb.push_bind(from);
             qb.push(" AND ");
             qb.push_bind(to);
             qb.push(")");
         },
-        (Some(from), None) => {
-            qb.push("AND start_dt>=");
+        TimeQuery::From(from) => {
+            qb.push("where start_dt>=");
             qb.push_bind(from);
         },
-        (None, Some(to)) => {
-            qb.push("AND start_dt<=");
+        TimeQuery::To(to) => {
+            qb.push("where start_dt<=");
             qb.push_bind(to);
         },
-        (None, None) => (),
+        TimeQuery::Latest if single => {
+            qb.push("where start_dt=(select max(start_dt) from search)");
+        },
+        TimeQuery::Latest => {
+            qb.push("order by start_dt desc");
+        }
+    }
+    
+    qb
+}
+
+#[post("/img/single")]
+pub async fn img_single(sql: Data<MySqlPool>, form: Json<QueryForm>) -> Result<impl Responder> {
+    let mut qb = search_sql(&form, true);
+    qb.push(';');
+
+    let file = qb
+        .build()
+        .fetch_one(sql.get_ref())
+        .await
+        .map_err(error::ErrorInternalServerError)?
+        .try_get::<String, _>(0usize)
+        .map_err(error::ErrorInternalServerError)?;
+
+    Ok(NamedFile::open(file)?)
+}
+
+#[post("/img/multi")]
+pub async fn img_multi(sql: Data<MySqlPool>, cfg: Data<Config>, form: Json<MultiQueryForm>) -> Result<impl Responder> { 
+    if form.limit > 10 {
+        return Err(error::ErrorBadRequest("`limit` must be less than or equal to 10"))
     }
 
-    qb.push(") LIMIT 5;");
+    let mut qb = search_sql(&form.query, form.limit == 1);
+
+    qb.push("\nlimit ");
+    qb.push_bind(form.limit);
+    qb.push(" offset ");
+    qb.push_bind(form.page.wrapping_mul(form.limit));
+
+    qb.push(";");
+
     let mut query = qb
         .build()
         .fetch(sql.get_ref());
@@ -100,4 +177,14 @@ r#"SELECT (file_name) FROM goesimg.files WHERE (acronym="#
     }
 
     Ok(web::Json(images))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn query_parse() {
+        let _ = web::Query::<QueryForm>::from_query("latest=&acronym=FULL_COLOR&limit=");
+    }
 }
