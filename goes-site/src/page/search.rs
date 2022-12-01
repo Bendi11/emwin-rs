@@ -5,7 +5,7 @@ use futures::TryStreamExt;
 use goes_cfg::Config;
 use serde::de::Error;
 
-use actix_web::{web::{Data, self, Json}, Result, Responder, Scope, error::{self, ErrorInternalServerError}, post};
+use actix_web::{web::{Data, self, Json}, Result, Responder, Scope, error::{self, ErrorInternalServerError}, post, get};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Deserializer};
 use sqlx::{MySqlPool, QueryBuilder, MySql, Row};
@@ -16,7 +16,11 @@ use crate::map_path;
 pub fn search_scope() -> Scope {
     web::scope("/search")
         .service(img_multi)
-        .service(img_single)
+        .service(img_single_post)
+        .service(
+            web::resource("/img/single/{base64}")
+                .route(web::get().to(|sql: Data<MySqlPool>, base64: web::Path<Vec<u8>>| ))
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,9 +135,26 @@ select file_name from search
     qb
 }
 
+fn decode_base64<T: for<'de> Deserialize<'de>>(base64: &[u8]) -> Result<T> {
+    serde_json::from_slice::<T>(
+        &base64::decode(base64)
+            .map_err(error::ErrorBadRequest)?
+    ).map_err(error::ErrorBadRequest)
+}
+
+#[get("/img/single/{json}")]
+pub async fn img_single_get(sql: Data<MySqlPool>, json: web::Path<Vec<u8>>) -> Result<impl Responder> {
+    
+    img_single_ep(sql, &json).await
+}
+
 #[post("/img/single")]
-pub async fn img_single(sql: Data<MySqlPool>, form: Json<QueryForm>) -> Result<impl Responder> {
-    let mut qb = search_sql(&form, true);
+pub async fn img_single_post(sql: Data<MySqlPool>, form: Json<QueryForm>) -> Result<impl Responder> {
+    img_single_ep(sql, &form).await
+}
+
+pub async fn img_single_ep(sql: Data<MySqlPool>, form: &QueryForm) -> Result<impl Responder> {
+    let mut qb = search_sql(form, true);
     qb.push(';');
 
     let file = qb
@@ -185,6 +206,7 @@ mod tests {
 
     #[test]
     fn query_parse() {
-        let _ = web::Query::<QueryForm>::from_query("latest=&acronym=FULL_COLOR&limit=");
+        let query = 
+        panic!("{:#?}", query);
     }
 }
