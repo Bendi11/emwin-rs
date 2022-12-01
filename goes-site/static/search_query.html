@@ -7,8 +7,8 @@
         <link rel="stylesheet" href="/style.css"> 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <script src="/js/header.js"></script>
     <script>
-
         document.addEventListener("DOMContentLoaded", function(){
             $("#acronym-select").change(function() {
             if(["L1b", "CLOUD_MOISTURE_IMAGERY", "DERIVED_MOTION_WIND"].includes($(this).val())) {
@@ -23,7 +23,7 @@
     </script>
     </head>
     <body>
-        {% include "nav.html" %}
+        <header></header>
         <form action="/search/result-img.html" method="post">
             <div class="form-row">
                 <div class="form-group col-md-6">

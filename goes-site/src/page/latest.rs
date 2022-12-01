@@ -1,6 +1,5 @@
 use actix_files::NamedFile;
 use actix_web::{web::{Data, self}, Result, error, Responder, Scope};
-use chrono::{Utc, DateTime, SecondsFormat};
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
@@ -8,17 +7,8 @@ use crate::map_path;
 
 pub fn latest_scope() -> Scope {
     web::scope("/latest")
-        .service(web::resource("/fd.html").to(latest_fd))
+        //.service(web::resource("/fd.html").to(latest_fd))
         .service(web::resource("/fd_fc.jpg").to(latest_fd_fc))
-}
-
-#[derive(askama::Template)]
-#[template(path="latest.html")]
-struct Latest {
-    fd_fc: String,
-    fd_fc_dt: String,
-    fd: String,
-    fd_dt: String,
 }
 
 async fn latest_fd_fc(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<impl Responder> {
@@ -34,14 +24,15 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
         .map_err(|e| error::ErrorBadRequest(e.to_string()))
         .and_then(|v| v
             .try_get::<&str, _>(0)
-            .map(map_path(cfg.get_ref()))
             .map_err(|e| error::ErrorBadRequest(e.to_string()))
+            .and_then(map_path(cfg.get_ref()))
+            .map(std::path::Path::to_owned)
         )?;
 
     Ok(NamedFile::open(cfg.img_dir.join(fd))?)
 }
 
-async fn latest_fd(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
+/*async fn latest_fd(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
     let (fd_fc, fd_fc_dt)  =  sqlx::query(
 r#"
 SELECT file_name, start_dt
@@ -84,11 +75,4 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
                 .map_err(|e| error::ErrorBadRequest(e))?
             ))
         )?;
-
-    Ok(Latest {
-        fd_fc,
-        fd_fc_dt,
-        fd,
-        fd_dt,
-    })
-}
+}*/

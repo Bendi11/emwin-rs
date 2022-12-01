@@ -1,31 +1,20 @@
-use std::collections::HashMap;
+use std::path::PathBuf;
+
 use futures::TryStreamExt;
 use goes_cfg::Config;
 use serde::de::Error;
 
-use actix_web::{web::{Data, Form, self}, Result, Responder, Scope, error};
-use askama::Template;
+use actix_web::{web::{Data, self, Json}, Result, Responder, Scope, error::{self, ErrorInternalServerError}, post};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Deserializer};
 use sqlx::{MySqlPool, QueryBuilder, MySql, Row};
 
 use crate::map_path;
 
-#[derive(Template)]
-#[template(path="search_results.html")]
-struct SearchResults {
-    images: Vec<String>,
-}
-
-#[derive(Template)]
-#[template(path="search_query.html")]
-struct SearchQuery;
-
 
 pub fn search_scope() -> Scope {
     web::scope("/search")
-        .route("img.html", web::get().to(search_query))
-        .route("result-img.html", web::post().to(search_results))
+        .service(search_results)
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,9 +49,8 @@ where D::Error: serde::de::Error {
     }
 }
 
-pub async fn search_results(sql: Data<MySqlPool>, cfg: Data<Config>, form: Form<QueryForm>) -> Result<impl Responder> {
-    log::error!("{:#?}", form); 
-    
+#[post("/img")]
+pub async fn search_results(sql: Data<MySqlPool>, cfg: Data<Config>, form: Json<QueryForm>) -> Result<impl Responder> {
     let mut qb: QueryBuilder<MySql> = QueryBuilder::new(
 r#"SELECT (file_name) FROM goesimg.files WHERE (acronym="#
     );
@@ -101,17 +89,15 @@ r#"SELECT (file_name) FROM goesimg.files WHERE (acronym="#
         .build()
         .fetch(sql.get_ref());
     
-    let mut images = vec![];
+    let mut images: Vec<PathBuf> = vec![];
     while let Some(row) = query.try_next().await.map_err(|e| error::ErrorBadRequest(e))? {
         images.push(row
             .try_get::<&str, _>(0)
-            .map(map_path(cfg.get_ref()))
-            .map_err(|e| error::ErrorBadRequest(e))?);
+            .map_err(|e| ErrorInternalServerError(e))
+            .and_then(map_path(cfg.get_ref()))?
+            .to_owned()
+        );
     }
 
-    Ok(SearchResults { images })
-}
-
-pub async fn search_query() -> Result<impl Responder> {
-    Ok(SearchQuery)
+    Ok(web::Json(images))
 }

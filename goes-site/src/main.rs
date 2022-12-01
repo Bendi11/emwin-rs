@@ -1,37 +1,26 @@
-use std::{path::{Path, PathBuf}, process::ExitCode};
+use std::{path::Path, process::ExitCode};
 
 use actix_files::Files;
-use actix_web::{get, web::Data, App, HttpServer, Responder, middleware::{Logger, self}};
+use actix_web::{web::Data, App, HttpServer, middleware::{Logger, self}};
 use goes_cfg::Config;
 use page::{latest::latest_scope, search::search_scope};
 
 pub mod page;
 
-#[derive(askama::Template)]
-#[template(path="index.html")]
-pub struct Index;
 
-#[get("index.html")]
-async fn index() -> impl Responder {
-    Index
-}
-
-
-fn map_path(cfg: &Config) -> impl FnOnce(&str) -> String + '_ {
-    move |path: &str| PathBuf::from(path)
+fn map_path(cfg: &Config) -> impl FnOnce(&str) -> actix_web::Result<&std::path::Path> + '_ {
+    move |path: &str| Path::new(path)
         .strip_prefix(&cfg.img_dir)
-        .map(Path::to_owned)
-        .unwrap_or_else(|e| {
+        .map_err(|e| {
             log::error!(
                 "Failed to remove image prefix {} from path {}: {}",
                 cfg.img_dir.display(),
                 path,
                 e,
             );
-            PathBuf::new()
+
+            actix_web::error::ErrorInternalServerError(e)
         })
-        .to_string_lossy()
-        .into_owned()
 }
 
 
@@ -62,7 +51,6 @@ async fn main() -> ExitCode {
             .app_data(config.clone())
             .wrap(logger)
             .wrap(middleware::Compress::default())
-            .service(index)
             .service(latest_scope())
             .service(search_scope())
             .service(Files::new("/assets", &config.img_dir).show_files_listing())
