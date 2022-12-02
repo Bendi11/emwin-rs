@@ -100,7 +100,7 @@ with search as (
 
     qb.push(
         r#"
-)
+))
 select file_name from search
 "#
     );
@@ -128,6 +128,8 @@ select file_name from search
             qb.push("order by start_dt desc");
         }
     }
+
+    log::error!("{:#?}", qb.sql());
     
     qb
 }
@@ -140,8 +142,8 @@ fn decode_base64<T: for<'de> Deserialize<'de>>(base64: &[u8]) -> Result<T> {
 }
 
 #[get("/img/single/{json}")]
-pub async fn img_single_get(sql: Data<MySqlPool>, json: web::Path<Vec<u8>>) -> Result<impl Responder> {
-    let json = decode_base64(&json)?; 
+pub async fn img_single_get(sql: Data<MySqlPool>, json: web::Path<String>) -> Result<impl Responder> {
+    let json = decode_base64(json.as_bytes())?; 
     img_single_ep(sql, &json).await
 }
 
