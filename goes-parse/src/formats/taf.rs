@@ -19,7 +19,7 @@ use crate::{
     formats::codes::visibility::vvvv,
     header::{WMOProductIdentifier, CCCC},
     parse::{
-        fromstr, multi, multi_opt,
+        fromstr, multi_opt,
         recover::recover,
         time::{yygg, yygggg},
     },

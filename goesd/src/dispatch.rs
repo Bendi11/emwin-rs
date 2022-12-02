@@ -8,7 +8,7 @@ use goes_parse::{
         upperair::UpperAirData,
         AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
     },
-    formats::{amdar::AmdarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
+    formats::{rwr::RegionalWeatherRoundup, taf::TAFReport},
     header::GoesEmwinFileName, goes::GoesFileName, display_error,
 };
 use goes_sql::GoesSqlContext;
@@ -54,7 +54,7 @@ pub async fn emwin_dispatch(path: PathBuf, src: &str, ctx: Arc<GoesSqlContext>, 
                     subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
                     ..
                 }) => {
-                    let report = match AmdarReport::parse(&src) {
+                    /*let report = match AmdarReport::parse(&src) {
                         Ok((_, report)) => report,
                         Err(e) => {
                             log::error!("Failed to parse AMDAR upper air report: {}", e);
@@ -63,7 +63,7 @@ pub async fn emwin_dispatch(path: PathBuf, src: &str, ctx: Arc<GoesSqlContext>, 
                         }
                     };
 
-                    config.done.do_for(path).await;
+                    config.done.do_for(path).await;*/
                 }
                 DataTypeDesignator::Forecast(Forecast {
                     subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,

@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use goes_parse::formats::taf::{TAFReportItem, TAFReportItemGroupKind};
 use sqlx::Row;
-use uom::si::{f32::Length, length::meter};
+use uom::si::length::meter;
 
 use crate::GoesSqlContext;
 

@@ -1,6 +1,6 @@
 use std::{process::ExitCode, sync::Arc, time::Duration};
 
-use dispatch::{emwin_dispatch, img_dispatch};
+use dispatch::img_dispatch;
 use fuser::MountOption;
 use goes_sql::GoesSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
