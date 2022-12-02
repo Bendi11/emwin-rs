@@ -17,10 +17,7 @@ pub fn search_scope() -> Scope {
     web::scope("/search")
         .service(img_multi)
         .service(img_single_post)
-        .service(
-            web::resource("/img/single/{base64}")
-                .route(web::get().to(|sql: Data<MySqlPool>, base64: web::Path<Vec<u8>>| ))
-        )
+        .service(img_single_get)
 }
 
 #[derive(Debug, Deserialize)]
@@ -144,7 +141,7 @@ fn decode_base64<T: for<'de> Deserialize<'de>>(base64: &[u8]) -> Result<T> {
 
 #[get("/img/single/{json}")]
 pub async fn img_single_get(sql: Data<MySqlPool>, json: web::Path<Vec<u8>>) -> Result<impl Responder> {
-    
+    let json = decode_base64(&json)?; 
     img_single_ep(sql, &json).await
 }
 
@@ -198,15 +195,4 @@ pub async fn img_multi(sql: Data<MySqlPool>, cfg: Data<Config>, form: Json<Multi
     }
 
     Ok(web::Json(images))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn query_parse() {
-        let query = 
-        panic!("{:#?}", query);
-    }
 }
