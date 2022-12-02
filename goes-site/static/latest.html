@@ -9,19 +9,6 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
         <script src="/js/header.js"></script>
         <script src="/js/latest.js"></script>
-        <script>
-            function dt(str) {
-                let utc_epoch = Date.parse(str);
-                let time = new Date();
-                time.setTime(utc_epoch);
-                return time.toLocaleString();
-            }
-
-            document.addEventListener("DOMContentLoaded", function(){
-                document.getElementById('fd_fc_last_update').innerHTML = dt("{{ fd_fc_dt }}");
-                document.getElementById('fd_last_update').innerHTML = dt("{{ fd_dt }}");
-            });
-        </script>
     </head>
     <body>
         <header></header> 
@@ -35,16 +22,17 @@
                 <center>
                     <h1>Latest FD FC image</h1>
                     <h3 id="fd_fc_last_update"></h3>
-                    <img class="img-responsive" src="/assets/{{ fd_fc }}" alt="Latest FD FC image">
+                    <img id="fd_fc_img" class="img-responsive" alt="Latest FD FC image">
                 </center>
             </div>
             <div class="col-sm-6">
                 <center>
                     <h1>Latest FD image</h1>
                     <h3 id="fd_last_update"></h3>
-                    <img class="img-responsive" src="/assets/{{ fd }}" alt="Latest FD image">
+                    <img id="fd_img" class="img-responsive" alt="Latest FD image">
                 </center>
             </div>
         </div>
     </body>
 </html>
+
