@@ -16,6 +16,7 @@ log = { version = "0.4", features = ["release_max_level_warn"] }
 stderrlog = { version = "0.5", default-features = false }
 sqlx = { version = "0.6", features = ["mysql", "runtime-tokio-rustls"] }
 chrono = "0.4"
+fuser = "0.11"
 
 [package.metadata.deb]
 name = "goesd"

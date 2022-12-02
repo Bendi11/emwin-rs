@@ -3,7 +3,7 @@ use goes_parse::formats::codes::{
     clouds::{CloudAmount, CloudReport},
     weather::{
         SignificantWeather, SignificantWeatherDescriptor, SignificantWeatherIntensity,
-        SignificantWeatherPhenomena, SignificantWeatherPrecipitation,
+        SignificantWeatherPhenomena,
     },
     wind::WindSummary,
 };

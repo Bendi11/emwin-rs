@@ -1,6 +1,7 @@
 use std::{process::ExitCode, sync::Arc, time::Duration};
 
 use dispatch::{emwin_dispatch, img_dispatch};
+use fuser::MountOption;
 use goes_sql::GoesSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 
@@ -9,7 +10,10 @@ use tokio::{sync::mpsc::{channel, Receiver, Sender}, runtime::Runtime};
 
 use goes_cfg::Config;
 
+use crate::fuse::EmwinFS;
+
 pub mod dispatch;
+pub mod fuse;
 
 fn main() -> ExitCode {
     if let Err(e) = stderrlog::new()
@@ -52,18 +56,31 @@ fn main() -> ExitCode {
         }
         
         
-        let (emwin_tx, emwin_rx) = channel(10);
         let (img_tx, img_rx) = channel(10);
-        let (emwin_watcher, img_watcher) = match (create_watcher(rt.clone(), emwin_tx), create_watcher(rt.clone(), img_tx)) {
-            (Ok(emwin_w), Ok(img_w)) => (emwin_w, img_w),
-            (Err(e), _) | (_, Err(e)) => return e,
+        let img_watcher = match create_watcher(rt.clone(), img_tx) {
+            Ok(img_w) => img_w,
+            Err(e) => return e,
         };
-
-        let emwin_task = tokio::task::spawn(emwin_task(config.clone(), ctx.clone(), emwin_rx, emwin_watcher));
+        
+        let cfg = config.clone();
+        let context = ctx.clone();
+        let runtime = rt.clone();
+        let emwin_task = tokio::task::spawn(async move {
+            let fs = EmwinFS::new(runtime, context, cfg.clone());
+            fuser::mount2(fs, &cfg.emwin_dir, &[
+                MountOption::AutoUnmount,
+                MountOption::NoExec,
+                MountOption::NoAtime,
+                MountOption::Sync,
+                MountOption::FSName("EMWIN in-memory FS".to_owned()),
+                MountOption::NoSuid,
+                MountOption::NoDev,
+                MountOption::RW,
+            ])
+        });
         let img_task = tokio::task::spawn(img_task(config, ctx, img_rx, img_watcher)); 
-
         tokio::select! {
-            Ok(v) = emwin_task => return v,
+            Err(_) = emwin_task => return ExitCode::FAILURE,
             Ok(v) = img_task => return v,
         } 
     })
@@ -109,34 +126,6 @@ async fn img_task(config: Arc<Config>, ctx: Arc<GoesSqlContext>, mut rx: Receive
                 let ctx = Arc::clone(&ctx);
                 if let Err(e) =
                     tokio::spawn(async move { img_dispatch(event, ctx, config).await }).await
-                {
-                    log::error!("Failed to spawn file reader task: {}", e);
-                }
-            }
-            _ => (),
-        }
-    }
-
-    ExitCode::SUCCESS
-}
-
-async fn emwin_task(config: Arc<Config>, ctx: Arc<GoesSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
-    if let Err(e) = watcher.watch(&config.emwin_dir, notify::RecursiveMode::Recursive) {
-        log::error!(
-            "Failed to subscribe to filesystem events for {}: {}",
-            config.emwin_dir.display(),
-            e,
-        );
-        return ExitCode::FAILURE;
-    }
-
-    while let Some(event) = rx.recv().await {
-        match event.kind {
-            EventKind::Create(CreateKind::File) => {
-                let config = Arc::clone(&config);
-                let ctx = Arc::clone(&ctx);
-                if let Err(e) =
-                    tokio::spawn(async move { emwin_dispatch(event, ctx, config).await }).await
                 {
                     log::error!("Failed to spawn file reader task: {}", e);
                 }
