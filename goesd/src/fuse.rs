@@ -1,10 +1,16 @@
-use std::{collections::HashMap, ffi::OsStr, time::{SystemTime, Duration}, io::Write, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    ffi::OsStr,
+    io::Write,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
-use fuser::{Filesystem, FileAttr, FileType};
+use fuser::{FileAttr, FileType, Filesystem};
 use goes_cfg::Config;
 use goes_sql::GoesSqlContext;
 use tokio::runtime::Runtime;
-
 
 /// FUSE Filesystem state for EMWIN file reception
 pub struct EmwinFS {
@@ -17,7 +23,7 @@ pub struct EmwinFS {
 
 impl EmwinFS {
     const INIT_SIZE: u64 = 1024;
-    
+
     /// Create a new FUSE filesystem spawning parser threads to the given runtime
     pub fn new(rt: Arc<Runtime>, ctx: Arc<GoesSqlContext>, cfg: Arc<Config>) -> Self {
         Self {
@@ -37,17 +43,20 @@ struct EmwinFSEntry {
 
 impl Filesystem for EmwinFS {
     fn mknod(
-            &mut self,
-            req: &fuser::Request<'_>,
-            _parent: u64,
-            name: &OsStr,
-            _mode: u32,
-            _umask: u32,
-            _rdev: u32,
-            reply: fuser::ReplyEntry,
-        ) {
-        let name = PathBuf::from(name); 
-        let file = EmwinFSEntry { bytes: Vec::with_capacity(Self::INIT_SIZE as usize), name };
+        &mut self,
+        req: &fuser::Request<'_>,
+        _parent: u64,
+        name: &OsStr,
+        _mode: u32,
+        _umask: u32,
+        _rdev: u32,
+        reply: fuser::ReplyEntry,
+    ) {
+        let name = PathBuf::from(name);
+        let file = EmwinFSEntry {
+            bytes: Vec::with_capacity(Self::INIT_SIZE as usize),
+            name,
+        };
         let ino = self.ino;
         self.ino += 1;
         self.inodes.insert(ino, file);
@@ -72,56 +81,52 @@ impl Filesystem for EmwinFS {
 
         reply.entry(&Duration::from_secs(0), &attr, 0);
     }
-    
+
     fn write(
-            &mut self,
-            _req: &fuser::Request<'_>,
-            ino: u64,
-            _fh: u64,
-            offset: i64,
-            data: &[u8],
-            _write_flags: u32,
-            _flags: i32,
-            _lock_owner: Option<u64>,
-            reply: fuser::ReplyWrite,
-        ) {
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        _fh: u64,
+        offset: i64,
+        data: &[u8],
+        _write_flags: u32,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        reply: fuser::ReplyWrite,
+    ) {
         match self.inodes.get_mut(&ino) {
             Some(entry) => {
-                if offset != entry.bytes
-                    .len()
-                    .saturating_sub(1) as i64 {
+                if offset != entry.bytes.len().saturating_sub(1) as i64 {
                     log::error!("Failed to write to in-memory file: offset was not equal to last byte, got {}", offset);
-                    return reply.written(0)
+                    return reply.written(0);
                 }
 
-                match entry
-                    .bytes
-                    .write(data) {
+                match entry.bytes.write(data) {
                     Err(e) => {
                         log::error!("Failed to write {} bytes to buffer: {}", data.len(), e);
-                        return reply.error(5)
-                    },
+                        return reply.error(5);
+                    }
                     Ok(n) => {
                         reply.written(n as u32);
                     }
                 }
-            },
+            }
             None => {
                 reply.error(2);
             }
-        } 
+        }
     }
 
     fn release(
-            &mut self,
-            _req: &fuser::Request<'_>,
-            ino: u64,
-            _fh: u64,
-            _flags: i32,
-            _lock_owner: Option<u64>,
-            _flush: bool,
-            reply: fuser::ReplyEmpty,
-        ) {
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        _fh: u64,
+        _flags: i32,
+        _lock_owner: Option<u64>,
+        _flush: bool,
+        reply: fuser::ReplyEmpty,
+    ) {
         match self.inodes.remove(&ino) {
             Some(entry) => {
                 let ctx = self.ctx.clone();
@@ -131,17 +136,15 @@ impl Filesystem for EmwinFS {
                         Ok(text) => text,
                         Err(e) => {
                             log::error!("Failed to convert written bytes to utf-8: {}", e);
-                            return
+                            return;
                         }
                     };
                     crate::dispatch::emwin_dispatch(entry.name, text, ctx, cfg).await;
                 });
 
-                return reply.ok()
-            },
-            None => {
-                return reply.error(2)
+                return reply.ok();
             }
+            None => return reply.error(2),
         }
     }
 }

@@ -1,7 +1,10 @@
-use std::{path::{Path, PathBuf}, process::ExitCode};
+use std::{
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Action to take when an unrecognized file appears in the input directory
 #[derive(Serialize, Deserialize)]
@@ -166,7 +169,10 @@ impl Default for Config {
             img_dir: dirs::home_dir().unwrap_or("~".into()).join("goes/img"),
             unrecognized: UnrecognizedFileOpt::Delete,
             failure: UnrecognizedFileOpt::Move(
-                dirs::home_dir().unwrap_or("~".into()).join(CONFIG_FOLDER).join("fail/"),
+                dirs::home_dir()
+                    .unwrap_or("~".into())
+                    .join(CONFIG_FOLDER)
+                    .join("fail/"),
             ),
             done: UnrecognizedFileOpt::Delete,
             db_url: "mysql://root:@localhost".to_owned(),

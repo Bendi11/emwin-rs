@@ -1,5 +1,9 @@
 use actix_files::NamedFile;
-use actix_web::{web::{Data, self}, Result, error, Responder, Scope};
+use actix_web::{
+    error,
+    web::{self, Data},
+    Responder, Result, Scope,
+};
 use goes_cfg::Config;
 use sqlx::{MySqlPool, Row};
 
@@ -31,7 +35,6 @@ WHERE start_dt=(SELECT max(start_dt) FROM goesimg.files WHERE sector='FULL_DISK'
 
     Ok(NamedFile::open(cfg.img_dir.join(fd))?)
 }
-
 
 /*async fn latest_fd(sql: Data<MySqlPool>, cfg: Data<Config>) -> Result<Latest> {
     let (fd_fc, fd_fc_dt)  =  sqlx::query(

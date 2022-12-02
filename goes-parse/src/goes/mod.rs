@@ -1,16 +1,17 @@
-use std::{str::FromStr, path::Path};
+use std::{path::Path, str::FromStr};
 
-use chrono::{NaiveDateTime, Timelike, Utc, DateTime, TimeZone};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Timelike, Utc};
 use nom::{
     bytes::complete::take,
     character::streaming::char,
     combinator::{map_opt, map_res},
+    error::{ErrorKind, FromExternalError},
     sequence::{pair, preceded},
-    Parser, error::{FromExternalError, ErrorKind},
+    Parser,
 };
 use nom_supreme::tag::complete::tag;
 
-use crate::{parse::fromstr, ParseResult, ParseError};
+use crate::{parse::fromstr, ParseError, ParseResult};
 
 use self::dsn::DataShortName;
 
@@ -141,7 +142,7 @@ impl FromStr for Satellite {
 
 #[cfg(test)]
 mod test {
-    use crate::goes::dsn::{ABISector, Channel, Instrument, ProductAcronym, L2Acronym};
+    use crate::goes::dsn::{ABISector, Channel, Instrument, L2Acronym, ProductAcronym};
 
     use super::*;
 
@@ -156,11 +157,10 @@ mod test {
     const GOES_COUNTRY_LINES: &str =
         "img/fc/OR_ABI-L2-CMIPM1-M6CFC_G18_s20223200122250_e20223200122308_c20223200122372.jpg";
 
-
     #[test]
     fn test_goesr_fn() {
-        let (_, goes1) =
-            GoesFileName::parse(Path::new(GOES1)).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        let (_, goes1) = GoesFileName::parse(Path::new(GOES1))
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
         assert_eq!(goes1.env, SystemEnvironment::OperationalRealTime);
         assert_eq!(
             goes1.dsn,
@@ -173,7 +173,8 @@ mod test {
         );
         assert_eq!(goes1.satellite, Satellite::Goes17,);
 
-        GoesFileName::parse(Path::new(GOES2)).unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        GoesFileName::parse(Path::new(GOES2))
+            .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
 
         let (_, no_country_lines) = GoesFileName::parse(Path::new(GOES_NO_COUNTRY_LINES))
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
@@ -190,6 +191,5 @@ mod test {
             country_lines.dsn.acronym,
             ProductAcronym::L2(L2Acronym::CloudMoistureImagery(Channel::FullColorCountries))
         );
-
     }
 }

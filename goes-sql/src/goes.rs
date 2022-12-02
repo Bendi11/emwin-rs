@@ -1,13 +1,19 @@
 use std::path::Path;
 
-use goes_parse::goes::{GoesFileName, SystemEnvironment, dsn::{Instrument, ProductAcronym, L2Acronym, ABISector, ABIMode, Channel}, Satellite};
+use goes_parse::goes::{
+    dsn::{ABIMode, ABISector, Channel, Instrument, L2Acronym, ProductAcronym},
+    GoesFileName, Satellite, SystemEnvironment,
+};
 use sqlx::Row;
 
 use crate::GoesSqlContext;
 
-
 impl GoesSqlContext {
-    pub async fn insert_goes(&self, filename: GoesFileName, path: impl AsRef<Path>) -> Result<u64, sqlx::Error> {
+    pub async fn insert_goes(
+        &self,
+        filename: GoesFileName,
+        path: impl AsRef<Path>,
+    ) -> Result<u64, sqlx::Error> {
         let id = sqlx::query(
 r#"
 INSERT INTO goesimg.files (env, instrument, acronym, channel, sector, abi_mode, satellite, start_dt, end_dt, file_name)

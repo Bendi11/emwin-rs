@@ -1,7 +1,8 @@
-use std::{sync::Arc, path::PathBuf};
+use std::{path::PathBuf, sync::Arc};
 
 use chrono::Datelike;
 use goes_parse::{
+    display_error,
     dt::{
         code::CodeForm,
         product::{Analysis, Forecast},
@@ -9,14 +10,20 @@ use goes_parse::{
         AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
     },
     formats::{rwr::RegionalWeatherRoundup, taf::TAFReport},
-    header::GoesEmwinFileName, goes::GoesFileName, display_error,
+    goes::GoesFileName,
+    header::GoesEmwinFileName,
 };
 use goes_sql::GoesSqlContext;
 use notify::Event;
 
 use goes_cfg::Config;
 
-pub async fn emwin_dispatch(path: PathBuf, src: &str, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
+pub async fn emwin_dispatch(
+    path: PathBuf,
+    src: &str,
+    ctx: Arc<GoesSqlContext>,
+    config: Arc<Config>,
+) {
     match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
         Some(filename) => {
             let filename: GoesEmwinFileName = match filename.parse() {
@@ -107,8 +114,11 @@ pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Co
         let file_name = match GoesFileName::parse(&path) {
             Ok((_, f)) => f,
             Err(e) => {
-                log::error!("Failed to parse GOES-R image file name: {}", display_error(e));
-                return
+                log::error!(
+                    "Failed to parse GOES-R image file name: {}",
+                    display_error(e)
+                );
+                return;
             }
         };
 

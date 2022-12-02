@@ -6,7 +6,10 @@ use goes_sql::GoesSqlContext;
 use notify::{event::CreateKind, Event, EventKind, RecommendedWatcher, Watcher};
 
 use sqlx::MySqlPool;
-use tokio::{sync::mpsc::{channel, Receiver, Sender}, runtime::Runtime};
+use tokio::{
+    runtime::Runtime,
+    sync::mpsc::{channel, Receiver, Sender},
+};
 
 use goes_cfg::Config;
 
@@ -32,9 +35,8 @@ fn main() -> ExitCode {
             .build()
             .expect("Failed to initialize tokio runtime"),
     );
-     
+
     rt.clone().block_on(async move {
-        
         let config = match Config::read().await {
             Ok(cfg) => Arc::new(cfg),
             Err(e) => return e,
@@ -54,62 +56,73 @@ fn main() -> ExitCode {
         if let Err(e) = ctx.init().await {
             log::error!("Failed to initialize database: {}", e);
         }
-        
-        
+
         let (img_tx, img_rx) = channel(10);
         let img_watcher = match create_watcher(rt.clone(), img_tx) {
             Ok(img_w) => img_w,
             Err(e) => return e,
         };
-        
+
         let cfg = config.clone();
         let context = ctx.clone();
         let runtime = rt.clone();
         let emwin_task = tokio::task::spawn(async move {
             let fs = EmwinFS::new(runtime, context, cfg.clone());
-            fuser::mount2(fs, &cfg.emwin_dir, &[
-                MountOption::AutoUnmount,
-                MountOption::NoExec,
-                MountOption::NoAtime,
-                MountOption::Sync,
-                MountOption::FSName("EMWIN in-memory FS".to_owned()),
-                MountOption::NoSuid,
-                MountOption::NoDev,
-                MountOption::RW,
-            ])
+            fuser::mount2(
+                fs,
+                &cfg.emwin_dir,
+                &[
+                    MountOption::AutoUnmount,
+                    MountOption::NoExec,
+                    MountOption::NoAtime,
+                    MountOption::Sync,
+                    MountOption::FSName("EMWIN in-memory FS".to_owned()),
+                    MountOption::NoSuid,
+                    MountOption::NoDev,
+                    MountOption::RW,
+                ],
+            )
         });
-        let img_task = tokio::task::spawn(img_task(config, ctx, img_rx, img_watcher)); 
+        let img_task = tokio::task::spawn(img_task(config, ctx, img_rx, img_watcher));
         tokio::select! {
             Err(_) = emwin_task => return ExitCode::FAILURE,
             Ok(v) = img_task => return v,
-        } 
-    })
-}
-
-fn create_watcher(rt: Arc<Runtime>, tx: Sender<Event>) -> Result<RecommendedWatcher, ExitCode> {
-    Ok(match RecommendedWatcher::new(move |res| {
-            rt.block_on(async {
-                match res {
-                    Ok(event) => {
-                        if let Err(e) = tx.send(event).await {
-                            log::error!("Failed to send event through channel: {}", e);
-                        }
-                    }
-                    Err(e) => log::error!("Failed to receive filesystem event: {}", e),
-                }
-            });
-        },
-        notify::Config::default().with_poll_interval(Duration::from_secs(600)),
-    ) {
-        Ok(watcher) => watcher,
-        Err(e) => {
-            log::error!("Failed to create filesystem watcher: {}", e);
-            return Err(ExitCode::FAILURE);
         }
     })
 }
 
-async fn img_task(config: Arc<Config>, ctx: Arc<GoesSqlContext>, mut rx: Receiver<Event>, mut watcher: RecommendedWatcher) -> ExitCode {
+fn create_watcher(rt: Arc<Runtime>, tx: Sender<Event>) -> Result<RecommendedWatcher, ExitCode> {
+    Ok(
+        match RecommendedWatcher::new(
+            move |res| {
+                rt.block_on(async {
+                    match res {
+                        Ok(event) => {
+                            if let Err(e) = tx.send(event).await {
+                                log::error!("Failed to send event through channel: {}", e);
+                            }
+                        }
+                        Err(e) => log::error!("Failed to receive filesystem event: {}", e),
+                    }
+                });
+            },
+            notify::Config::default().with_poll_interval(Duration::from_secs(600)),
+        ) {
+            Ok(watcher) => watcher,
+            Err(e) => {
+                log::error!("Failed to create filesystem watcher: {}", e);
+                return Err(ExitCode::FAILURE);
+            }
+        },
+    )
+}
+
+async fn img_task(
+    config: Arc<Config>,
+    ctx: Arc<GoesSqlContext>,
+    mut rx: Receiver<Event>,
+    mut watcher: RecommendedWatcher,
+) -> ExitCode {
     if let Err(e) = watcher.watch(&config.img_dir, notify::RecursiveMode::Recursive) {
         log::error!(
             "Failed to subscribe to filesystem events for {}: {}",
