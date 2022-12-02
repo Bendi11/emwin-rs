@@ -66,7 +66,7 @@ fn main() -> ExitCode {
         let cfg = config.clone();
         let context = ctx.clone();
         let runtime = rt.clone();
-        let emwin_task = tokio::task::spawn(async move {
+        let emwin_task = tokio::task::spawn_blocking(move || {
             let fs = EmwinFS::new(runtime, context, cfg.clone());
             fuser::mount2(
                 fs,
