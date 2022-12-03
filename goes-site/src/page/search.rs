@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use actix_files::NamedFile;
 use futures::TryStreamExt;
@@ -11,9 +11,10 @@ use actix_web::{
     web::{self, Data, Json},
     Responder, Result, Scope,
 };
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, SecondsFormat, Utc, DateTime};
 use serde::{Deserialize, Deserializer};
-use sqlx::{MySql, MySqlPool, QueryBuilder, Row};
+use serde_json::{Map, Value};
+use sqlx::{MySql, MySqlPool, QueryBuilder, Row, Column};
 
 use crate::map_path;
 
@@ -55,8 +56,16 @@ pub struct QueryForm {
 pub struct MultiQueryForm {
     #[serde(flatten)]
     pub query: QueryForm,
+    pub rets: QueryReturn,
     pub limit: u16,
     pub page: u16,
+}
+
+bitflags::bitflags! {
+    pub struct QueryReturn: u8 {
+        const PATH = 0b00000001;
+        const DATETIME = 0b00000010;
+    }
 }
 
 fn deserialize_input_dt<'d, D: Deserializer<'d>>(d: D) -> Result<NaiveDateTime, D::Error>
@@ -68,11 +77,11 @@ where
     Ok(NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M").map_err(D::Error::custom)?)
 }
 
-fn search_sql(form: &QueryForm, single: bool) -> QueryBuilder<MySql> {
+fn search_sql(form: &QueryForm, single: bool, rets: QueryReturn) -> QueryBuilder<MySql> {
     let mut qb: QueryBuilder<MySql> = QueryBuilder::new(
         r#"
 with search as (
-    select file_name, start_dt from goesimg.files where (
+    select * from goesimg.files where (
 "#,
     );
 
@@ -96,12 +105,18 @@ with search as (
         }
     }
 
-    qb.push(
-        r#"
-))
-select file_name from search
-"#,
-    );
+    qb.push(")) select ");
+    {
+        let mut returns = qb.separated(", ");
+        if rets.contains(QueryReturn::PATH) {
+            returns.push("file_name");
+        }
+        if rets.contains(QueryReturn::DATETIME) {
+            returns.push("start_dt");
+        }
+    }
+
+    qb.push(" from search ");
 
     match form.time {
         TimeQuery::Within { from, to } => {
@@ -126,8 +141,6 @@ select file_name from search
             qb.push("order by start_dt desc");
         }
     }
-
-    log::error!("{:#?}", qb.sql());
 
     qb
 }
@@ -155,7 +168,7 @@ pub async fn img_single_post(
 }
 
 pub async fn img_single_ep(sql: Data<MySqlPool>, form: &QueryForm) -> Result<impl Responder> {
-    let mut qb = search_sql(form, true);
+    let mut qb = search_sql(form, true, QueryReturn::PATH);
     qb.push(';');
 
     let file = qb
@@ -181,7 +194,11 @@ pub async fn img_multi(
         ));
     }
 
-    let mut qb = search_sql(&form.query, form.limit == 1);
+    if form.rets.is_empty() {
+        return Err(error::ErrorBadRequest("`rets` must not be empty"))
+    }
+
+    let mut qb = search_sql(&form.query, form.limit == 1, form.rets);
 
     qb.push("\nlimit ");
     qb.push_bind(form.limit);
@@ -191,20 +208,54 @@ pub async fn img_multi(
     qb.push(";");
 
     let mut query = qb.build().fetch(sql.get_ref());
-
-    let mut images: Vec<PathBuf> = vec![];
+    
+    let mut images: Vec<Map<String, Value>> = vec![];
     while let Some(row) = query
         .try_next()
         .await
         .map_err(|e| error::ErrorBadRequest(e))?
     {
-        images.push(
-            row.try_get::<&str, _>(0)
+        let mut v = Map::new();
+        if form.rets.contains(QueryReturn::PATH) {
+            let path = row.try_get::<&str, _>("file_name")
                 .map_err(|e| ErrorInternalServerError(e))
                 .and_then(map_path(cfg.get_ref()))?
-                .to_owned(),
-        );
+                .to_owned();
+            v.insert("path".to_owned(), serde_json::to_value(path).map_err(ErrorInternalServerError)?);
+        }
+
+        if form.rets.contains(QueryReturn::DATETIME) {
+            let dt = row.try_get::<DateTime<Utc>, _>("start_dt")
+                .map_err(|e| ErrorInternalServerError(e))?;
+            v.insert("datetime".to_owned(), serde_json::to_value(dt.to_rfc3339_opts(SecondsFormat::Secs, true)).map_err(ErrorInternalServerError)?);
+        }
+
+        images.push(v);
     }
 
     Ok(web::Json(images))
+}
+
+impl<'de> Deserialize<'de> for QueryReturn {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where
+            D: Deserializer<'de> {
+        let array = Vec::<&str>::deserialize(deserializer)?;
+        let mut this = Self::empty();
+        for term in array {
+            this |= Self::from_str(term).map_err(|_| D::Error::custom("Unknown query return term"))?;
+        }
+
+        Ok(this)
+    }
+}
+
+impl FromStr for QueryReturn {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "path" => Ok(Self::PATH),
+            "datetime" => Ok(Self::DATETIME),
+            _ => Err(())
+        }
+    }
 }

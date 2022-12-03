@@ -8,9 +8,6 @@ function dt(str) {
 }
 
 document.addEventListener("DOMContentLoaded", function(){
-    document.getElementById('fd_fc_last_update').innerHTML = dt("{{ fd_fc_dt }}");
-    document.getElementById('fd_last_update').innerHTML = dt("{{ fd_dt }}");
-    
     fetch('/search/img/multi', {
         method: 'POST',
         headers: {
@@ -24,11 +21,18 @@ document.addEventListener("DOMContentLoaded", function(){
             sector: 'FULL_DISK',
             limit: 1,
             page: 0,
+            rets: ["path", "datetime"]
         })
     })
         .catch(console.log)
         .then(resp => resp.json())
-        .then(data => document.getElementById('fd_fc_img').setAttribute('src', `/assets/${data[0]}`));
+        .then(data => {
+            document
+                .getElementById('fd_fc_img')
+                .setAttribute('src', `/assets/${data[0].path}`);
+
+            document.getElementById('fd_fc_last_update').innerHTML = dt(data[0].datetime);
+        });
 
     fetch(
         '/search/img/multi', {
@@ -42,11 +46,18 @@ document.addEventListener("DOMContentLoaded", function(){
                 sector: 'FULL_DISK',
                 limit: 1,
                 page: 0,
+                rets: ["path", "datetime"]
             })
         }
     )
         .catch(console.log)
         .then(resp => resp.json())
-        .then(data => document.getElementById('fd_img').setAttribute('src', `/assets/${data[0]}`));
+        .then(data => {
+            document
+                .getElementById('fd_img')
+                .setAttribute('src', `/assets/${data[0].path}`);
+
+            document.getElementById('fd_last_update').innerHTML = dt(data[0].datetime);
+        });
 });
 

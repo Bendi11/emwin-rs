@@ -19,6 +19,7 @@ env_logger = "0.8"
 goes-cfg = { path = "../goes-cfg" }
 futures = "0.3"
 base64 = "0.13"
+bitflags = "1.3"
 
 [package.metadata.deb]
 name = "goes-site"
