@@ -7,12 +7,12 @@ const query = {
 };
 
 function update(form) {
-    query.acronym = form['acronym-select'];
-    query.channel = form['channel-select'];
-    query.satellite = form['satellite-select'];
-    query.sector = form['sector-select'];
-    query.from = form['from-input'];
-    query.to = form['to-input'];
+    query.acronym = form['acronym-select'].value;
+    query.channel = form['channel-select'].value;
+    query.satellite = form['satellite-select'].value;
+    query.sector = form['sector-select'].value;
+    query.from = form['from-input'].value;
+    query.to = form['to-input'].value;
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -81,13 +81,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
     copy_btn.addEventListener('click', () => {
         update(form.elements);
-        navigator
-            .clipboard
-            .write(`${location.origin}/search/img/single/${btoa(JSON.stringify(query))}`)
-            .then(
-                () => {},
-                (e) => alert(`Failed to copy to clipboard: ${e}`)
-            );
+
+        const textarea = document.createElement("textarea");
+        textarea.textContent = `${location.origin}/search/img/single/${btoa(JSON.stringify(query))}`;
+        textarea.style.position = "fixed";
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand("copy");
+        }
+        catch (ex) {
+            console.warn("Copy to clipboard failed.", ex);
+            return prompt("Copy to clipboard: Ctrl+C, Enter", text);
+        }
+        finally {
+            document.body.removeChild(textarea);
+        }
     });
 })
 
