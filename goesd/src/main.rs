@@ -68,10 +68,11 @@ fn main() -> ExitCode {
         let runtime = rt.clone();
         let emwin_task = tokio::task::spawn_blocking(move || {
             let fs = EmwinFS::new(runtime, context, cfg.clone());
-            fuser::mount2(
+            if let Err(e) = fuser::mount2(
                 fs,
                 &cfg.emwin_dir,
                 &[
+                    MountOption::AutoUnmount,
                     MountOption::NoExec,
                     MountOption::NoAtime,
                     MountOption::Sync,
@@ -80,11 +81,16 @@ fn main() -> ExitCode {
                     MountOption::NoDev,
                     MountOption::RW,
                 ],
-            )
+            ) {
+                log::error!("Failed to mount filesystem at {}: {}", cfg.emwin_dir.display(), e);
+            }
+
+            log::error!("Filesystem unmounted at {}", cfg.emwin_dir.display());
         });
+
         let img_task = tokio::task::spawn(img_task(config, ctx, img_rx, img_watcher));
         tokio::select! {
-            Err(_) = emwin_task => return ExitCode::FAILURE,
+            _ = emwin_task => return ExitCode::FAILURE,
             Ok(v) = img_task => return v,
         }
     })

@@ -4,7 +4,7 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use fuser::{FileAttr, FileType, Filesystem};
@@ -21,14 +21,34 @@ pub struct EmwinFS {
     cfg: Arc<Config>,
 }
 
+const TTL: Duration = Duration::from_secs(1);
+
 impl EmwinFS {
     const INIT_SIZE: u64 = 1024;
+    const ROOT_ATTR: FileAttr = FileAttr {
+        ino: 1,
+        size: 0,
+        blocks: 0,
+        atime: UNIX_EPOCH, // 1970-01-01 00:00:00
+        mtime: UNIX_EPOCH,
+        ctime: UNIX_EPOCH,
+        crtime: UNIX_EPOCH,
+        kind: FileType::Directory,
+        perm: 0o755,
+        nlink: 2,
+        uid: 501,
+        gid: 20,
+        rdev: 0,
+        flags: 0,
+        blksize: 512,
+    };
+
 
     /// Create a new FUSE filesystem spawning parser threads to the given runtime
     pub fn new(rt: Arc<Runtime>, ctx: Arc<GoesSqlContext>, cfg: Arc<Config>) -> Self {
         Self {
             inodes: HashMap::new(),
-            ino: 0,
+            ino: 2,
             rt,
             ctx,
             cfg,
@@ -39,32 +59,15 @@ impl EmwinFS {
 struct EmwinFSEntry {
     bytes: Vec<u8>,
     name: PathBuf,
+    uid: u32,
+    gid: u32,
 }
 
-impl Filesystem for EmwinFS {
-    fn mknod(
-        &mut self,
-        req: &fuser::Request<'_>,
-        _parent: u64,
-        name: &OsStr,
-        _mode: u32,
-        _umask: u32,
-        _rdev: u32,
-        reply: fuser::ReplyEntry,
-    ) {
-        log::error!("create {}", name.to_string_lossy());
-        let name = PathBuf::from(name);
-        let file = EmwinFSEntry {
-            bytes: Vec::with_capacity(Self::INIT_SIZE as usize),
-            name,
-        };
-        let ino = self.ino;
-        self.ino += 1;
-        self.inodes.insert(ino, file);
-
-        let attr = FileAttr {
+impl EmwinFSEntry {
+    pub fn attr(&self, ino: u64) -> FileAttr {
+        FileAttr {
             ino,
-            size: Self::INIT_SIZE,
+            size: EmwinFS::INIT_SIZE,
             blocks: 1,
             atime: SystemTime::UNIX_EPOCH,
             mtime: SystemTime::UNIX_EPOCH,
@@ -73,14 +76,58 @@ impl Filesystem for EmwinFS {
             kind: FileType::RegularFile,
             perm: 0o220,
             nlink: 0,
+            uid: self.uid,
+            gid: self.gid,
+            rdev: 0,
+            blksize: EmwinFS::INIT_SIZE as u32,
+            flags: 0,
+        }
+    }
+}
+
+impl Filesystem for EmwinFS {
+    fn lookup(&mut self, _req: &fuser::Request<'_>, parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
+        for (ino, entry) in self.inodes.iter() {
+            if name == entry.name {
+                return reply.entry(&TTL, &entry.attr(*ino), 1);
+            }
+        }
+
+        reply.error(2)
+    }
+
+    fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
+        if ino == 1 {
+            return reply.attr(&TTL, &Self::ROOT_ATTR)
+        } else {
+            return reply.error(2)
+        }
+    }
+
+    fn create(
+            &mut self,
+            req: &fuser::Request<'_>,
+            parent: u64,
+            name: &OsStr,
+            mode: u32,
+            umask: u32,
+            flags: i32,
+            reply: fuser::ReplyCreate,
+        ) {
+        log::error!("create {}", name.to_string_lossy());
+        let name = PathBuf::from(name);
+        let file = EmwinFSEntry {
+            bytes: Vec::with_capacity(Self::INIT_SIZE as usize),
+            name,
             uid: req.uid(),
             gid: req.gid(),
-            rdev: 0,
-            blksize: Self::INIT_SIZE as u32,
-            flags: 0,
         };
+        let ino = self.ino;
+        let attr = file.attr(ino);
+        self.ino += 1;
+        self.inodes.insert(ino, file);
 
-        reply.entry(&Duration::from_secs(0), &attr, 0);
+        reply.created(&Duration::from_secs(1), &attr, 0, 0, 0);
     }
 
     fn write(
@@ -129,7 +176,6 @@ impl Filesystem for EmwinFS {
         _flush: bool,
         reply: fuser::ReplyEmpty,
     ) {
-        log::error!("release {}", ino);
         match self.inodes.remove(&ino) {
             Some(entry) => {
                 let ctx = self.ctx.clone();
@@ -142,6 +188,10 @@ impl Filesystem for EmwinFS {
                             return;
                         }
                     };
+                    
+
+                    log::error!("release {}: \n{}", ino, text);
+
                     crate::dispatch::emwin_dispatch(entry.name, text, ctx, cfg).await;
                 });
 
