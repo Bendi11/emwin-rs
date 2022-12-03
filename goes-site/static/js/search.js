@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const img = document.createElement('img');
         img.setAttribute('class', 'img-responsive');
-        img.setAttribute('src', data.path);
+        img.setAttribute('src', `/assets/${data.path}`);
 
         center.appendChild(img);
         col.appendChild(center);
