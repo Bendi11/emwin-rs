@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 for(let i = 0; i < data.length; i += 1) {
                     let elem;
                     if(i + 2 < data.length) {
-                        const elem = document.createElement('div');
+                        elem = document.createElement('div');
                         elem.setAttribute('class', 'row');
 
                         elem.appendChild(imgelem(data[i]));
