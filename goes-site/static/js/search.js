@@ -56,7 +56,8 @@ document.addEventListener("DOMContentLoaded", function() {
         return col;
     }
 
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
         update(form.elements);
         fetch('/search/img/multi', {
             method: 'POST',
