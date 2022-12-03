@@ -7,12 +7,21 @@ const query = {
 };
 
 function update(form) {
+    delete query.latest;
     query.acronym = form['acronym-select'].value;
     query.channel = form['channel-select'].value;
     query.satellite = form['satellite-select'].value;
     query.sector = form['sector-select'].value;
     query.from = form['from-input'].value;
     query.to = form['to-input'].value;
+    query.from = (query.from.length === 0) ? null : query.from;
+    query.to = (query.to.length === 0) ? null : query.to;
+
+    if(query.from === null && query.to === null) {
+        delete query.from;
+        delete query.to;
+        query.latest = null;
+    }
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -82,8 +91,10 @@ document.addEventListener("DOMContentLoaded", function() {
     copy_btn.addEventListener('click', () => {
         update(form.elements);
 
+        const {limit: _limit, page: _page, rets: _rets, ...single} = query;
+
         const textarea = document.createElement("textarea");
-        textarea.textContent = `${location.origin}/search/img/single/${btoa(JSON.stringify(query))}`;
+        textarea.textContent = `${location.origin}/search/img/single/${btoa(JSON.stringify(single))}`;
         textarea.style.position = "fixed";
         document.body.appendChild(textarea);
         textarea.select();
