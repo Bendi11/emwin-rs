@@ -72,7 +72,6 @@ fn main() -> ExitCode {
                 fs,
                 &cfg.emwin_dir,
                 &[
-                    MountOption::AutoUnmount,
                     MountOption::NoExec,
                     MountOption::NoAtime,
                     MountOption::Sync,

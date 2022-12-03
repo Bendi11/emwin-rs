@@ -52,6 +52,7 @@ impl Filesystem for EmwinFS {
         _rdev: u32,
         reply: fuser::ReplyEntry,
     ) {
+        log::error!("create {}", name.to_string_lossy());
         let name = PathBuf::from(name);
         let file = EmwinFSEntry {
             bytes: Vec::with_capacity(Self::INIT_SIZE as usize),
@@ -94,6 +95,7 @@ impl Filesystem for EmwinFS {
         _lock_owner: Option<u64>,
         reply: fuser::ReplyWrite,
     ) {
+        log::error!("write to {}", ino);
         match self.inodes.get_mut(&ino) {
             Some(entry) => {
                 if offset != entry.bytes.len().saturating_sub(1) as i64 {
@@ -127,6 +129,7 @@ impl Filesystem for EmwinFS {
         _flush: bool,
         reply: fuser::ReplyEmpty,
     ) {
+        log::error!("release {}", ino);
         match self.inodes.remove(&ino) {
             Some(entry) => {
                 let ctx = self.ctx.clone();
