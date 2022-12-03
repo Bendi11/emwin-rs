@@ -70,6 +70,10 @@ document.addEventListener("DOMContentLoaded", function() {
             .catch(console.error)
             .then(resp => resp.json())
             .then(data => {
+                while(results.firstChild) {
+                    results.removeChild(results.firstChild);
+                }
+
                 for(let i = 0; i < data.length; i += 1) {
                     let elem;
                     if(i + 2 < data.length) {
