@@ -22,7 +22,6 @@ pub async fn emwin_dispatch(
     path: PathBuf,
     src: &str,
     ctx: Arc<GoesSqlContext>,
-    config: Arc<Config>,
 ) {
     match path.file_stem().map(std::ffi::OsStr::to_str).flatten() {
         Some(filename) => {
@@ -30,7 +29,6 @@ pub async fn emwin_dispatch(
                 Ok(f) => f,
                 Err(e) => {
                     log::error!("Failed to parse newly created filename {}: {}", filename, e);
-                    config.failure.do_for(&path).await;
                     return;
                 }
             };
@@ -50,12 +48,9 @@ pub async fn emwin_dispatch(
                         Ok((_, rwr)) => rwr,
                         Err(e) => {
                             log::error!("Failed to parse regional weather roundup: {}", e);
-                            config.failure.do_for(&path).await;
                             return;
                         }
                     };
-
-                    config.done.do_for(path).await;
                 }
                 DataTypeDesignator::UpperAirData(UpperAirData {
                     subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
@@ -80,7 +75,6 @@ pub async fn emwin_dispatch(
                         Ok((_, forecast)) => forecast,
                         Err(e) => {
                             log::error!("Failed to parse TAF report: {}", e);
-                            config.failure.do_for(&path).await;
                             return;
                         }
                     };
@@ -90,12 +84,9 @@ pub async fn emwin_dispatch(
                             log::error!("Failed to write TAF forecast to database: {}", e);
                         }
                     }
-
-                    config.done.do_for(path).await;
                 }
                 _ => {
                     log::trace!("Unknown EMWIN product: {:?}", filename.wmo_product_id);
-                    config.unrecognized.do_for(&path).await;
                 }
             }
         }
@@ -104,7 +95,6 @@ pub async fn emwin_dispatch(
                 "Newly created file {} contains invalid unicode characters",
                 path.display(),
             );
-            config.unrecognized.do_for(&path).await;
         }
     }
 }

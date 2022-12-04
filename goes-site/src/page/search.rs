@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 use actix_files::NamedFile;
 use futures::TryStreamExt;
@@ -14,7 +14,7 @@ use actix_web::{
 use chrono::{NaiveDateTime, SecondsFormat, Utc, DateTime};
 use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value};
-use sqlx::{MySql, MySqlPool, QueryBuilder, Row, Column};
+use sqlx::{MySql, MySqlPool, QueryBuilder, Row};
 
 use crate::map_path;
 

@@ -8,7 +8,6 @@ use std::{
 };
 
 use fuser::{FileAttr, FileType, Filesystem};
-use goes_cfg::Config;
 use goes_sql::GoesSqlContext;
 use tokio::runtime::Runtime;
 
@@ -18,7 +17,6 @@ pub struct EmwinFS {
     ino: u64,
     rt: Arc<Runtime>,
     ctx: Arc<GoesSqlContext>,
-    cfg: Arc<Config>,
 }
 
 const TTL: Duration = Duration::from_secs(1);
@@ -45,13 +43,12 @@ impl EmwinFS {
 
 
     /// Create a new FUSE filesystem spawning parser threads to the given runtime
-    pub fn new(rt: Arc<Runtime>, ctx: Arc<GoesSqlContext>, cfg: Arc<Config>) -> Self {
+    pub fn new(rt: Arc<Runtime>, ctx: Arc<GoesSqlContext>) -> Self {
         Self {
             inodes: HashMap::new(),
             ino: 2,
             rt,
             ctx,
-            cfg,
         }
     }
 }
@@ -86,7 +83,7 @@ impl EmwinFSEntry {
 }
 
 impl Filesystem for EmwinFS {
-    fn lookup(&mut self, _req: &fuser::Request<'_>, parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
+    fn lookup(&mut self, _req: &fuser::Request<'_>, _parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
         for (ino, entry) in self.inodes.iter() {
             if name == entry.name {
                 return reply.entry(&TTL, &entry.attr(*ino), 1);
@@ -107,11 +104,11 @@ impl Filesystem for EmwinFS {
     fn create(
             &mut self,
             req: &fuser::Request<'_>,
-            parent: u64,
+            _parent: u64,
             name: &OsStr,
-            mode: u32,
-            umask: u32,
-            flags: i32,
+            _mode: u32,
+            _umask: u32,
+            _flags: i32,
             reply: fuser::ReplyCreate,
         ) {
         log::error!("create {}", name.to_string_lossy());
@@ -127,7 +124,7 @@ impl Filesystem for EmwinFS {
         self.ino += 1;
         self.inodes.insert(ino, file);
 
-        reply.created(&Duration::from_secs(1), &attr, 0, 0, 0);
+        reply.created(&TTL, &attr, 0, 0, 0);
     }
 
     fn write(
@@ -179,7 +176,6 @@ impl Filesystem for EmwinFS {
         match self.inodes.remove(&ino) {
             Some(entry) => {
                 let ctx = self.ctx.clone();
-                let cfg = self.cfg.clone();
                 self.rt.spawn(async move {
                     let text = match std::str::from_utf8(&entry.bytes) {
                         Ok(text) => text,
@@ -192,7 +188,7 @@ impl Filesystem for EmwinFS {
 
                     log::error!("release {}: \n{}", ino, text);
 
-                    crate::dispatch::emwin_dispatch(entry.name, text, ctx, cfg).await;
+                    crate::dispatch::emwin_dispatch(entry.name, text, ctx).await;
                 });
 
                 return reply.ok();

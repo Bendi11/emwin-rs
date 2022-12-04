@@ -67,7 +67,7 @@ fn main() -> ExitCode {
         let context = ctx.clone();
         let runtime = rt.clone();
         let emwin_task = tokio::task::spawn_blocking(move || {
-            let fs = EmwinFS::new(runtime, context, cfg.clone());
+            let fs = EmwinFS::new(runtime, context);
             if let Err(e) = fuser::mount2(
                 fs,
                 &cfg.emwin_dir,
