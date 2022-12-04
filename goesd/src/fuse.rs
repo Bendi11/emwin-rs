@@ -19,7 +19,7 @@ pub struct EmwinFS {
     ctx: Arc<GoesSqlContext>,
 }
 
-const TTL: Duration = Duration::from_secs(1);
+const TTL: Duration = Duration::new(0, 0);
 
 impl EmwinFS {
     const INIT_SIZE: u64 = 1024;
@@ -132,7 +132,7 @@ impl Filesystem for EmwinFS {
         _req: &fuser::Request<'_>,
         ino: u64,
         _fh: u64,
-        offset: i64,
+        _offset: i64,
         data: &[u8],
         _write_flags: u32,
         _flags: i32,
