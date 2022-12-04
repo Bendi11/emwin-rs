@@ -142,10 +142,10 @@ impl Filesystem for EmwinFS {
         log::error!("write to {}", ino);
         match self.inodes.get_mut(&ino) {
             Some(entry) => {
-                if offset != entry.bytes.len().saturating_sub(1) as i64 {
+                /*if offset != entry.bytes.len().saturating_sub(1) as i64 {
                     log::error!("Failed to write to in-memory file: offset was not equal to last byte, got {}", offset);
                     return reply.written(0);
-                }
+                }*/
 
                 match entry.bytes.write(data) {
                     Err(e) => {
