@@ -73,12 +73,11 @@ fn main() -> ExitCode {
                 &cfg.emwin_dir,
                 &[
                     MountOption::AutoUnmount,
+                    MountOption::AllowOther,
                     MountOption::NoExec,
                     MountOption::NoAtime,
-                    MountOption::Sync,
                     MountOption::FSName("EMWIN in-memory FS".to_owned()),
                     MountOption::NoSuid,
-                    MountOption::NoDev,
                     MountOption::RW,
                 ],
             ) {
