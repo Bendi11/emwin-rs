@@ -35,7 +35,7 @@ pub struct CCCC {
 }
 
 /// A parsed EMWIN filename from a GOES-R series satellite
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GoesEmwinFileName {
     pub wmo_product_id: DataTypeDesignator,
     pub country: CCCC,

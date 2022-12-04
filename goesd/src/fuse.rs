@@ -2,14 +2,17 @@ use std::{
     collections::HashMap,
     ffi::OsStr,
     io::Write,
-    path::PathBuf,
+    path::{PathBuf, Path},
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use fuser::{FileAttr, FileType, Filesystem};
+use goes_parse::header::GoesEmwinFileName;
 use goes_sql::GoesSqlContext;
 use tokio::runtime::Runtime;
+
+use crate::dispatch;
 
 /// FUSE Filesystem state for EMWIN file reception
 pub struct EmwinFS {
@@ -55,7 +58,7 @@ impl EmwinFS {
 
 struct EmwinFSEntry {
     bytes: Vec<u8>,
-    name: PathBuf,
+    name: GoesEmwinFileName,
     uid: u32,
     gid: u32,
 }
@@ -84,6 +87,10 @@ impl EmwinFSEntry {
 
 impl Filesystem for EmwinFS {
     fn lookup(&mut self, _req: &fuser::Request<'_>, _parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
+        let Some(name) = Path::new(name)
+            .file_name()
+            .and_then(OsStr::to_str)
+            .and_then(|s| s.parse::<GoesEmwinFileName>().ok()) else { return reply.error(2); };
         for (ino, entry) in self.inodes.iter() {
             if name == entry.name {
                 return reply.entry(&TTL, &entry.attr(*ino), 1);
@@ -111,8 +118,22 @@ impl Filesystem for EmwinFS {
             _flags: i32,
             reply: fuser::ReplyCreate,
         ) {
-        log::error!("create {}", name.to_string_lossy());
-        let name = PathBuf::from(name);
+        let name: GoesEmwinFileName = match Path::new(name)
+            .file_name()
+            .and_then(OsStr::to_str)
+            .map(|s| s.parse()) {
+                Some(Ok(f)) => f,
+                None => return reply.error(43),
+                Some(Err(e)) => {
+                    log::trace!("Failed to parse newly created filename {}: {}", Path::new(name).display(), e);
+                    return reply.error(43)
+                }
+            };
+
+        if !dispatch::supported(&name) {
+            return reply.error(1)
+        }
+
         let file = EmwinFSEntry {
             bytes: Vec::with_capacity(Self::INIT_SIZE as usize),
             name,
@@ -139,7 +160,6 @@ impl Filesystem for EmwinFS {
         _lock_owner: Option<u64>,
         reply: fuser::ReplyWrite,
     ) {
-        log::error!("write to {}", ino);
         match self.inodes.get_mut(&ino) {
             Some(entry) => {
                 /*if offset != entry.bytes.len().saturating_sub(1) as i64 {
@@ -184,9 +204,6 @@ impl Filesystem for EmwinFS {
                             return;
                         }
                     };
-                    
-
-                    log::error!("release {}: \n{}", ino, text);
 
                     crate::dispatch::emwin_dispatch(entry.name, text, ctx).await;
                 });
