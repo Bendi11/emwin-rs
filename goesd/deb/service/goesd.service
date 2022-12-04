@@ -1,15 +1,13 @@
 [Unit]
 Description=Automatic parsing of EMWIN files
 AssertPathExists=/usr/bin/goesd
-Requires=goesproc.service mariadb.service
+Requires=mariadb.service
 
 [Service]
 Type=simple
 WorkingDirectory=~
 ExecStart=/usr/bin/goesd
 Restart=always
-PrivateTmp=true
-NoNewPrivileges=false
 User=goesguy
 Group=goesguy
 StandardError=journal

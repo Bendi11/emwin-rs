@@ -27,7 +27,7 @@ impl EmwinFS {
         ino: 1,
         size: 0,
         blocks: 0,
-        atime: UNIX_EPOCH, // 1970-01-01 00:00:00
+        atime: UNIX_EPOCH,
         mtime: UNIX_EPOCH,
         ctime: UNIX_EPOCH,
         crtime: UNIX_EPOCH,
