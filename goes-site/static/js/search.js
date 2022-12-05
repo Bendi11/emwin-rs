@@ -14,8 +14,8 @@ function update(form) {
     query.sector = form['sector-select'].value;
     query.from = form['from-input'].value;
     query.to = form['to-input'].value;
-    query.from = (query.from.length === 0) ? null : query.from;
-    query.to = (query.to.length === 0) ? null : query.to;
+    query.from = (query.from.length === 0) ? null : new Date(query.from).toISOString();
+    query.to = (query.to.length === 0) ? null : new Date(query.to).toISOString();
 
     if(query.from === null && query.to === null) {
         delete query.from;
