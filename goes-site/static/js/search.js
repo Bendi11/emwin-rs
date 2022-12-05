@@ -68,7 +68,9 @@ document.addEventListener("DOMContentLoaded", function() {
             body: JSON.stringify(query),
         })
             .catch(console.error)
+            .then(r => { if(!r.ok) { throw `Invalid HTTP response from server ${r.status}: ${r.statusText}`; } else { return r; } })
             .then(resp => resp.json())
+            .catch(console.error)
             .then(data => {
                 while(results.firstChild) {
                     results.removeChild(results.firstChild);
