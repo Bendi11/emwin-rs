@@ -12,6 +12,7 @@ use uom::si::{angle::radian, length::meter, velocity::meter_per_second};
 
 mod goes;
 mod taf;
+mod metar;
 
 /// Context containing a database connection used to execute queries for EMWIN data
 #[derive(Clone, Debug)]
