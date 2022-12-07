@@ -1,12 +1,13 @@
-use goes_parse::formats::{metar::{RunwayState, MetarSeaSurfaceReport, MetarReport, RunwayTrend}, RunwayDesignatorDirection, codes::{runway::{RunwayDeposits, RunwayDepositDepth, RunwayContaminationLevel, RunwaySurfaceFriction, RunwaySurfaceBrakingAction}, sea::StateOfTheSea}};
-use uom::si::{length::meter, f32::ThermodynamicTemperature, thermodynamic_temperature::degree_celsius};
+use goes_parse::formats::{metar::{RunwayState, MetarSeaSurfaceReport, MetarReport, RunwayTrend, EmwinMetarReport, RunwayWindShear}, RunwayDesignatorDirection, codes::{runway::{RunwayDeposits, RunwayDepositDepth, RunwayContaminationLevel, RunwaySurfaceFriction, RunwaySurfaceBrakingAction}, sea::StateOfTheSea}, Compass};
+use uom::si::{length::meter, f32::ThermodynamicTemperature, thermodynamic_temperature::degree_celsius, pressure::pascal, angle::radian};
 
 use crate::GoesSqlContext;
 
 
 impl GoesSqlContext {
 
-    pub async fn insert_metar(&self, metar: &MetarReport) -> Result<u64, sqlx::Error> {
+    pub async fn insert_metar(&self, emwin: &EmwinMetarReport) -> Result<u64, sqlx::Error> {
+        let EmwinMetarReport { month, metar, .. } = emwin;
         let data_id = self.insert_data().await?;
         
         for status in metar.runway_status.iter() {
@@ -32,11 +33,11 @@ values (?, ?, ?, ?, ?);
                 RunwayDesignatorDirection::Right => "RIGHT"
             }))
             .bind(len.get::<meter>())
-            .bind(trend.map(|t| match t {
+            .bind(match trend {
                 RunwayTrend::Closer => "CLOSER",
                 RunwayTrend::Farther => "FARTHER",
                 RunwayTrend::NoChange => "NO_CHANGE",
-            }))
+            })
             .execute(&self.conn)
             .await?;
         }
@@ -45,6 +46,41 @@ values (?, ?, ?, ?, ?);
         if let Some(ref recent) = metar.recent_weather {
             self.insert_significant_weather(data_id, &[*recent]).await?;
         }
+
+        self.insert_cloud_report(data_id, &metar.clouds).await?;
+
+        sqlx::query(
+            r#"
+insert into weather.metar (data_id, country, origin, vwind_ex_ccw, vwind_ex_cw, visibility, min_vis, min_vis_dir, air_temp, dewpoint_temp, qnh, runway_wind_shear_within)
+values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            "#
+        )
+        .bind(data_id)
+        .bind(metar.country.code.iter().collect::<String>())
+        .bind(month.checked_add_signed(metar.origin))
+        .bind(metar.variable_wind_dir.map(|w| w.extreme_ccw.get::<radian>()))
+        .bind(metar.variable_wind_dir.map(|w| w.extreme_cw.get::<radian>()))
+        .bind(metar.visibility.map(|v| v.get::<meter>()))
+        .bind(metar.minimum_visibility.map(|v| v.visibility.get::<meter>()))
+        .bind(metar.minimum_visibility.map(|v| match v.direction {
+            Compass::North => "N",
+            Compass::NorthEast => "NE",
+            Compass::East => "E",
+            Compass::SouthEast => "SE",
+            Compass::South => "S",
+            Compass::SouthWest => "SW",
+            Compass::West => "W",
+            Compass::NorthWest => "NW",
+        }))
+        .bind(metar.air_dewpoint_temperature.map(|(a, _)| a.get::<degree_celsius>()))
+        .bind(metar.air_dewpoint_temperature.map(|(_, d)| d.get::<degree_celsius>()))
+        .bind(metar.qnh.map(|q| q.get::<pascal>()))
+        .bind(metar.runway_wind_shear.and_then(|v| match v {
+            RunwayWindShear::Within(l) => Some(l.get::<meter>()),
+            _ => None,
+        }))
+        .execute(&self.conn)
+        .await?;
 
         Ok(data_id)
     }

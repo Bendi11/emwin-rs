@@ -1,4 +1,4 @@
-use chrono::Duration;
+use chrono::{Duration, NaiveDateTime};
 use nom::{
     branch::alt,
     character::{
@@ -41,6 +41,7 @@ use super::{
 #[derive(Clone, Debug)]
 pub struct EmwinMetarReport {
     pub header: WMOProductIdentifier,
+    pub month: NaiveDateTime,
     pub metar: MetarReport,
 }
 
@@ -124,14 +125,16 @@ pub struct RunwayState {
 }
 
 impl EmwinMetarReport {
-    pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, header) = WMOProductIdentifier::parse(input)?;
-        let (input, Some(metar)) = preceded(
-            multispace1,
-            MetarReport::parse,
-        )(input)? else { return Ok((input, None)) };
+    pub fn parse(month: NaiveDateTime) -> impl FnMut(&str) -> ParseResult<&str, Option<Self>> {
+        move |input: &str| {
+            let (input, header) = WMOProductIdentifier::parse(input)?;
+            let (input, Some(metar)) = preceded(
+                multispace1,
+                MetarReport::parse,
+            )(input)? else { return Ok((input, None)) };
 
-        Ok((input, Some(Self { header, metar })))
+            Ok((input, Some(Self { header, month, metar })))
+        }
     }
 }
 
@@ -344,7 +347,7 @@ mod test {
 
     #[test]
     pub fn test_metar() {
-        let _ = EmwinMetarReport::parse(METAR)
+        let _ = EmwinMetarReport::parse(NaiveDateTime::from_timestamp(10, 0))(METAR)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
     }
 }
