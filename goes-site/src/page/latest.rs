@@ -1,13 +1,8 @@
-use actix_files::NamedFile;
 use actix_web::{
-    error,
     web::{self, Data},
     Responder, Result, Scope,
 };
-use goes_cfg::Config;
-use sqlx::{MySqlPool, Row};
-
-use crate::map_path;
+use sqlx::MySqlPool;
 
 use super::search::{img_single_ep, QueryForm, TimeQuery};
 
