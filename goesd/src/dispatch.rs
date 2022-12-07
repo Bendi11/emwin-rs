@@ -4,10 +4,10 @@ use chrono::Datelike;
 use goes_parse::{
     display_error,
     dt::{
-        code::CodeForm,
         product::{Analysis, Forecast},
         upperair::UpperAirData,
-        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType, AircraftReportCodeForm,
+        AircraftReportCodeForm, AnalysisSubType, DataTypeDesignator, ForecastSubType,
+        UpperAirDataSubType,
     },
     formats::{rwr::RegionalWeatherRoundup, taf::TAFReport},
     goes::GoesFileName,
@@ -23,26 +23,20 @@ pub const fn supported(name: &GoesEmwinFileName) -> bool {
         DataTypeDesignator::Analysis(Analysis {
             subtype: AnalysisSubType::Surface,
             ..
-        }) |
-            DataTypeDesignator::UpperAirData(UpperAirData {
+        })
+        | DataTypeDesignator::UpperAirData(UpperAirData {
             subtype: UpperAirDataSubType::AircraftReport(AircraftReportCodeForm::AMDAR),
             ..
-        }) |
-            DataTypeDesignator::Forecast(Forecast {
+        })
+        | DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..
-        })
-            => true,
+        }) => true,
         _ => false,
     }
-
 }
 
-pub async fn emwin_dispatch(
-    filename: GoesEmwinFileName,
-    src: &str,
-    ctx: Arc<GoesSqlContext>,
-) {
+pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<GoesSqlContext>) {
     let month = filename
         .creation_timestamp
         .date()
@@ -101,7 +95,7 @@ pub async fn emwin_dispatch(
     }
 }
 
-pub async fn img_dispatch(event : Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
+pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {
         let file_name = match GoesFileName::parse(&path) {
             Ok((_, f)) => f,

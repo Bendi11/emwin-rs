@@ -11,7 +11,7 @@ use actix_web::{
     web::{self, Data, Json},
     Responder, Result, Scope,
 };
-use chrono::{NaiveDateTime, SecondsFormat, Utc, DateTime};
+use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value};
 use sqlx::{MySql, MySqlPool, QueryBuilder, Row};
@@ -195,7 +195,7 @@ pub async fn img_multi(
     }
 
     if form.rets.is_empty() {
-        return Err(error::ErrorBadRequest("`rets` must not be empty"))
+        return Err(error::ErrorBadRequest("`rets` must not be empty"));
     }
 
     let mut qb = search_sql(&form.query, form.limit == 1, form.rets);
@@ -208,7 +208,7 @@ pub async fn img_multi(
     qb.push(";");
 
     let mut query = qb.build().fetch(sql.get_ref());
-    
+
     let mut images: Vec<Map<String, Value>> = vec![];
     while let Some(row) = query
         .try_next()
@@ -217,17 +217,26 @@ pub async fn img_multi(
     {
         let mut v = Map::new();
         if form.rets.contains(QueryReturn::PATH) {
-            let path = row.try_get::<&str, _>("file_name")
+            let path = row
+                .try_get::<&str, _>("file_name")
                 .map_err(|e| ErrorInternalServerError(e))
                 .and_then(map_path(cfg.get_ref()))?
                 .to_owned();
-            v.insert("path".to_owned(), serde_json::to_value(path).map_err(ErrorInternalServerError)?);
+            v.insert(
+                "path".to_owned(),
+                serde_json::to_value(path).map_err(ErrorInternalServerError)?,
+            );
         }
 
         if form.rets.contains(QueryReturn::DATETIME) {
-            let dt = row.try_get::<DateTime<Utc>, _>("start_dt")
+            let dt = row
+                .try_get::<DateTime<Utc>, _>("start_dt")
                 .map_err(|e| ErrorInternalServerError(e))?;
-            v.insert("datetime".to_owned(), serde_json::to_value(dt.to_rfc3339_opts(SecondsFormat::Secs, true)).map_err(ErrorInternalServerError)?);
+            v.insert(
+                "datetime".to_owned(),
+                serde_json::to_value(dt.to_rfc3339_opts(SecondsFormat::Secs, true))
+                    .map_err(ErrorInternalServerError)?,
+            );
         }
 
         images.push(v);
@@ -237,12 +246,15 @@ pub async fn img_multi(
 }
 
 impl<'de> Deserialize<'de> for QueryReturn {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where
-            D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         let array = Vec::<&str>::deserialize(deserializer)?;
         let mut this = Self::empty();
         for term in array {
-            this |= Self::from_str(term).map_err(|_| D::Error::custom("Unknown query return term"))?;
+            this |=
+                Self::from_str(term).map_err(|_| D::Error::custom("Unknown query return term"))?;
         }
 
         Ok(this)
@@ -255,7 +267,7 @@ impl FromStr for QueryReturn {
         match s {
             "path" => Ok(Self::PATH),
             "datetime" => Ok(Self::DATETIME),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

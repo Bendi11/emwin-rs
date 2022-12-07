@@ -81,7 +81,11 @@ fn main() -> ExitCode {
                     MountOption::RW,
                 ],
             ) {
-                log::error!("Failed to mount filesystem at {}: {}", cfg.emwin_dir.display(), e);
+                log::error!(
+                    "Failed to mount filesystem at {}: {}",
+                    cfg.emwin_dir.display(),
+                    e
+                );
             }
 
             log::error!("Filesystem unmounted at {}", cfg.emwin_dir.display());

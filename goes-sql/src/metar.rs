@@ -1,15 +1,26 @@
-use goes_parse::formats::{metar::{RunwayState, MetarSeaSurfaceReport, RunwayTrend, EmwinMetarReport, RunwayWindShear}, RunwayDesignatorDirection, codes::{runway::{RunwayDeposits, RunwayDepositDepth, RunwayContaminationLevel, RunwaySurfaceFriction, RunwaySurfaceBrakingAction}, sea::StateOfTheSea}, Compass};
-use uom::si::{length::meter, f32::ThermodynamicTemperature, thermodynamic_temperature::degree_celsius, pressure::pascal, angle::radian};
+use goes_parse::formats::{
+    codes::{
+        runway::{
+            RunwayContaminationLevel, RunwayDepositDepth, RunwayDeposits,
+            RunwaySurfaceBrakingAction, RunwaySurfaceFriction,
+        },
+        sea::StateOfTheSea,
+    },
+    metar::{EmwinMetarReport, MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear},
+    Compass, RunwayDesignatorDirection,
+};
+use uom::si::{
+    angle::radian, f32::ThermodynamicTemperature, length::meter, pressure::pascal,
+    thermodynamic_temperature::degree_celsius,
+};
 
 use crate::GoesSqlContext;
 
-
 impl GoesSqlContext {
-
     pub async fn insert_metar(&self, emwin: &EmwinMetarReport) -> Result<u64, sqlx::Error> {
         let EmwinMetarReport { month, metar, .. } = emwin;
         let data_id = self.insert_data().await?;
-        
+
         for status in metar.runway_status.iter() {
             self.insert_runway_state(status, data_id).await?;
         }
@@ -23,14 +34,14 @@ impl GoesSqlContext {
                 r#"
 insert into weather.metar_runway (data_id, runway, direction, len, trend)
 values (?, ?, ?, ?, ?);
-                "#
+                "#,
             )
             .bind(data_id)
             .bind(runway.num)
             .bind(runway.dir.map(|d| match d {
                 RunwayDesignatorDirection::Left => "LEFT",
                 RunwayDesignatorDirection::Center => "CENTER",
-                RunwayDesignatorDirection::Right => "RIGHT"
+                RunwayDesignatorDirection::Right => "RIGHT",
             }))
             .bind(len.get::<meter>())
             .bind(match trend {
@@ -42,7 +53,8 @@ values (?, ?, ?, ?, ?);
             .await?;
         }
 
-        self.insert_significant_weather(data_id, &metar.weather).await?;
+        self.insert_significant_weather(data_id, &metar.weather)
+            .await?;
         if let Some(ref recent) = metar.recent_weather {
             self.insert_significant_weather(data_id, &[*recent]).await?;
         }
@@ -85,33 +97,41 @@ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         Ok(data_id)
     }
 
-    async fn insert_metar_sea(&self, sea: &MetarSeaSurfaceReport, data_id: u64) -> Result<(), sqlx::Error> {
+    async fn insert_metar_sea(
+        &self,
+        sea: &MetarSeaSurfaceReport,
+        data_id: u64,
+    ) -> Result<(), sqlx::Error> {
         match sea {
-            MetarSeaSurfaceReport::WaveHeight { temp, height } => {
-                sqlx::query(
+            MetarSeaSurfaceReport::WaveHeight { temp, height } => sqlx::query(
                 r#"
 insert into weather.metar_wave_height (data_id, temperature, height)
 values (?, ?, ?);
-            "#
-                )
-                .bind(data_id)
-                .bind(temp.get::<degree_celsius>())
-                .bind(height.get::<meter>())
-                .execute(&self.conn)
-                .await
-                .map(|_| ())
-            },
-            MetarSeaSurfaceReport::StateOfSea { temp, state } =>
+            "#,
+            )
+            .bind(data_id)
+            .bind(temp.get::<degree_celsius>())
+            .bind(height.get::<meter>())
+            .execute(&self.conn)
+            .await
+            .map(|_| ()),
+            MetarSeaSurfaceReport::StateOfSea { temp, state } => {
                 self.insert_state_of_sea(*temp, *state, data_id).await
+            }
         }
     }
 
-    async fn insert_state_of_sea(&self, temp: ThermodynamicTemperature, state: StateOfTheSea, data_id: u64) -> Result<(), sqlx::Error> {
+    async fn insert_state_of_sea(
+        &self,
+        temp: ThermodynamicTemperature,
+        state: StateOfTheSea,
+        data_id: u64,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
 insert into weather.metar_state_of_sea (data_id, temperature, state)
 values (?, ?, ?);
-            "#
+            "#,
         )
         .bind(data_id)
         .bind(temp.get::<degree_celsius>())
@@ -131,8 +151,12 @@ values (?, ?, ?);
         .await
         .map(|_| ())
     }
-    
-    async fn insert_runway_state(&self, state: &RunwayState, data_id: u64) -> Result<(), sqlx::Error> {
+
+    async fn insert_runway_state(
+        &self,
+        state: &RunwayState,
+        data_id: u64,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
 insert into weather.metar_runway_state

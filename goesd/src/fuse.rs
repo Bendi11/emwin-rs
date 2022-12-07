@@ -44,7 +44,6 @@ impl EmwinFS {
         blksize: 512,
     };
 
-
     /// Create a new FUSE filesystem spawning parser threads to the given runtime
     pub fn new(rt: Arc<Runtime>, ctx: Arc<GoesSqlContext>) -> Self {
         Self {
@@ -86,7 +85,13 @@ impl EmwinFSEntry {
 }
 
 impl Filesystem for EmwinFS {
-    fn lookup(&mut self, _req: &fuser::Request<'_>, _parent: u64, name: &OsStr, reply: fuser::ReplyEntry) {
+    fn lookup(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        _parent: u64,
+        name: &OsStr,
+        reply: fuser::ReplyEntry,
+    ) {
         let Some(name) = Path::new(name)
             .file_name()
             .and_then(OsStr::to_str)
@@ -102,36 +107,41 @@ impl Filesystem for EmwinFS {
 
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
         if ino == 1 {
-            return reply.attr(&TTL, &Self::ROOT_ATTR)
+            return reply.attr(&TTL, &Self::ROOT_ATTR);
         } else {
-            return reply.error(2)
+            return reply.error(2);
         }
     }
 
     fn create(
-            &mut self,
-            req: &fuser::Request<'_>,
-            _parent: u64,
-            name: &OsStr,
-            _mode: u32,
-            _umask: u32,
-            _flags: i32,
-            reply: fuser::ReplyCreate,
-        ) {
+        &mut self,
+        req: &fuser::Request<'_>,
+        _parent: u64,
+        name: &OsStr,
+        _mode: u32,
+        _umask: u32,
+        _flags: i32,
+        reply: fuser::ReplyCreate,
+    ) {
         let name: GoesEmwinFileName = match Path::new(name)
             .file_name()
             .and_then(OsStr::to_str)
-            .map(|s| s.parse()) {
-                Some(Ok(f)) => f,
-                None => return reply.error(43),
-                Some(Err(e)) => {
-                    log::trace!("Failed to parse newly created filename {}: {}", Path::new(name).display(), e);
-                    return reply.error(43)
-                }
-            };
+            .map(|s| s.parse())
+        {
+            Some(Ok(f)) => f,
+            None => return reply.error(43),
+            Some(Err(e)) => {
+                log::trace!(
+                    "Failed to parse newly created filename {}: {}",
+                    Path::new(name).display(),
+                    e
+                );
+                return reply.error(43);
+            }
+        };
 
         if !dispatch::supported(&name) {
-            return reply.error(1)
+            return reply.error(1);
         }
 
         let file = EmwinFSEntry {

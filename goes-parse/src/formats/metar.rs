@@ -133,7 +133,14 @@ impl EmwinMetarReport {
                 MetarReport::parse,
             )(input)? else { return Ok((input, None)) };
 
-            Ok((input, Some(Self { header, month, metar })))
+            Ok((
+                input,
+                Some(Self {
+                    header,
+                    month,
+                    metar,
+                }),
+            ))
         }
     }
 }
