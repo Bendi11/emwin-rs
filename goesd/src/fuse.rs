@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     ffi::OsStr,
     io::Write,
-    path::{PathBuf, Path},
+    path::Path,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };

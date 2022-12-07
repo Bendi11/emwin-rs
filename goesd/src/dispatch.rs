@@ -7,7 +7,7 @@ use goes_parse::{
         code::CodeForm,
         product::{Analysis, Forecast},
         upperair::UpperAirData,
-        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType,
+        AnalysisSubType, DataTypeDesignator, ForecastSubType, UpperAirDataSubType, AircraftReportCodeForm,
     },
     formats::{rwr::RegionalWeatherRoundup, taf::TAFReport},
     goes::GoesFileName,
@@ -25,13 +25,14 @@ pub const fn supported(name: &GoesEmwinFileName) -> bool {
             ..
         }) |
             DataTypeDesignator::UpperAirData(UpperAirData {
-            subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
+            subtype: UpperAirDataSubType::AircraftReport(AircraftReportCodeForm::AMDAR),
             ..
         }) |
             DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..
-        }) => true,
+        })
+            => true,
         _ => false,
     }
 
@@ -62,7 +63,7 @@ pub async fn emwin_dispatch(
             };
         }
         DataTypeDesignator::UpperAirData(UpperAirData {
-            subtype: UpperAirDataSubType::AircraftReport(CodeForm::AMDAR),
+            subtype: UpperAirDataSubType::AircraftReport(AircraftReportCodeForm::AMDAR),
             ..
         }) => {
             /*let report = match AmdarReport::parse(&src) {
@@ -100,7 +101,7 @@ pub async fn emwin_dispatch(
     }
 }
 
-pub async fn img_dispatch(event: Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
+pub async fn img_dispatch(event : Event, ctx: Arc<GoesSqlContext>, config: Arc<Config>) {
     for path in event.paths {
         let file_name = match GoesFileName::parse(&path) {
             Ok((_, f)) => f,
