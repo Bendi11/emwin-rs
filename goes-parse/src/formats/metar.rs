@@ -14,6 +14,7 @@ use uom::si::{
     f32::{Angle, Length, Pressure, ThermodynamicTemperature},
     length::{decimeter, meter},
     pressure::{hectopascal, inch_of_mercury},
+    angle::degree,
 };
 
 use crate::{
@@ -177,6 +178,7 @@ impl MetarReport {
                 alt((
                     tag("NIL").map(|_| None),
                     tag("AUTO").map(|_| Some(MetarReportKind::Auto)),
+                    tag("COR").map(|_| Some(MetarReportKind::Cor)),
                 )),
             ))(input)?
             {
@@ -240,29 +242,51 @@ impl MetarReport {
 
         let (input, clouds) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(input)?;
 
-        let (input, air_dewpoint_temperature) = opt(preceded(
-            multispace0,
-            separated_pair(temperature(2), char('/'), temperature(2)),
-        ))(input)?;
+        let (input, air_dewpoint_temperature) = opt(
+            preceded(
+                multispace0,
+                alt((
+                    separated_pair(temperature(2), char('/'), temperature(2)).map(Some),
+                    tag("/////").map(|_| None)
+                )),
+            )
+        ).map(Option::flatten).parse(input)?;
 
-        let (input, qnh) = opt(preceded(
-            multispace0,
-            alt((
-                preceded(
-                    char('Q'),
-                    fromstr(4).map(|v| Pressure::new::<hectopascal>(v)),
-                ),
-                preceded(
-                    char('A'),
-                    fromstr(4).map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.)),
-                ),
-            ))
-        ))(input)?;
+        let (input, qnh) = opt(
+            preceded(
+                multispace0,
+                alt((
+                    preceded(
+                        char('Q'),
+                        alt((
+                            fromstr(4)
+                                .map(|v| Pressure::new::<hectopascal>(v))
+                                .map(Some),
+                            tag("////").map(|_| None),
+                        ))
+                    ),
+                    preceded(
+                        char('A'),
+                        alt((
+                            fromstr(4)
+                                .map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.))
+                                .map(Some),
+                            tag("////").map(|_| None),
+                        )),
+                    ),
+                ))
+            )
+        ).map(Option::flatten).parse(input)?;
 
-        let (input, recent_weather) = opt(preceded(
-            multispace0,
-            preceded(tag("RE"), SignificantWeather::parse),
-        ))(input)?;
+        let (input, recent_weather) = opt(
+            preceded(
+                multispace0,
+                alt((
+                    preceded(tag("RE"), SignificantWeather::parse).map(Some),
+                    tag("NOSIG").map(|_| None),
+                ))
+            ),
+        ).map(Option::flatten).parse(input)?;
 
         let (input, runway_wind_shear) = opt(preceded(multispace0, RunwayWindShear::parse))(input)?;
 
@@ -360,9 +384,9 @@ impl MetarSeaSurfaceReport {
 
 impl MetarVariableWindDir {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, extreme_ccw) = fromstr(3)(input)?;
+        let (input, extreme_ccw) = fromstr::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
         let (input, _) = char('V')(input)?;
-        let (input, extreme_cw) = fromstr(3)(input)?;
+        let (input, extreme_cw) = fromstr::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
 
         Ok((
             input,

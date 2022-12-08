@@ -10,6 +10,13 @@ use uom::si::f32::Length;
 
 use crate::{formats::codetbl::parse_1690, ParseResult};
 
+/// Cloud covering specifying the significant cloud shape
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CloudCover {
+    Cumulonimbus,
+    ToweringCumulonimbus,
+}
+
 /// Cloud amount NsNsNs
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -26,11 +33,12 @@ pub enum CloudAmount {
 pub struct CloudReport {
     pub amount: Option<CloudAmount>,
     pub altitude: Length,
+    pub cover: Option<CloudCover>,
 }
 
 impl CloudReport {
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, val) = opt(alt((tag("NSC"), tag("SKC"), tag("CLR"))))(input)?;
+        let (input, val) = opt(alt((tag("NSC"), tag("SKC"), tag("CLR"), tag("NCD"), tag("OVC"))))(input)?;
 
         if val.is_some() {
             return Ok((input, None));
@@ -53,6 +61,14 @@ impl CloudReport {
         )(input)?;
 
         let (input, altitude) = parse_1690(input)?;
-        Ok((input, Some(CloudReport { amount, altitude })))
+
+        let (input, cover) = opt(
+            alt((
+                tag("CB").map(|_| CloudCover::Cumulonimbus),
+                tag("TCU").map(|_| CloudCover::ToweringCumulonimbus),
+            ))
+        )(input)?;
+
+        Ok((input, Some(CloudReport { amount, altitude, cover })))
     }
 }
