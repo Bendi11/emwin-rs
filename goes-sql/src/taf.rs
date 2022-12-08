@@ -17,12 +17,11 @@ impl GoesSqlContext {
 
         let item_id = sqlx::query(
             r#"
-INSERT INTO weather.taf_item (month, country, origin_dt, from_dt, to_dt, visibility, data_id)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO weather.taf_item (country, origin_dt, from_dt, to_dt, visibility, data_id)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id;
 "#,
         )
-        .bind(month)
         .bind(taf.country.code.iter().collect::<String>())
         .bind(taf.origin_date.offset(month.and_time(Default::default())))
         .bind(taf.time_range.0.offset(month.and_time(Default::default())))
