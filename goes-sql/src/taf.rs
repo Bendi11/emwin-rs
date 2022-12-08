@@ -17,16 +17,16 @@ impl GoesSqlContext {
 
         let item_id = sqlx::query(
             r#"
-INSERT INTO weather.taf_item (month, country, origin_off, from_off, to_off, visibility, data_id)
+INSERT INTO weather.taf_item (month, country, origin_dt, from_dt, to_dt, visibility, data_id)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 "#,
         )
         .bind(month)
         .bind(taf.country.code.iter().collect::<String>())
-        .bind(taf.origin_date.num_seconds())
-        .bind(taf.time_range.0.num_seconds())
-        .bind(taf.time_range.1.num_seconds())
+        .bind(taf.origin_date.offset(month.and_time(Default::default())))
+        .bind(taf.time_range.0.offset(month.and_time(Default::default())))
+        .bind(taf.time_range.1.offset(month.and_time(Default::default())))
         .bind(taf.horizontal_vis.map(|v| v.get::<meter>()))
         .bind(data)
         .fetch_one(&self.conn)
@@ -57,8 +57,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
                 TAFReportItemGroupKind::TemporaryChange { .. } => "TEMP",
                 TAFReportItemGroupKind::Probable { .. } => "PROB",
             })
-            .bind(group.kind.from().num_seconds())
-            .bind(group.kind.to().map(|t| t.num_seconds()))
+            .bind(group.kind.from().offset(month.and_time(Default::default())))
+            .bind(group.kind.to().map(|t| t.offset(month.and_time(Default::default()))))
             .bind(group.visibility.map(|v| v.get::<meter>()))
             .bind(group.kind.probability())
             .execute(&self.conn)

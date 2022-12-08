@@ -2,7 +2,6 @@
 
 use std::str::FromStr;
 
-use chrono::Duration;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till},
@@ -25,7 +24,7 @@ use uom::si::{
     velocity::knot,
 };
 
-use crate::{header::WMOProductIdentifier, parse::time::yygggg, ParseResult};
+use crate::{header::WMOProductIdentifier, parse::time::{yygggg, DayHourMinute}, ParseResult};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 
@@ -42,7 +41,7 @@ pub struct AmdarReportItem {
     pub aircraft_identifier: String,
     pub lat: Angle,
     pub lon: Angle,
-    pub time: Duration,
+    pub time: DayHourMinute,
     /// Measure in hundreds of feet above the standard datum plane of 1013.2 hPa
     pub pressure_altitude: Length,
     /// Measure of temperature at the given altitude

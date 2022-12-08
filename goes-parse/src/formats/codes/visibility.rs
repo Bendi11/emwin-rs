@@ -1,13 +1,11 @@
-use std::num::ParseFloatError;
-
 use nom::{
     character::{
         complete::{digit1, space0},
         streaming::char,
     },
-    combinator::{map_res, opt, eof, complete},
+    combinator::{map_res, opt, complete},
     error::context,
-    sequence::{preceded, terminated, tuple, separated_pair}, Parser, branch::alt,
+    sequence::{preceded, tuple, separated_pair}, Parser, branch::alt,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{

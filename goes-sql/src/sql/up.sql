@@ -76,11 +76,10 @@ CREATE TABLE IF NOT EXISTS weather.significant_weather (
 
 CREATE TABLE IF NOT EXISTS weather.taf_item (
     id int UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    month DATETIME NOT NULL,
     country CHAR(4) NOT NULL,
-    origin_off int UNSIGNED NOT NULL,
-    from_off int UNSIGNED NOT NULL,
-    to_off int UNSIGNED NOT NULL,
+    origin_dt DATETIME NOT NULL,
+    from_dt DATETIME NOT NULL,
+    to_dt DATETIME NOT NULL,
     visibility FLOAT,
     data_id int UNSIGNED NOT NULL UNIQUE,
     CONSTRAINT `fk_taf_item_data`
@@ -94,8 +93,8 @@ CREATE TABLE IF NOT EXISTS weather.taf_group (
     item_id int UNSIGNED NOT NULL,
     data_id int UNSIGNED NOT NULL,
     kind ENUM('TIMED', 'CHANGE', 'TEMP', 'PROB') NOT NULL,
-    from_off int UNSIGNED NOT NULL,
-    to_off int UNSIGNED,
+    from_dt DATETIME NOT NULL,
+    to_dt DATETIME,
     probability FLOAT,
     visibility FLOAT,
     CHECK (

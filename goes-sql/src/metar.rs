@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::NaiveDate;
 use goes_parse::formats::{
     codes::{
         runway::{
@@ -7,7 +7,7 @@ use goes_parse::formats::{
         },
         sea::StateOfTheSea,
     },
-    metar::{EmwinMetarReport, MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear, MetarReport},
+    metar::{MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear, MetarReport},
     Compass, RunwayDesignatorDirection,
 };
 use uom::si::{
@@ -69,7 +69,7 @@ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         )
         .bind(data_id)
         .bind(metar.country.code.iter().collect::<String>())
-        .bind(NaiveDateTime::new(month, NaiveTime::from_hms(0, 0, 0)).checked_add_signed(metar.origin))
+        .bind(metar.origin.offset(month.and_time(Default::default())))
         .bind(metar.variable_wind_dir.map(|w| w.extreme_ccw.get::<radian>()))
         .bind(metar.variable_wind_dir.map(|w| w.extreme_cw.get::<radian>()))
         .bind(metar.visibility.map(|v| v.get::<meter>()))

@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDate};
+use chrono::NaiveDate;
 use nom::{
     branch::alt,
     character::{
@@ -7,7 +7,7 @@ use nom::{
     },
     combinator::{map_res, opt},
     sequence::{preceded, separated_pair, terminated, tuple, delimited},
-    Parser, error::context, bytes::{streaming::take_until, complete::take_till},
+    Parser, error::context, bytes::complete::take_till,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
@@ -18,7 +18,7 @@ use uom::si::{
 
 use crate::{
     header::{WMOProductIdentifier, CCCC},
-    parse::{fromstr, multi, multi_opt, time::yygggg},
+    parse::{fromstr, multi, multi_opt, time::{yygggg, DayHourMinute}},
     ParseResult,
 };
 
@@ -49,7 +49,7 @@ pub struct EmwinMetarReport {
 #[derive(Clone, Debug)]
 pub struct MetarReport {
     pub country: CCCC,
-    pub origin: Duration,
+    pub origin: DayHourMinute,
     pub wind: Option<WindSummary>,
     pub kind: MetarReportKind,
     pub variable_wind_dir: Option<MetarVariableWindDir>,

@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDate};
+use chrono::NaiveDate;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_till, take_until},
@@ -21,7 +21,7 @@ use crate::{
     parse::{
         fromstr, multi_opt,
         recover::recover,
-        time::{yygg, yygggg},
+        time::{yygg, yygggg, DayHourMinute},
     },
     ParseResult,
 };
@@ -42,8 +42,8 @@ pub struct TAFReportItem {
     pub kind: TAFReportKind,
     pub country: CCCC,
     /// Offset from the current month to the time this was reported
-    pub origin_date: Duration,
-    pub time_range: (Duration, Duration),
+    pub origin_date: DayHourMinute,
+    pub time_range: (DayHourMinute, DayHourMinute),
     pub wind: Option<WindSummary>,
     pub horizontal_vis: Option<Length>,
     pub significant_weather: Vec<SignificantWeather>,
@@ -70,17 +70,17 @@ pub struct TAFReportItemGroup {
 
 #[derive(Clone, Copy, Debug)]
 pub enum TAFReportItemGroupKind {
-    TimeIndicator(Duration),
-    Change(Duration, Duration),
+    TimeIndicator(DayHourMinute),
+    Change(DayHourMinute, DayHourMinute),
     TemporaryChange {
         probability: f32,
-        from: Duration,
-        to: Duration,
+        from: DayHourMinute,
+        to: DayHourMinute,
     },
     Probable {
         probability: f32,
-        from: Duration,
-        to: Duration,
+        from: DayHourMinute,
+        to: DayHourMinute,
     },
 }
 
@@ -243,7 +243,7 @@ impl TAFReportItem {
 
 impl TAFReportItemGroupKind {
     /// Get the offset from the month that this group is reporting from
-    pub const fn from(&self) -> Duration {
+    pub const fn from(&self) -> DayHourMinute {
         match self {
             Self::TimeIndicator(from)
             | Self::Change(from, _)
@@ -253,7 +253,7 @@ impl TAFReportItemGroupKind {
     }
 
     /// Get the offset from the month that this report is expected to last until
-    pub const fn to(&self) -> Option<Duration> {
+    pub const fn to(&self) -> Option<DayHourMinute> {
         match self {
             Self::Probable { to, .. } | Self::Change(_, to) | Self::TemporaryChange { to, .. } => {
                 Some(*to)
@@ -275,7 +275,7 @@ impl TAFReportItemGroupKind {
 
 impl TAFReportItemGroup {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        fn parse_from_to(input: &str) -> ParseResult<&str, (Duration, Duration)> {
+        fn parse_from_to(input: &str) -> ParseResult<&str, (DayHourMinute, DayHourMinute)> {
             separated_pair(yygg, char('/'), yygg)(input)
         }
 
