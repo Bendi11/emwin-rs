@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use goes_parse::formats::{
     codes::{
         runway::{
@@ -69,7 +69,7 @@ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         )
         .bind(data_id)
         .bind(metar.country.code.iter().collect::<String>())
-        .bind(month.checked_add_signed(metar.origin))
+        .bind(NaiveDateTime::new(month, NaiveTime::from_hms(0, 0, 0)).checked_add_signed(metar.origin))
         .bind(metar.variable_wind_dir.map(|w| w.extreme_ccw.get::<radian>()))
         .bind(metar.variable_wind_dir.map(|w| w.extreme_cw.get::<radian>()))
         .bind(metar.visibility.map(|v| v.get::<meter>()))
