@@ -60,7 +60,7 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     ))(input)?;
 
     Ok(match vis_first {
-        VisFirst::Number(whole) => match opt(vis_sm)(input)? {
+        VisFirst::Number(whole) => match opt(preceded(space0, vis_sm))(input)? {
             (input, Some((numerator, Some(denominator)))) => {
                 (input, Length::new::<mile>(whole + numerator / denominator))
             }
@@ -78,6 +78,6 @@ mod test {
     #[test]
     pub fn test_vvvv() {
         //assert_eq!(vvvv("15SM").unwrap().1, Length::new::<mile>(15f32),);
-        vvvv("5").unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+        vvvv("2 1/2SM").unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
     }
 }
