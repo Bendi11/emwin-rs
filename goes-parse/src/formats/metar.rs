@@ -7,7 +7,7 @@ use nom::{
     },
     combinator::{map_res, opt},
     sequence::{preceded, separated_pair, terminated, tuple},
-    Parser,
+    Parser, error::context,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
@@ -152,8 +152,8 @@ impl MetarReport {
 
         let (input, kind) = opt(preceded(space0, tag("COR").map(|_| MetarReportKind::Cor)))(input)?;
 
-        let (input, country): (_, CCCC) = preceded(space0, fromstr(4))(input)?;
-        let (input, origin) = preceded(space0, terminated(yygggg, char('Z')))(input)?;
+        let (input, country): (_, CCCC) = context("Four-letter country code", preceded(space0, fromstr(4)))(input)?;
+        let (input, origin) = context("METAR origin timestamp", preceded(space0, terminated(yygggg, char('Z'))))(input)?;
 
         let (input, kind) = match kind {
             Some(kind) => (input, kind),
@@ -171,7 +171,7 @@ impl MetarReport {
             },
         };
 
-        let (input, wind) = preceded(space1, WindSummary::parse)(input)?;
+        let (input, wind) = context("METAR wind summary", preceded(space1, WindSummary::parse))(input)?;
         let (input, variable_wind_dir) = opt(preceded(space0, MetarVariableWindDir::parse))(input)?;
 
         let (input, visibility) = opt(preceded(space0, vvvv))(input)?;
