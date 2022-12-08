@@ -240,13 +240,21 @@ impl MetarReport {
 
         let (input, weather) = multi(preceded(multispace0, SignificantWeather::parse)).parse(input)?;
 
-        let (input, clouds) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(input)?;
+        let (input, clouds) = multi_opt(
+            preceded(
+                multispace0,
+                CloudReport::parse,
+            ),
+        ).parse(input)?;
 
         let (input, air_dewpoint_temperature) = opt(
             preceded(
                 multispace0,
                 alt((
-                    separated_pair(temperature(2), char('/'), temperature(2)).map(Some),
+                    separated_pair(opt(temperature(2)), char('/'), opt(temperature(2))).map(|(a, d)| match (a, d) {
+                        (Some(a), Some(d)) => Some((a, d)),
+                        _ => None,
+                    }),
                     tag("/////").map(|_| None)
                 )),
             )
