@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS weather.metar_state_of_sea (
         'VERY_HIGH',
         'PHENOMENAL'
     ) NOT NULL,
-    CONTRAINT `fk_metar_state_of_sea_data`
+    CONSTRAINT `fk_metar_state_of_sea_data`
         FOREIGN KEY (data_id) REFERENCES weather.data(id)
         ON DELETE CASCADE
         ON UPDATE RESTRICT
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS weather.metar_wave_height (
     temperature FLOAT NOT NULL,
     height FLOAT NOT NULL,
     CONSTRAINT `fk_metar_wave_height_data`
-        FOREIGN KEY (data_id) REFERENCES weather.data(data_id)
+        FOREIGN KEY (data_id) REFERENCES weather.data(id)
         ON DELETE CASCADE
         ON UPDATE RESTRICT
 );
