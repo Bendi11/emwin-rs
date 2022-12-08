@@ -7,9 +7,9 @@ use goes_parse::{
         product::{Analysis, Forecast},
         upperair::UpperAirData,
         AircraftReportCodeForm, AnalysisSubType, DataTypeDesignator, ForecastSubType,
-        UpperAirDataSubType,
+        UpperAirDataSubType, surface::SurfaceData, SurfaceSubType,
     },
-    formats::{rwr::RegionalWeatherRoundup, taf::TAFReport},
+    formats::{rwr::RegionalWeatherRoundup, taf::TAFReport, metar::EmwinMetarReport},
     goes::GoesFileName,
     header::GoesEmwinFileName,
 };
@@ -31,7 +31,11 @@ pub const fn supported(name: &GoesEmwinFileName) -> bool {
         | DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..
-        }) => true,
+        }) 
+        | DataTypeDesignator::SurfaceData(SurfaceData {
+            subtype: SurfaceSubType::AviationRoutineReport,
+            ..
+        })=> true,
         _ => false,
     }
 }
@@ -70,7 +74,25 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             };
 
             config.done.do_for(path).await;*/
-        }
+        },
+        DataTypeDesignator::SurfaceData(SurfaceData {
+            subtype: SurfaceSubType::AviationRoutineReport,
+            ..
+        }) => {
+            let report = match EmwinMetarReport::parse(month)(&src) {
+                Ok((_, metar)) => metar,
+                Err(e) => {
+                    log::error!("Failed to parse METAR report: {}", e);
+                    return;
+                }
+            };
+
+            if let Some(report) = report {
+                if let Err(e) = ctx.insert_metar(&report).await {
+                    log::error!("Failed to write METAR report to SQL: {}", e);
+                }
+            }
+        },
         DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..

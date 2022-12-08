@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDateTime};
+use chrono::{Duration, NaiveDate};
 use nom::{
     branch::alt,
     character::{
@@ -41,7 +41,7 @@ use super::{
 #[derive(Clone, Debug)]
 pub struct EmwinMetarReport {
     pub header: WMOProductIdentifier,
-    pub month: NaiveDateTime,
+    pub month: NaiveDate,
     pub metar: MetarReport,
 }
 
@@ -125,7 +125,7 @@ pub struct RunwayState {
 }
 
 impl EmwinMetarReport {
-    pub fn parse(month: NaiveDateTime) -> impl FnMut(&str) -> ParseResult<&str, Option<Self>> {
+    pub fn parse(month: NaiveDate) -> impl FnMut(&str) -> ParseResult<&str, Option<Self>> {
         move |input: &str| {
             let (input, header) = WMOProductIdentifier::parse(input)?;
             let (input, Some(metar)) = preceded(
@@ -354,7 +354,7 @@ mod test {
 
     #[test]
     pub fn test_metar() {
-        let _ = EmwinMetarReport::parse(NaiveDateTime::from_timestamp(10, 0))(METAR)
+        let _ = EmwinMetarReport::parse(NaiveDate::from_ymd(1, 1, 1))(METAR)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
     }
 }
