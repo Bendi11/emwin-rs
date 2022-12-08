@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS weather.metar (
     CONSTRAINT `fk_metar_data`
         FOREIGN KEY (data_id) REFERENCES weather.data(id)
         ON DELETE CASCADE
-        ON UPDATE RESTRICT,
+        ON UPDATE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS weather.metar_runway_state (
