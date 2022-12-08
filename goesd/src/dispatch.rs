@@ -82,7 +82,7 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             let report = match EmwinMetarReport::parse(month)(&src) {
                 Ok((_, metar)) => metar,
                 Err(e) => {
-                    log::error!("Failed to parse METAR report: {}", goes_parse::display_error(e));
+                    log::error!("Failed to parse METAR report:\n{}\n{}", src, goes_parse::display_error(e));
                     return;
                 }
             };
