@@ -70,10 +70,7 @@ pub fn fromstr_with<'a, T, P>(first: P) -> impl FnMut(&'a str) -> ParseResult<&'
 where
     T: FromStr,
     P: Parser<&'a str, &'a str, crate::ParseError<&'a str>>,
-    crate::ParseError<&'a str>: FromExternalError<&'a str, <T as FromStr>::Err>
+    crate::ParseError<&'a str>: FromExternalError<&'a str, <T as FromStr>::Err>,
 {
-    map_res(
-        first,
-        <T as FromStr>::from_str
-    )
+    map_res(first, <T as FromStr>::from_str)
 }

@@ -1,11 +1,13 @@
 use nom::{
+    branch::alt,
     character::{
         complete::{digit1, space0},
         streaming::char,
     },
-    combinator::{opt, complete},
+    combinator::{complete, opt},
     error::context,
-    sequence::{preceded, tuple, separated_pair}, Parser, branch::alt,
+    sequence::{preceded, separated_pair, tuple},
+    Parser,
 };
 use nom_supreme::{tag::complete::tag, ParserExt};
 use uom::si::{
@@ -13,25 +15,19 @@ use uom::si::{
     length::{meter, mile},
 };
 
-use crate::{ParseResult, formats::codes::number};
+use crate::{formats::codes::number, ParseResult};
 
 /// Parse a surface horizontal visibility in `VVVV` format (pg. 227)
 pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     fn fraction(input: &str) -> ParseResult<&str, f32> {
-        separated_pair(
-            digit1
-                .and_then(number),
-            char('/'),
-            digit1
-                .and_then(number)
-        )
+        separated_pair(digit1.and_then(number), char('/'), digit1.and_then(number))
             .map(|(num, den)| num / den)
             .parse(input)
     }
-    
+
     let (input, ignore) = complete(opt(tag("P6SM")))(input)?;
     if ignore.is_some() {
-        return Ok((input, Length::new::<mile>(6f32)))
+        return Ok((input, Length::new::<mile>(6f32)));
     }
 
     let (input, first) = complete(context(
@@ -42,14 +38,10 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
                 preceded(opt(char('M')), digit1)
                     .recognize()
                     .and_then(number),
-                opt(
-                    preceded(
-                        space0,
-                        fraction,
-                    )
-                )
-            )).map(|(whole, frac)| whole + frac.unwrap_or(0f32)),
-        )) 
+                opt(preceded(space0, fraction)),
+            ))
+            .map(|(whole, frac)| whole + frac.unwrap_or(0f32)),
+        )),
     ))(input)?;
 
     let (input, miles) = complete(opt(tag("SM")))(input)?;

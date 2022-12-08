@@ -40,12 +40,7 @@ pub struct CloudReport {
 
 impl CloudReport {
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, val) = opt(alt((
-            tag("NSC"),
-            tag("SKC"),
-            tag("CLR"),
-            tag("NCD")
-        )))(input)?;
+        let (input, val) = opt(alt((tag("NSC"), tag("SKC"), tag("CLR"), tag("NCD"))))(input)?;
 
         if val.is_some() {
             return Ok((input, None));
@@ -69,21 +64,28 @@ impl CloudReport {
 
         let (input, altitude) = parse_1690(input)?;
 
-        let (input, cover) = opt(
-            alt((
-                tag("CB").map(|_| Some(CloudCover::Cumulonimbus)),
-                tag("TCU").map(|_| Some(CloudCover::ToweringCumulonimbus)),
-                tag("///").map(|_| None)
-            ))
-        ).map(Option::flatten).parse(input)?;
+        let (input, cover) = opt(alt((
+            tag("CB").map(|_| Some(CloudCover::Cumulonimbus)),
+            tag("TCU").map(|_| Some(CloudCover::ToweringCumulonimbus)),
+            tag("///").map(|_| None),
+        )))
+        .map(Option::flatten)
+        .parse(input)?;
 
-        Ok((input, Some(CloudReport { amount, altitude, cover })))
+        Ok((
+            input,
+            Some(CloudReport {
+                amount,
+                altitude,
+                cover,
+            }),
+        ))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use nom::{sequence::preceded, character::complete::multispace0};
+    use nom::{character::complete::multispace0, sequence::preceded};
 
     use crate::parse::multi_opt;
 
@@ -91,7 +93,9 @@ mod test {
 
     #[test]
     fn test_clouds() {
-        let (_, c) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(" BKN003 OVC009 ").unwrap();
+        let (_, c) = multi_opt(preceded(multispace0, CloudReport::parse))
+            .parse(" BKN003 OVC009 ")
+            .unwrap();
 
         assert_eq!(c.len(), 2);
     }

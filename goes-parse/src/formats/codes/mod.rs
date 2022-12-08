@@ -1,7 +1,21 @@
-use nom::{character::{streaming::char, complete::digit1}, combinator::{opt, map_res}, sequence::tuple, Parser, error::context, bytes::complete::take};
-use uom::si::{f32::{ThermodynamicTemperature, Length}, thermodynamic_temperature::degree_celsius, length::meter};
+use nom::{
+    bytes::complete::take,
+    character::{complete::digit1, streaming::char},
+    combinator::{map_res, opt},
+    error::context,
+    sequence::tuple,
+    Parser,
+};
+use uom::si::{
+    f32::{Length, ThermodynamicTemperature},
+    length::meter,
+    thermodynamic_temperature::degree_celsius,
+};
 
-use crate::{parse::{fromstr_n, fromstr_with}, ParseError, ParseResult};
+use crate::{
+    parse::{fromstr_n, fromstr_with},
+    ParseError, ParseResult,
+};
 
 pub mod clouds;
 pub mod runway;
@@ -10,18 +24,14 @@ pub mod visibility;
 pub mod weather;
 pub mod wind;
 
-/// Parse a number with optional leading `M` specifying that the number is negative 
+/// Parse a number with optional leading `M` specifying that the number is negative
 fn number<'a>(input: &'a str) -> ParseResult<&'a str, f32> {
     tuple((
-        opt(
-            char('M')
-                .map(|_| -1f32)
-        )
-            .map(|v| v.unwrap_or(1f32)),
+        opt(char('M').map(|_| -1f32)).map(|v| v.unwrap_or(1f32)),
         fromstr_with::<f32, _>(digit1),
     ))
-        .map(|(sign, v)| sign * v)
-        .parse(input)
+    .map(|(sign, v)| sign * v)
+    .parse(input)
 }
 
 /// Parse a temperature in degrees C with optional preceding `M` character indicating minus
@@ -29,15 +39,11 @@ pub fn temperature<'a>(
     len: usize,
 ) -> impl Parser<&'a str, ThermodynamicTemperature, ParseError<&'a str>> {
     tuple((
-        opt(
-            char('M')
-                .map(|_| -1f32)
-        )
-            .map(|v| v.unwrap_or(1f32)),
+        opt(char('M').map(|_| -1f32)).map(|v| v.unwrap_or(1f32)),
         fromstr_n::<f32>(len),
     ))
-        .map(|(sign, v)| sign * v)
-        .map(|t| ThermodynamicTemperature::new::<degree_celsius>(t))
+    .map(|(sign, v)| sign * v)
+    .map(|t| ThermodynamicTemperature::new::<degree_celsius>(t))
 }
 
 /// Parse altitude levels using code table 1690

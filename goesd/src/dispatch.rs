@@ -5,11 +5,12 @@ use goes_parse::{
     display_error,
     dt::{
         product::{Analysis, Forecast},
+        surface::SurfaceData,
         upperair::UpperAirData,
         AircraftReportCodeForm, AnalysisSubType, DataTypeDesignator, ForecastSubType,
-        UpperAirDataSubType, surface::SurfaceData, SurfaceSubType,
+        SurfaceSubType, UpperAirDataSubType,
     },
-    formats::{rwr::RegionalWeatherRoundup, taf::TAFReport, metar::EmwinMetarReport},
+    formats::{metar::EmwinMetarReport, rwr::RegionalWeatherRoundup, taf::TAFReport},
     goes::GoesFileName,
     header::GoesEmwinFileName,
 };
@@ -31,11 +32,11 @@ pub const fn supported(name: &GoesEmwinFileName) -> bool {
         | DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..
-        }) 
+        })
         | DataTypeDesignator::SurfaceData(SurfaceData {
             subtype: SurfaceSubType::AviationRoutineReport,
             ..
-        })=> true,
+        }) => true,
         _ => false,
     }
 }
@@ -74,7 +75,7 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             };
 
             config.done.do_for(path).await;*/
-        },
+        }
         DataTypeDesignator::SurfaceData(SurfaceData {
             subtype: SurfaceSubType::AviationRoutineReport,
             ..
@@ -82,7 +83,11 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             let reports = match EmwinMetarReport::parse(month)(&src) {
                 Ok((_, metar)) => metar,
                 Err(e) => {
-                    log::error!("Failed to parse METAR report:\n{}\n{}", src, goes_parse::display_error(e));
+                    log::error!(
+                        "Failed to parse METAR report:\n{}\n{}",
+                        src,
+                        goes_parse::display_error(e)
+                    );
                     return;
                 }
             };
@@ -92,7 +97,7 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
                     log::error!("Failed to write METAR report to SQL: {}", e);
                 }
             }
-        },
+        }
         DataTypeDesignator::Forecast(Forecast {
             subtype: ForecastSubType::AerodomeVTLT12 | ForecastSubType::AerodomeVTGE12,
             ..
@@ -100,7 +105,10 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             let forecast = match TAFReport::parse(month)(&src) {
                 Ok((_, forecast)) => forecast,
                 Err(e) => {
-                    log::error!("Failed to parse TAF report: {}", goes_parse::display_error(e));
+                    log::error!(
+                        "Failed to parse TAF report: {}",
+                        goes_parse::display_error(e)
+                    );
                     return;
                 }
             };

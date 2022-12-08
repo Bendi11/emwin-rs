@@ -24,7 +24,11 @@ use uom::si::{
     velocity::knot,
 };
 
-use crate::{header::WMOProductIdentifier, parse::time::{yygggg, DayHourMinute}, ParseResult};
+use crate::{
+    header::WMOProductIdentifier,
+    parse::time::{yygggg, DayHourMinute},
+    ParseResult,
+};
 
 use super::{parse_degreesminutes, LatitudeDir, LongitudeDir};
 

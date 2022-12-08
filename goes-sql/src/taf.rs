@@ -57,7 +57,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
                 TAFReportItemGroupKind::Probable { .. } => "PROB",
             })
             .bind(group.kind.from().offset(month.and_time(Default::default())))
-            .bind(group.kind.to().map(|t| t.offset(month.and_time(Default::default()))))
+            .bind(
+                group
+                    .kind
+                    .to()
+                    .map(|t| t.offset(month.and_time(Default::default()))),
+            )
             .bind(group.visibility.map(|v| v.get::<meter>()))
             .bind(group.kind.probability())
             .execute(&self.conn)

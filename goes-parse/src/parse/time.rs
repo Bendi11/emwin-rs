@@ -4,7 +4,6 @@ use crate::ParseResult;
 
 use super::fromstr_n;
 
-
 /// A structure holding naive days, hours, and minutes into the month
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DayHourMinute {
@@ -43,5 +42,12 @@ pub fn yygg(input: &str) -> ParseResult<&str, DayHourMinute> {
 
     let (input, (day, hour)) = tuple((parsenum, parsenum))(input)?;
 
-    Ok((input, DayHourMinute { day, hour, minute: 0 }))
+    Ok((
+        input,
+        DayHourMinute {
+            day,
+            hour,
+            minute: 0,
+        },
+    ))
 }

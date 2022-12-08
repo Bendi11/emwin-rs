@@ -7,7 +7,7 @@ use goes_parse::formats::{
         },
         sea::StateOfTheSea,
     },
-    metar::{MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear, MetarReport},
+    metar::{MetarReport, MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear},
     Compass, RunwayDesignatorDirection,
 };
 use uom::si::{
@@ -18,7 +18,11 @@ use uom::si::{
 use crate::GoesSqlContext;
 
 impl GoesSqlContext {
-    pub async fn insert_metar(&self, month: NaiveDate, metar: &MetarReport) -> Result<u64, sqlx::Error> {
+    pub async fn insert_metar(
+        &self,
+        month: NaiveDate,
+        metar: &MetarReport,
+    ) -> Result<u64, sqlx::Error> {
         let data_id = self.insert_data().await?;
 
         for status in metar.runway_status.iter() {
@@ -60,7 +64,7 @@ values (?, ?, ?, ?, ?);
         }
 
         self.insert_cloud_report(data_id, &metar.clouds).await?;
-        
+
         sqlx::query(
             r#"
 insert into weather.metar (data_id, country, origin, vwind_ex_ccw, vwind_ex_cw, visibility, min_vis, min_vis_dir, air_temp, dewpoint_temp, qnh, runway_wind_shear_within)

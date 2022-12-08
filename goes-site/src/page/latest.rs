@@ -13,11 +13,15 @@ pub fn latest_scope() -> Scope {
 }
 
 async fn latest_fd_fc(sql: Data<MySqlPool>) -> Result<impl Responder> {
-    img_single_ep(sql, &QueryForm {
-        time: TimeQuery::Latest,
-        sector: Some("FULL_DISK".to_owned()),
-        channel: Some("FULL_COLOR".to_owned()),
-        acronym: None,
-        satellite: None,
-    }).await
+    img_single_ep(
+        sql,
+        &QueryForm {
+            time: TimeQuery::Latest,
+            sector: Some("FULL_DISK".to_owned()),
+            channel: Some("FULL_COLOR".to_owned()),
+            acronym: None,
+            satellite: None,
+        },
+    )
+    .await
 }

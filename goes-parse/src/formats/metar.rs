@@ -1,25 +1,30 @@
 use chrono::NaiveDate;
 use nom::{
     branch::alt,
+    bytes::complete::take_till,
     character::{
-        complete::{anychar, multispace1, space0, space1, multispace0},
+        complete::{anychar, multispace0, multispace1, space0, space1},
         streaming::char,
     },
     combinator::{map_res, opt},
-    sequence::{preceded, separated_pair, terminated, tuple, delimited},
-    Parser, error::context, bytes::complete::take_till,
+    error::context,
+    sequence::{delimited, preceded, separated_pair, terminated, tuple},
+    Parser,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
+    angle::degree,
     f32::{Angle, Length, Pressure, ThermodynamicTemperature},
     length::{decimeter, meter},
     pressure::{hectopascal, inch_of_mercury},
-    angle::degree,
 };
 
 use crate::{
     header::{WMOProductIdentifier, CCCC},
-    parse::{fromstr_n, multi, multi_opt, time::{yygggg, DayHourMinute}},
+    parse::{
+        fromstr_n, multi, multi_opt,
+        time::{yygggg, DayHourMinute},
+    },
     ParseResult,
 };
 
@@ -133,20 +138,13 @@ impl EmwinMetarReport {
             let mut input = input;
             let mut metars = vec![];
             while !input.is_empty() {
-                let (new_input, metar) = preceded(
-                    multispace0,
-                    MetarReport::parse,
-                )(input)?;
+                let (new_input, metar) = preceded(multispace0, MetarReport::parse)(input)?;
 
                 if let Some(metar) = metar {
                     metars.push(metar);
                 }
-                
-                let (new_input, _) = delimited(
-                    multispace0,
-                    char('='),
-                    multispace0,
-                )(new_input)?;
+
+                let (new_input, _) = delimited(multispace0, char('='), multispace0)(new_input)?;
 
                 input = new_input;
             }
@@ -168,8 +166,12 @@ impl MetarReport {
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
         let (input, kind) = opt(preceded(space0, tag("COR").map(|_| MetarReportKind::Cor)))(input)?;
 
-        let (input, country): (_, CCCC) = context("Four-letter country code", preceded(space0, fromstr_n(4)))(input)?;
-        let (input, origin) = context("METAR origin timestamp", preceded(space0, terminated(yygggg, char('Z'))))(input)?;
+        let (input, country): (_, CCCC) =
+            context("Four-letter country code", preceded(space0, fromstr_n(4)))(input)?;
+        let (input, origin) = context(
+            "METAR origin timestamp",
+            preceded(space0, terminated(yygggg, char('Z'))),
+        )(input)?;
 
         let (input, kind) = match kind {
             Some(kind) => (input, kind),
@@ -188,8 +190,12 @@ impl MetarReport {
             },
         };
 
-        let (input, wind) = context("METAR wind summary", opt(preceded(multispace1, WindSummary::parse)))(input)?;
-        let (input, variable_wind_dir) = opt(preceded(multispace0, MetarVariableWindDir::parse))(input)?;
+        let (input, wind) = context(
+            "METAR wind summary",
+            opt(preceded(multispace1, WindSummary::parse)),
+        )(input)?;
+        let (input, variable_wind_dir) =
+            opt(preceded(multispace0, MetarVariableWindDir::parse))(input)?;
 
         let (input, visibility) = opt(preceded(multispace0, vvvv))(input)?;
 
@@ -238,81 +244,74 @@ impl MetarReport {
         ))
         .parse(input)?;
 
-        let (input, weather) = multi(preceded(multispace0, SignificantWeather::parse)).parse(input)?;
+        let (input, weather) =
+            multi(preceded(multispace0, SignificantWeather::parse)).parse(input)?;
 
-        let (input, clouds) = multi_opt(
-            preceded(
-                multispace0,
-                CloudReport::parse,
-            ),
-        ).parse(input)?;
+        let (input, clouds) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(input)?;
 
-        let (input, air_dewpoint_temperature) = opt(
-            preceded(
-                multispace0,
-                alt((
-                    separated_pair(
-                        opt(temperature(2)),
-                        char('/'),
-                        opt(temperature(2))
-                    )
-                        .map(|(a, d)| match (a, d) {
-                            (Some(a), Some(d)) => Some((a, d)),
-                            _ => None,
-                        }),
-                    tag("/////").map(|_| None)
-                )),
-            )
-        ).map(Option::flatten).parse(input)?;
+        let (input, air_dewpoint_temperature) = opt(preceded(
+            multispace0,
+            alt((
+                separated_pair(opt(temperature(2)), char('/'), opt(temperature(2))).map(
+                    |(a, d)| match (a, d) {
+                        (Some(a), Some(d)) => Some((a, d)),
+                        _ => None,
+                    },
+                ),
+                tag("/////").map(|_| None),
+            )),
+        ))
+        .map(Option::flatten)
+        .parse(input)?;
 
-        let (input, qnh) = opt(
-            preceded(
-                multispace0,
-                alt((
-                    preceded(
-                        char('Q'),
-                        alt((
-                            fromstr_n(4)
-                                .map(|v| Pressure::new::<hectopascal>(v))
-                                .map(Some),
-                            tag("////").map(|_| None),
-                        ))
-                    ),
-                    preceded(
-                        char('A'),
-                        alt((
-                            fromstr_n(4)
-                                .map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.))
-                                .map(Some),
-                            tag("////").map(|_| None),
-                        )),
-                    ),
-                ))
-            )
-        ).map(Option::flatten).parse(input)?;
+        let (input, qnh) = opt(preceded(
+            multispace0,
+            alt((
+                preceded(
+                    char('Q'),
+                    alt((
+                        fromstr_n(4)
+                            .map(|v| Pressure::new::<hectopascal>(v))
+                            .map(Some),
+                        tag("////").map(|_| None),
+                    )),
+                ),
+                preceded(
+                    char('A'),
+                    alt((
+                        fromstr_n(4)
+                            .map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.))
+                            .map(Some),
+                        tag("////").map(|_| None),
+                    )),
+                ),
+            )),
+        ))
+        .map(Option::flatten)
+        .parse(input)?;
 
-        let (input, recent_weather) = opt(
-            preceded(
-                multispace0,
-                alt((
-                    preceded(tag("RE"), SignificantWeather::parse).map(Some),
-                    tag("NOSIG").map(|_| None),
-                ))
-            ),
-        ).map(Option::flatten).parse(input)?;
+        let (input, recent_weather) = opt(preceded(
+            multispace0,
+            alt((
+                preceded(tag("RE"), SignificantWeather::parse).map(Some),
+                tag("NOSIG").map(|_| None),
+            )),
+        ))
+        .map(Option::flatten)
+        .parse(input)?;
 
         let (input, runway_wind_shear) = opt(preceded(multispace0, RunwayWindShear::parse))(input)?;
 
-        let (input, sea) = multi(preceded(multispace0, MetarSeaSurfaceReport::parse)).parse(input)?;
+        let (input, sea) =
+            multi(preceded(multispace0, MetarSeaSurfaceReport::parse)).parse(input)?;
 
-        let (input, runway_status) = multi(preceded(multispace0, RunwayState::parse)).parse(input)?;
-    
-        let (input, _) = opt(
-            preceded(
-                preceded(multispace0, tag("RMK")),
-                take_till(|c| c == '='),
-            )
-        )(input)?;
+        let (input, runway_status) =
+            multi(preceded(multispace0, RunwayState::parse)).parse(input)?;
+
+        let (input, _) = opt(preceded(
+            preceded(multispace0, tag("RMK")),
+            take_till(|c| c == '='),
+        ))(input)?;
 
         Ok((
             input,
@@ -397,9 +396,13 @@ impl MetarSeaSurfaceReport {
 
 impl MetarVariableWindDir {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, extreme_ccw) = fromstr_n::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
+        let (input, extreme_ccw) = fromstr_n::<f32>(3)
+            .map(|v| Angle::new::<degree>(v))
+            .parse(input)?;
         let (input, _) = char('V')(input)?;
-        let (input, extreme_cw) = fromstr_n::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
+        let (input, extreme_cw) = fromstr_n::<f32>(3)
+            .map(|v| Angle::new::<degree>(v))
+            .parse(input)?;
 
         Ok((
             input,
