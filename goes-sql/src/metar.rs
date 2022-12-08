@@ -60,7 +60,7 @@ values (?, ?, ?, ?, ?);
         }
 
         self.insert_cloud_report(data_id, &metar.clouds).await?;
-
+        
         sqlx::query(
             r#"
 insert into weather.metar (data_id, country, origin, vwind_ex_ccw, vwind_ex_cw, visibility, min_vis, min_vis_dir, air_temp, dewpoint_temp, qnh, runway_wind_shear_within)

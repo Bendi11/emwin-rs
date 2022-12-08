@@ -50,7 +50,7 @@ pub struct EmwinMetarReport {
 pub struct MetarReport {
     pub country: CCCC,
     pub origin: Duration,
-    pub wind: WindSummary,
+    pub wind: Option<WindSummary>,
     pub kind: MetarReportKind,
     pub variable_wind_dir: Option<MetarVariableWindDir>,
     pub visibility: Option<Length>,
@@ -186,13 +186,13 @@ impl MetarReport {
             },
         };
 
-        let (input, wind) = context("METAR wind summary", preceded(space1, WindSummary::parse))(input)?;
-        let (input, variable_wind_dir) = opt(preceded(space0, MetarVariableWindDir::parse))(input)?;
+        let (input, wind) = context("METAR wind summary", opt(preceded(multispace1, WindSummary::parse)))(input)?;
+        let (input, variable_wind_dir) = opt(preceded(multispace0, MetarVariableWindDir::parse))(input)?;
 
-        let (input, visibility) = opt(preceded(space0, vvvv))(input)?;
+        let (input, visibility) = opt(preceded(multispace0, vvvv))(input)?;
 
         let (input, minimum_visibility) = opt(preceded(
-            space0,
+            multispace0,
             tuple((
                 fromstr::<'_, f32>(4),
                 alt((
@@ -236,17 +236,17 @@ impl MetarReport {
         ))
         .parse(input)?;
 
-        let (input, weather) = multi(preceded(space0, SignificantWeather::parse)).parse(input)?;
+        let (input, weather) = multi(preceded(multispace0, SignificantWeather::parse)).parse(input)?;
 
-        let (input, clouds) = multi_opt(preceded(space0, CloudReport::parse)).parse(input)?;
+        let (input, clouds) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(input)?;
 
         let (input, air_dewpoint_temperature) = opt(preceded(
-            space0,
+            multispace0,
             separated_pair(temperature(2), char('/'), temperature(2)),
         ))(input)?;
 
         let (input, qnh) = opt(preceded(
-            space0,
+            multispace0,
             alt((
                 preceded(
                     char('Q'),
@@ -260,15 +260,15 @@ impl MetarReport {
         ))(input)?;
 
         let (input, recent_weather) = opt(preceded(
-            space0,
+            multispace0,
             preceded(tag("RE"), SignificantWeather::parse),
         ))(input)?;
 
-        let (input, runway_wind_shear) = opt(preceded(space0, RunwayWindShear::parse))(input)?;
+        let (input, runway_wind_shear) = opt(preceded(multispace0, RunwayWindShear::parse))(input)?;
 
-        let (input, sea) = multi(preceded(space0, MetarSeaSurfaceReport::parse)).parse(input)?;
+        let (input, sea) = multi(preceded(multispace0, MetarSeaSurfaceReport::parse)).parse(input)?;
 
-        let (input, runway_status) = multi(preceded(space0, RunwayState::parse)).parse(input)?;
+        let (input, runway_status) = multi(preceded(multispace0, RunwayState::parse)).parse(input)?;
     
         let (input, _) = opt(
             preceded(
