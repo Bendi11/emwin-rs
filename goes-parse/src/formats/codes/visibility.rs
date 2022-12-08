@@ -3,25 +3,27 @@ use nom::{
         complete::{digit1, space0},
         streaming::char,
     },
-    combinator::{map_res, opt, complete},
+    combinator::{opt, complete},
     error::context,
     sequence::{preceded, tuple, separated_pair}, Parser, branch::alt,
 };
-use nom_supreme::tag::complete::tag;
+use nom_supreme::{tag::complete::tag, ParserExt};
 use uom::si::{
     f32::Length,
     length::{meter, mile},
 };
 
-use crate::ParseResult;
+use crate::{ParseResult, formats::codes::number};
 
 /// Parse a surface horizontal visibility in `VVVV` format (pg. 227)
 pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
     fn fraction(input: &str) -> ParseResult<&str, f32> {
         separated_pair(
-            map_res(digit1, |s: &str| s.parse::<f32>()),
+            digit1
+                .and_then(number),
             char('/'),
-            map_res(digit1, |s: &str| s.parse::<f32>()),
+            digit1
+                .and_then(number)
         )
             .map(|(num, den)| num / den)
             .parse(input)
@@ -37,19 +39,23 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
         alt((
             fraction,
             tuple((
-                map_res(digit1, |s: &str| s.parse::<f32>()),
-                opt(preceded(
-                    space0,
-                    fraction,
-                ))
+                preceded(opt(char('M')), digit1)
+                    .recognize()
+                    .and_then(number),
+                opt(
+                    preceded(
+                        space0,
+                        fraction,
+                    )
+                )
             )).map(|(whole, frac)| whole + frac.unwrap_or(0f32)),
         )) 
     ))(input)?;
 
     let (input, miles) = complete(opt(tag("SM")))(input)?;
     Ok(match miles.is_some() {
-        true => (input, Length::new::<mile>(first)),
-        false => (input, Length::new::<meter>(first)),
+        true => (input, Length::new::<mile>(first.abs())),
+        false => (input, Length::new::<meter>(first.abs())),
     })
 }
 

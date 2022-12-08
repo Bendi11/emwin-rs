@@ -28,8 +28,15 @@ fn number<'a>(input: &'a str) -> ParseResult<&'a str, f32> {
 pub fn temperature<'a>(
     len: usize,
 ) -> impl Parser<&'a str, ThermodynamicTemperature, ParseError<&'a str>> {
-    take(len)
-        .and_then(number)
+    tuple((
+        opt(
+            char('M')
+                .map(|_| -1f32)
+        )
+            .map(|v| v.unwrap_or(1f32)),
+        fromstr_n::<f32>(len),
+    ))
+        .map(|(sign, v)| sign * v)
         .map(|t| ThermodynamicTemperature::new::<degree_celsius>(t))
 }
 

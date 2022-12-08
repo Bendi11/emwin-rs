@@ -251,10 +251,15 @@ impl MetarReport {
             preceded(
                 multispace0,
                 alt((
-                    separated_pair(opt(temperature(2)), char('/'), opt(temperature(2))).map(|(a, d)| match (a, d) {
-                        (Some(a), Some(d)) => Some((a, d)),
-                        _ => None,
-                    }),
+                    separated_pair(
+                        opt(temperature(2)),
+                        char('/'),
+                        opt(temperature(2))
+                    )
+                        .map(|(a, d)| match (a, d) {
+                            (Some(a), Some(d)) => Some((a, d)),
+                            _ => None,
+                        }),
                     tag("/////").map(|_| None)
                 )),
             )
