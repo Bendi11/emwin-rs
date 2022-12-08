@@ -98,10 +98,10 @@ CREATE TABLE IF NOT EXISTS weather.taf_group (
     probability FLOAT,
     visibility FLOAT,
     CHECK (
-        (kind='TIMED'  AND to_off IS     NULL AND probability IS     NULL) OR
-        (kind='CHANGE' AND to_off IS NOT NULL AND probability IS     NULL) OR
-        (kind='TEMP'   AND to_off IS NOT NULL AND probability IS NOT NULL) OR
-        (kind='PROB'   AND to_off IS NOT NULL AND probability IS NOT NULL)
+        (kind='TIMED'  AND to_dt IS     NULL AND probability IS     NULL) OR
+        (kind='CHANGE' AND to_dt IS NOT NULL AND probability IS     NULL) OR
+        (kind='TEMP'   AND to_dt IS NOT NULL AND probability IS NOT NULL) OR
+        (kind='PROB'   AND to_dt IS NOT NULL AND probability IS NOT NULL)
     ),
     CONSTRAINT `fk_taf_group_item`
         FOREIGN KEY (item_id) REFERENCES weather.taf_item (id)
