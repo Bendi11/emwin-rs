@@ -8,7 +8,9 @@ use nom::{
 use nom_supreme::tag::complete::tag;
 use uom::si::f32::Length;
 
-use crate::{formats::codetbl::parse_1690, ParseResult};
+use crate::ParseResult;
+
+use super::parse_1690;
 
 /// Cloud covering specifying the significant cloud shape
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,9 +78,9 @@ impl CloudReport {
 
 #[cfg(test)]
 mod test {
-    use nom::{sequence::preceded, character::complete::{space0, multispace0}};
+    use nom::{sequence::preceded, character::complete::multispace0};
 
-    use crate::parse::{multi, multi_opt};
+    use crate::parse::multi_opt;
 
     use super::*;
 

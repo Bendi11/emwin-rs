@@ -12,7 +12,6 @@ use crate::{parse::fromstr, ParseResult};
 
 pub mod amdar;
 pub mod codes;
-pub mod codetbl;
 pub mod metar;
 pub mod rwr;
 pub mod taf;
