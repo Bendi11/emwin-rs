@@ -254,7 +254,7 @@ impl MetarReport {
                 ),
                 preceded(
                     char('A'),
-                    fromstr(4).map(|v| Pressure::new::<inch_of_mercury>(v)),
+                    fromstr(4).map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.)),
                 ),
             ))
         ))(input)?;
