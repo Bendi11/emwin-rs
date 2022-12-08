@@ -1,14 +1,13 @@
 use std::num::ParseFloatError;
 
 use nom::{
-    branch::alt,
     character::{
         complete::{digit1, space0},
         streaming::char,
     },
-    combinator::{map_res, opt, eof},
+    combinator::{map_res, opt, eof, complete},
     error::context,
-    sequence::{preceded, terminated, tuple}, Parser,
+    sequence::{preceded, terminated, tuple}, Parser, branch::alt,
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
@@ -20,7 +19,7 @@ use crate::ParseResult;
 
 /// Parse a surface horizontal visibility in `VVVV` format (pg. 227)
 pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
-    let mut vis_sm = context(
+    let mut vis_sm = complete(context(
         "horizontal visibility",
         terminated(
             tuple((
@@ -32,14 +31,14 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
             )),
             tag("SM"),
         ),
-    );
+    ));
 
     enum VisFirst {
         Number(f32),
         SM(f32),
     }
 
-    let (input, vis_first) = context(
+    let (input, vis_first) = complete(context(
         "cloud visibility",
         preceded(
             space0,
@@ -58,7 +57,7 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
                 }),
             )),
         ),
-    )(input)?;
+    ))(input)?;
 
     Ok(match vis_first {
         VisFirst::Number(whole) => match opt(vis_sm)(input)? {
