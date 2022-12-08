@@ -79,7 +79,7 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
             subtype: SurfaceSubType::AviationRoutineReport,
             ..
         }) => {
-            let report = match EmwinMetarReport::parse(month)(&src) {
+            let reports = match EmwinMetarReport::parse(month)(&src) {
                 Ok((_, metar)) => metar,
                 Err(e) => {
                     log::error!("Failed to parse METAR report:\n{}\n{}", src, goes_parse::display_error(e));
@@ -87,8 +87,8 @@ pub async fn emwin_dispatch(filename: GoesEmwinFileName, src: &str, ctx: Arc<Goe
                 }
             };
 
-            if let Some(report) = report {
-                if let Err(e) = ctx.insert_metar(&report).await {
+            for report in reports.metars {
+                if let Err(e) = ctx.insert_metar(reports.month, &report).await {
                     log::error!("Failed to write METAR report to SQL: {}", e);
                 }
             }

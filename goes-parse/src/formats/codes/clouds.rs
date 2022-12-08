@@ -30,7 +30,7 @@ pub struct CloudReport {
 
 impl CloudReport {
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, val) = opt(alt((tag("NSC"), tag("SKC"))))(input)?;
+        let (input, val) = opt(alt((tag("NSC"), tag("SKC"), tag("CLR"))))(input)?;
 
         if val.is_some() {
             return Ok((input, None));

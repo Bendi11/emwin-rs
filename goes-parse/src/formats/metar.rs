@@ -2,18 +2,18 @@ use chrono::{Duration, NaiveDate};
 use nom::{
     branch::alt,
     character::{
-        complete::{anychar, multispace1, space0, space1},
+        complete::{anychar, multispace1, space0, space1, multispace0},
         streaming::char,
     },
     combinator::{map_res, opt},
-    sequence::{preceded, separated_pair, terminated, tuple},
-    Parser, error::context,
+    sequence::{preceded, separated_pair, terminated, tuple, delimited},
+    Parser, error::context, bytes::{streaming::take_until, complete::take_till},
 };
 use nom_supreme::tag::complete::tag;
 use uom::si::{
     f32::{Angle, Length, Pressure, ThermodynamicTemperature},
     length::{decimeter, meter},
-    pressure::hectopascal,
+    pressure::{hectopascal, inch_of_mercury},
 };
 
 use crate::{
@@ -42,7 +42,7 @@ use super::{
 pub struct EmwinMetarReport {
     pub header: WMOProductIdentifier,
     pub month: NaiveDate,
-    pub metar: MetarReport,
+    pub metars: Vec<MetarReport>,
 }
 
 /// A single METAR weather report parsed from a FM 15/16 report
@@ -125,21 +125,38 @@ pub struct RunwayState {
 }
 
 impl EmwinMetarReport {
-    pub fn parse(month: NaiveDate) -> impl FnMut(&str) -> ParseResult<&str, Option<Self>> {
+    pub fn parse(month: NaiveDate) -> impl FnMut(&str) -> ParseResult<&str, Self> {
         move |input: &str| {
             let (input, header) = WMOProductIdentifier::parse(input)?;
-            let (input, Some(metar)) = preceded(
-                multispace1,
-                MetarReport::parse,
-            )(input)? else { return Ok((input, None)) };
+            let (input, _) = preceded(multispace1, alt((tag("METAR"), tag("SPECI"))))(input)?;
+            let mut input = input;
+            let mut metars = vec![];
+            while !input.is_empty() {
+                let (new_input, metar) = preceded(
+                    multispace0,
+                    MetarReport::parse,
+                )(input)?;
+
+                if let Some(metar) = metar {
+                    metars.push(metar);
+                }
+                
+                let (new_input, _) = delimited(
+                    multispace0,
+                    char('='),
+                    multispace0,
+                )(new_input)?;
+
+                input = new_input;
+            }
 
             Ok((
                 input,
-                Some(Self {
+                Self {
                     header,
                     month,
-                    metar,
-                }),
+                    metars,
+                },
             ))
         }
     }
@@ -148,8 +165,6 @@ impl EmwinMetarReport {
 impl MetarReport {
     /// Returns Ok(None) if the report is `NIL`
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
-        let (input, _) = alt((tag("METAR"), tag("SPECI")))(input)?;
-
         let (input, kind) = opt(preceded(space0, tag("COR").map(|_| MetarReportKind::Cor)))(input)?;
 
         let (input, country): (_, CCCC) = context("Four-letter country code", preceded(space0, fromstr(4)))(input)?;
@@ -232,10 +247,16 @@ impl MetarReport {
 
         let (input, qnh) = opt(preceded(
             space0,
-            preceded(
-                char('Q'),
-                fromstr(4).map(|v| Pressure::new::<hectopascal>(v)),
-            ),
+            alt((
+                preceded(
+                    char('Q'),
+                    fromstr(4).map(|v| Pressure::new::<hectopascal>(v)),
+                ),
+                preceded(
+                    char('A'),
+                    fromstr(4).map(|v| Pressure::new::<inch_of_mercury>(v)),
+                ),
+            ))
         ))(input)?;
 
         let (input, recent_weather) = opt(preceded(
@@ -248,6 +269,13 @@ impl MetarReport {
         let (input, sea) = multi(preceded(space0, MetarSeaSurfaceReport::parse)).parse(input)?;
 
         let (input, runway_status) = multi(preceded(space0, RunwayState::parse)).parse(input)?;
+    
+        let (input, _) = opt(
+            preceded(
+                preceded(multispace0, tag("RMK")),
+                take_till(|c| c == '='),
+            )
+        )(input)?;
 
         Ok((
             input,
@@ -354,7 +382,9 @@ mod test {
 
     #[test]
     pub fn test_metar() {
-        let _ = EmwinMetarReport::parse(NaiveDate::from_ymd(1, 1, 1))(METAR)
+        let (_, m) = EmwinMetarReport::parse(NaiveDate::from_ymd(1, 1, 1))(METAR)
             .unwrap_or_else(|e| panic!("{}", crate::display_error(e)));
+
+        panic!("{:#?}", m);
     }
 }

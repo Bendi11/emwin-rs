@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use goes_parse::formats::{
     codes::{
         runway::{
@@ -6,7 +7,7 @@ use goes_parse::formats::{
         },
         sea::StateOfTheSea,
     },
-    metar::{EmwinMetarReport, MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear},
+    metar::{EmwinMetarReport, MetarSeaSurfaceReport, RunwayState, RunwayTrend, RunwayWindShear, MetarReport},
     Compass, RunwayDesignatorDirection,
 };
 use uom::si::{
@@ -17,8 +18,7 @@ use uom::si::{
 use crate::GoesSqlContext;
 
 impl GoesSqlContext {
-    pub async fn insert_metar(&self, emwin: &EmwinMetarReport) -> Result<u64, sqlx::Error> {
-        let EmwinMetarReport { month, metar, .. } = emwin;
+    pub async fn insert_metar(&self, month: NaiveDate, metar: &MetarReport) -> Result<u64, sqlx::Error> {
         let data_id = self.insert_data().await?;
 
         for status in metar.runway_status.iter() {
