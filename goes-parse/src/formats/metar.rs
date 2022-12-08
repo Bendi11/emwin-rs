@@ -64,7 +64,8 @@ pub struct MetarReport {
     pub runway_range: Vec<(RunwayDesignator, Length, RunwayTrend)>,
     pub weather: Vec<SignificantWeather>,
     pub clouds: Vec<CloudReport>,
-    pub air_dewpoint_temperature: Option<(ThermodynamicTemperature, ThermodynamicTemperature)>,
+    pub air_temperature: Option<ThermodynamicTemperature>,
+    pub dewpoint_temperature: Option<ThermodynamicTemperature>,
     pub qnh: Option<Pressure>,
     pub recent_weather: Option<SignificantWeather>,
     pub runway_wind_shear: Option<RunwayWindShear>,
@@ -249,19 +250,14 @@ impl MetarReport {
 
         let (input, clouds) = multi_opt(preceded(multispace0, CloudReport::parse)).parse(input)?;
 
-        let (input, air_dewpoint_temperature) = opt(preceded(
+        let (input, (air_temperature, dewpoint_temperature)) = opt(preceded(
             multispace0,
             alt((
-                separated_pair(opt(temperature(2)), char('/'), opt(temperature(2))).map(
-                    |(a, d)| match (a, d) {
-                        (Some(a), Some(d)) => Some((a, d)),
-                        _ => None,
-                    },
-                ),
-                tag("/////").map(|_| None),
+                separated_pair(opt(temperature(2)), char('/'), opt(temperature(2))),
+                tag("/////").map(|_| (None, None)),
             )),
         ))
-        .map(Option::flatten)
+        .map(|v| v.unwrap_or((None, None)))
         .parse(input)?;
 
         let (input, qnh) = opt(preceded(
@@ -326,7 +322,8 @@ impl MetarReport {
                 runway_range,
                 weather,
                 clouds,
-                air_dewpoint_temperature,
+                air_temperature,
+                dewpoint_temperature,
                 qnh,
                 recent_weather,
                 runway_wind_shear,

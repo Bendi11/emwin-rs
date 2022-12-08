@@ -88,8 +88,8 @@ values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             Compass::West => "W",
             Compass::NorthWest => "NW",
         }))
-        .bind(metar.air_dewpoint_temperature.map(|(a, _)| a.get::<degree_celsius>()))
-        .bind(metar.air_dewpoint_temperature.map(|(_, d)| d.get::<degree_celsius>()))
+        .bind(metar.air_temperature.map(|a| a.get::<degree_celsius>()))
+        .bind(metar.dewpoint_temperature.map(|d| d.get::<degree_celsius>()))
         .bind(metar.qnh.map(|q| q.get::<pascal>()))
         .bind(metar.runway_wind_shear.and_then(|v| match v {
             RunwayWindShear::Within(l) => Some(l.get::<meter>()),
