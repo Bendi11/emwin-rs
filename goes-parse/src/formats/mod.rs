@@ -8,7 +8,7 @@ use nom::{
     Parser,
 };
 
-use crate::{parse::fromstr, ParseResult};
+use crate::{parse::fromstr_n, ParseResult};
 
 pub mod amdar;
 pub mod codes;
@@ -115,7 +115,7 @@ impl LongitudeDir {
 impl RunwayDesignator {
     /// Parse a runway designator from the DrDr{L,C,R} format
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, num) = fromstr(2)(input)?;
+        let (input, num) = fromstr_n(2)(input)?;
         let (input, dir) = opt(alt((
             char('L').map(|_| RunwayDesignatorDirection::Left),
             char('C').map(|_| RunwayDesignatorDirection::Center),

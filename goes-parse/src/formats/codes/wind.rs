@@ -14,7 +14,7 @@ use uom::si::{
     velocity::{knot, meter_per_second},
 };
 
-use crate::{parse::fromstr, ParseResult};
+use crate::{parse::fromstr_n, ParseResult};
 
 /// Wind report on direction and speed parsed from dddff**G**f*m*f*m* format
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -30,7 +30,7 @@ pub fn dd(input: &str) -> ParseResult<&str, Angle> {
     context(
         "wind direction 'dd'",
         alt((
-            fromstr(2).map(|d: f32| Angle::new::<degree>(d * 10f32)),
+            fromstr_n(2).map(|d: f32| Angle::new::<degree>(d * 10f32)),
             tag("//").map(|_| Angle::new::<degree>(0f32)),
         )),
     )(input)
@@ -51,7 +51,7 @@ pub fn ddd(input: &str) -> ParseResult<&str, Angle> {
 
 /// Parse a wind speed with no units in `ff` format (pg. 184)
 pub fn ff(input: &str) -> ParseResult<&str, f32> {
-    context("wind speed without units 'ff'", fromstr(2))(input)
+    context("wind speed without units 'ff'", fromstr_n(2))(input)
 }
 
 impl WindSummary {
@@ -59,7 +59,7 @@ impl WindSummary {
         let (input, direction) = ddd(input)?;
         let (input, speed) = ff(input)?;
 
-        let (input, max_speed) = opt(preceded(char('G'), fromstr(2)))(input)?;
+        let (input, max_speed) = opt(preceded(char('G'), fromstr_n(2)))(input)?;
 
         let (input, (speed, max_speed)) = context(
             "wind speed units",

@@ -19,7 +19,7 @@ use crate::{
     formats::codes::visibility::vvvv,
     header::{WMOProductIdentifier, CCCC},
     parse::{
-        fromstr, multi_opt,
+        fromstr_n, multi_opt,
         recover::recover,
         time::{yygg, yygggg, DayHourMinute},
     },
@@ -280,7 +280,7 @@ impl TAFReportItemGroup {
         }
 
         fn parse_prob(input: &str) -> ParseResult<&str, TAFReportItemGroupKind> {
-            let (input, probability) = context("item group probability", fromstr(2))(input)?;
+            let (input, probability) = context("item group probability", fromstr_n(2))(input)?;
 
             context(
                 "item following probability estimate",

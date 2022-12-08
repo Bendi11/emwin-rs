@@ -11,7 +11,7 @@ use nom::{
 };
 use nom_supreme::tag::complete::tag;
 
-use crate::{parse::fromstr, ParseError, ParseResult};
+use crate::{parse::fromstr_n, ParseError, ParseResult};
 
 use self::dsn::DataShortName;
 
@@ -66,9 +66,9 @@ impl GoesFileName {
             .map(|s| s != "CUSTOMLUT")
             .unwrap_or(false);
 
-        let (input, env) = fromstr::<SystemEnvironment>(2).parse(input)?;
+        let (input, env) = fromstr_n::<SystemEnvironment>(2).parse(input)?;
         let (input, dsn) = preceded(char('_'), DataShortName::parse(country_lines))(input)?;
-        let (input, satellite) = preceded(char('_'), fromstr::<Satellite>(3))(input)?;
+        let (input, satellite) = preceded(char('_'), fromstr_n::<Satellite>(3))(input)?;
 
         let (input, start) = preceded(tag("_s"), Self::timestamp)(input)?;
         let (input, end) = preceded(tag("_e"), Self::timestamp)(input)?;
@@ -94,7 +94,7 @@ impl GoesFileName {
                     NaiveDateTime::parse_from_str(s, "%Y%j%H%M%S")
                         .map(|dt| Utc.from_utc_datetime(&dt))
                 }),
-                fromstr::<u32>(1),
+                fromstr_n::<u32>(1),
             ),
             |(dt, n)| dt.with_nanosecond(n * 1e+8 as u32),
         )

@@ -32,11 +32,6 @@ pub fn vvvv(input: &str) -> ParseResult<&str, Length> {
         return Ok((input, Length::new::<mile>(6f32)))
     }
 
-    let (input, ignore) = complete(opt(tag("M1/4SM")))(input)?;
-    if ignore.is_some() {
-        return Ok((input, Length::new::<mile>(0f32)))
-    }
-
     let (input, first) = complete(context(
         "horizontal visibility first term",
         alt((

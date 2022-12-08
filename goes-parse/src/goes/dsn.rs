@@ -9,7 +9,7 @@ use nom::{
 };
 use nom_supreme::tag::complete::tag;
 
-use crate::{parse::fromstr, ParseResult};
+use crate::{parse::fromstr_n, ParseResult};
 
 /// A channel number between 01 and 16
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -139,12 +139,12 @@ impl DataShortName {
         let (input, instrument) = Instrument::parse(input)?;
         let (input, acronym) = ProductAcronym::parse(input)?;
         let (input, sector) = ABISector::parse(input)?;
-        let (input, mode): (_, ABIMode) = fromstr(3)(input)?;
+        let (input, mode): (_, ABIMode) = fromstr_n(3)(input)?;
 
         let channel = preceded(
             char('C'),
             alt((
-                map_res(fromstr::<u8>(2), |v| Channel::try_from(v)),
+                map_res(fromstr_n::<u8>(2), |v| Channel::try_from(v)),
                 tag("FC").map(|_| match country_lines {
                     true => Channel::FullColorCountries,
                     false => Channel::FullColor,

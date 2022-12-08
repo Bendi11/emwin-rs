@@ -19,7 +19,7 @@ use uom::si::{
 
 use crate::{
     header::{WMOProductIdentifier, CCCC},
-    parse::{fromstr, multi, multi_opt, time::{yygggg, DayHourMinute}},
+    parse::{fromstr_n, multi, multi_opt, time::{yygggg, DayHourMinute}},
     ParseResult,
 };
 
@@ -168,7 +168,7 @@ impl MetarReport {
     pub fn parse(input: &str) -> ParseResult<&str, Option<Self>> {
         let (input, kind) = opt(preceded(space0, tag("COR").map(|_| MetarReportKind::Cor)))(input)?;
 
-        let (input, country): (_, CCCC) = context("Four-letter country code", preceded(space0, fromstr(4)))(input)?;
+        let (input, country): (_, CCCC) = context("Four-letter country code", preceded(space0, fromstr_n(4)))(input)?;
         let (input, origin) = context("METAR origin timestamp", preceded(space0, terminated(yygggg, char('Z'))))(input)?;
 
         let (input, kind) = match kind {
@@ -196,7 +196,7 @@ impl MetarReport {
         let (input, minimum_visibility) = opt(preceded(
             multispace0,
             tuple((
-                fromstr::<'_, f32>(4),
+                fromstr_n::<'_, f32>(4),
                 alt((
                     tag("N").map(|_| Compass::North),
                     tag("NE").map(|_| Compass::NorthEast),
@@ -222,7 +222,7 @@ impl MetarReport {
                     RunwayDesignator::parse,
                     char('/'),
                     tuple((
-                        fromstr(4).map(|v: f32| Length::new::<meter>(v)),
+                        fromstr_n(4).map(|v: f32| Length::new::<meter>(v)),
                         map_res(anychar, |c: char| {
                             Ok(match c {
                                 'U' => RunwayTrend::Farther,
@@ -267,7 +267,7 @@ impl MetarReport {
                     preceded(
                         char('Q'),
                         alt((
-                            fromstr(4)
+                            fromstr_n(4)
                                 .map(|v| Pressure::new::<hectopascal>(v))
                                 .map(Some),
                             tag("////").map(|_| None),
@@ -276,7 +276,7 @@ impl MetarReport {
                     preceded(
                         char('A'),
                         alt((
-                            fromstr(4)
+                            fromstr_n(4)
                                 .map(|v: f32| Pressure::new::<inch_of_mercury>(v / 100.))
                                 .map(Some),
                             tag("////").map(|_| None),
@@ -367,7 +367,7 @@ impl RunwayWindShear {
                 tag("ALL RWY").map(|_| Self::All),
                 preceded(
                     char('R'),
-                    fromstr(2).map(|v| Self::Within(Length::new::<meter>(v))),
+                    fromstr_n(2).map(|v| Self::Within(Length::new::<meter>(v))),
                 ),
             )),
         )(input)
@@ -383,7 +383,7 @@ impl MetarSeaSurfaceReport {
                 .map(move |state| Self::StateOfSea { temp, state }),
             preceded(
                 char('H'),
-                fromstr(3).map(|v: f32| Length::new::<decimeter>(v)),
+                fromstr_n(3).map(|v: f32| Length::new::<decimeter>(v)),
             )
             .map(move |height| Self::WaveHeight { temp, height }),
         ))(input)
@@ -392,9 +392,9 @@ impl MetarSeaSurfaceReport {
 
 impl MetarVariableWindDir {
     pub fn parse(input: &str) -> ParseResult<&str, Self> {
-        let (input, extreme_ccw) = fromstr::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
+        let (input, extreme_ccw) = fromstr_n::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
         let (input, _) = char('V')(input)?;
-        let (input, extreme_cw) = fromstr::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
+        let (input, extreme_cw) = fromstr_n::<f32>(3).map(|v| Angle::new::<degree>(v)).parse(input)?;
 
         Ok((
             input,

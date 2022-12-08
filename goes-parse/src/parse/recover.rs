@@ -25,7 +25,7 @@ where
 mod test {
     use nom::bytes::complete::take_until;
 
-    use crate::parse::fromstr;
+    use crate::parse::fromstr_n;
 
     use super::*;
 
@@ -33,7 +33,7 @@ mod test {
 
     #[test]
     fn test_recovery() {
-        let mut parser = recover(fromstr::<'_, f32>(5), take_until(" "));
+        let mut parser = recover(fromstr_n::<'_, f32>(5), take_until(" "));
 
         let (rest, num) = parser(TEST_FAIL).unwrap();
         assert!(num.is_none());

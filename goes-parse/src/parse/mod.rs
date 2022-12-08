@@ -56,10 +56,24 @@ where
 
 /// Parse a value of type `T` using `T`'s [FromStr] implementation by taking `n` characters from
 /// the input string
-pub fn fromstr<'a, T>(n: usize) -> impl FnMut(&'a str) -> ParseResult<&'a str, T>
+pub fn fromstr_n<'a, T>(n: usize) -> impl FnMut(&'a str) -> ParseResult<&'a str, T>
 where
     T: FromStr,
     crate::ParseError<&'a str>: FromExternalError<&'a str, <T as FromStr>::Err>,
 {
     map_res(take(n), <T as FromStr>::from_str)
+}
+
+/// Produce a parser that consumes the output slice from `first`, using `T`'s [FromStr]
+/// implementation to parse a value of type `T` from the produced output
+pub fn fromstr_with<'a, T, P>(first: P) -> impl FnMut(&'a str) -> ParseResult<&'a str, T>
+where
+    T: FromStr,
+    P: Parser<&'a str, &'a str, crate::ParseError<&'a str>>,
+    crate::ParseError<&'a str>: FromExternalError<&'a str, <T as FromStr>::Err>
+{
+    map_res(
+        first,
+        <T as FromStr>::from_str
+    )
 }

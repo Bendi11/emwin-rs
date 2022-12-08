@@ -2,7 +2,7 @@ use nom::{bytes::complete::take, combinator::map_res, error::context, sequence::
 
 use crate::ParseResult;
 
-use super::fromstr;
+use super::fromstr_n;
 
 
 /// A structure holding naive days, hours, and minutes into the month
@@ -27,9 +27,9 @@ pub fn yygggg(input: &str) -> ParseResult<&str, DayHourMinute> {
     context(
         "time in YYGGgg format",
         tuple((
-            context("YY", fromstr(2)),
-            context("GG", fromstr(2)),
-            context("gg", fromstr(2)),
+            context("YY", fromstr_n(2)),
+            context("GG", fromstr_n(2)),
+            context("gg", fromstr_n(2)),
         ))
         .map(|(day, hour, minute)| DayHourMinute { day, hour, minute }),
     )(input)
