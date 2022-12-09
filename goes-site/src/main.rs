@@ -7,7 +7,7 @@ use actix_web::{
     App, HttpServer,
 };
 use goes_cfg::Config;
-use page::{latest::latest_scope, search::search_scope};
+use page::{latest::latest_scope, search::img::search_scope};
 
 pub mod page;
 

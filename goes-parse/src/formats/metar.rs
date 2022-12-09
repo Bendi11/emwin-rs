@@ -44,6 +44,7 @@ use super::{
 };
 
 /// A METAR report parsed from EMWIN files, with additional header line
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct EmwinMetarReport {
     pub header: WMOProductIdentifier,
@@ -52,6 +53,7 @@ pub struct EmwinMetarReport {
 }
 
 /// A single METAR weather report parsed from a FM 15/16 report
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct MetarReport {
     pub country: CCCC,
@@ -73,6 +75,7 @@ pub struct MetarReport {
     pub runway_status: Vec<RunwayState>,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum MetarSeaSurfaceReport {
     StateOfSea {
@@ -86,6 +89,7 @@ pub enum MetarSeaSurfaceReport {
 }
 
 /// Wind shear report with segment of runway affected
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub enum RunwayWindShear {
     Within(Length),
@@ -93,6 +97,7 @@ pub enum RunwayWindShear {
 }
 
 /// The trend that a runway's distance is observed to be
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RunwayTrend {
     Closer,
@@ -101,6 +106,7 @@ pub enum RunwayTrend {
 }
 
 /// Directions that variables winds blow between in a METAR report
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub struct MetarVariableWindDir {
     pub extreme_ccw: Angle,
@@ -108,6 +114,7 @@ pub struct MetarVariableWindDir {
 }
 
 /// Optional METAR report specifying the direction and length of minimum horizontal visibility
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub struct MetarMinimumVisibility {
     pub visibility: Length,
@@ -115,6 +122,7 @@ pub struct MetarMinimumVisibility {
 }
 
 /// The kind of report a METAR/SPECI is
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MetarReportKind {
     Auto,
@@ -122,6 +130,7 @@ pub enum MetarReportKind {
 }
 
 /// Reported runway contamination status
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug)]
 pub struct RunwayState {
     pub runway: RunwayDesignator,

@@ -13,6 +13,7 @@ use crate::ParseResult;
 use super::parse_1690;
 
 /// Cloud covering specifying the significant cloud shape
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CloudCover {
     Cumulonimbus,

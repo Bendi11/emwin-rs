@@ -4,7 +4,7 @@ use actix_web::{
 };
 use sqlx::MySqlPool;
 
-use super::search::{img_single_ep, QueryForm, TimeQuery};
+use super::search::img::{img_single_ep, QueryForm, TimeQuery};
 
 pub fn latest_scope() -> Scope {
     web::scope("/latest")
