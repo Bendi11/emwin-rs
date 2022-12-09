@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use nom::{
     branch::alt,
-    bytes::complete::take_till,
+    bytes::complete::{take_till, take_until},
     character::{
         complete::{anychar, multispace0, multispace1, space0, space1},
         streaming::char,
@@ -139,7 +139,20 @@ impl EmwinMetarReport {
             let mut input = input;
             let mut metars = vec![];
             while !input.is_empty() {
-                let (new_input, metar) = preceded(multispace0, MetarReport::parse)(input)?;
+                let (new_input, metar) = match preceded(multispace0, MetarReport::parse)(input) {
+                    Ok(v) => v,
+                    Err(nom::Err::Error(e)) => {
+                        let (new_input, skip) = take_until("=")(input)?;
+                        log::error!("Failed to parse METAR report {}: {}", skip, crate::display_error(nom::Err::Error(e)));
+                        let (new_input, _) = char('=')(new_input)?;
+                        input = new_input;
+                        continue
+                    },
+                    Err(e) => {
+                        log::error!("Failed to parse metar: {}", e);
+                        break
+                    }
+                };
 
                 if let Some(metar) = metar {
                     metars.push(metar);
